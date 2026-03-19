@@ -1,12 +1,48 @@
 'use client';
 
+import { useState } from 'react';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { TRANSPORT_LABELS } from '@/lib/utils';
+import { downloadICS } from '@/lib/kakao-calendar';
 import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
+import type { Itinerary } from '@/types';
 
 export default function CalendarPanel() {
   const { events, removeEvent } = useCalendarStore();
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const handleDownloadICS = (event: { title: string; date: string; stops: Itinerary['stops'] }) => {
+    downloadICS({ id: '', ...event } as Itinerary);
+  };
+
+  const handleKakaoCalendar = async (event: { id: string; title: string; date: string; stops: Itinerary['stops'] }) => {
+    setSaving(event.id);
+    try {
+      const res = await fetch('/api/calendar/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itinerary: { id: event.id, title: event.title, date: event.date, stops: event.stops },
+        }),
+      });
+
+      if (res.status === 401) {
+        // Not logged in - redirect to Kakao login
+        const clientId = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+        const redirectUri = `${window.location.origin}/api/auth/kakao/callback`;
+        window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=talk_calendar`;
+        return;
+      }
+
+      if (!res.ok) throw new Error('Failed');
+      alert('카카오 캘린더에 일정이 추가되었습니다!');
+    } catch {
+      alert('카카오 캘린더 연동에 실패했습니다. ICS 다운로드를 이용해주세요.');
+    } finally {
+      setSaving(null);
+    }
+  };
 
   if (events.length === 0) {
     return (
@@ -53,9 +89,21 @@ export default function CalendarPanel() {
               </div>
             ))}
           </div>
-          <div className="mt-3 pt-3 border-t border-border-default">
-            <Button variant="ghost" size="sm">
-              Google Calendar에 추가
+          <div className="flex gap-2 mt-3 pt-3 border-t border-border-default">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleKakaoCalendar(event)}
+              disabled={saving === event.id}
+            >
+              {saving === event.id ? '저장 중...' : '카카오 캘린더에 추가'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDownloadICS(event)}
+            >
+              ICS 다운로드
             </Button>
           </div>
         </div>
