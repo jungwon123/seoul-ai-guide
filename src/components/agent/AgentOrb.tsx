@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { AgentType } from '@/types';
 import { AGENT_COLORS } from '@/lib/utils';
 
@@ -14,95 +14,134 @@ interface AgentOrbProps {
 const agents: AgentType[] = ['claude', 'gpt', 'gemini'];
 const AGENT_LABELS: Record<AgentType, string> = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini' };
 
+const AGENT_PALETTES: Record<AgentType, { primary: string; secondary: string; accent: string }> = {
+  claude: { primary: '#7C3AED', secondary: '#3B82F6', accent: '#EC4899' },
+  gpt: { primary: '#059669', secondary: '#06B6D4', accent: '#10B981' },
+  gemini: { primary: '#EA580C', secondary: '#F59E0B', accent: '#EF4444' },
+};
+
 export default function AgentOrb({ agent, isThinking, isStreaming, onAgentChange }: AgentOrbProps) {
   const [mounted, setMounted] = useState(false);
-  const color = AGENT_COLORS[agent];
-
-  useEffect(() => { setMounted(true); }, []);
-
+  const [seed, setSeed] = useState(0);
+  const palette = AGENT_PALETTES[agent];
   const isActive = isThinking || isStreaming;
 
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { setSeed((s) => s + 1); }, [agent]);
+
+  const filterId = useMemo(() => `orb-distort-${seed}`, [seed]);
+  const turbulenceSpeed = isActive ? '0.04' : '0.015';
+
   return (
-    <div className="relative flex flex-col items-center gap-5 py-8 select-none">
-      {/* Ambient glow */}
+    <div className="relative flex flex-col items-center gap-5 py-6 select-none">
+      {/* Deep ambient glow */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[80px] transition-all duration-1000"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-[1.5s]"
         style={{
-          background: `radial-gradient(circle, ${color}15 0%, transparent 70%)`,
-          transform: `translate(-50%, -50%) scale(${isActive ? 1.3 : 1})`,
+          width: isActive ? '340px' : '280px',
+          height: isActive ? '340px' : '280px',
+          background: `radial-gradient(circle, ${palette.primary}18 0%, ${palette.secondary}08 40%, transparent 70%)`,
+          filter: 'blur(30px)',
         }}
       />
 
-      {/* The Orb */}
-      <div className="relative">
-        {/* Outer ring — rotates */}
-        <div
-          className="absolute inset-[-12px] rounded-full transition-all duration-700"
-          style={{
-            border: `1px solid ${color}15`,
-            animation: mounted ? `orbRingSpin ${isActive ? '3s' : '12s'} linear infinite` : 'none',
-          }}
-        >
-          {/* Orbiting dot */}
-          <div
-            className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-[6px] h-[6px] rounded-full transition-all duration-500"
-            style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}60` }}
-          />
-        </div>
+      {/* SVG Filter for organic distortion */}
+      <svg className="absolute w-0 h-0" aria-hidden="true">
+        <defs>
+          <filter id={filterId} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.012"
+              numOctaves="4"
+              seed={seed}
+              result="noise"
+            >
+              <animate
+                attributeName="baseFrequency"
+                dur={isActive ? '3s' : '8s'}
+                values="0.012;0.018;0.012"
+                repeatCount="indefinite"
+              />
+            </feTurbulence>
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale={isActive ? '18' : '10'}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
 
-        {/* Second ring */}
+      {/* The Orb */}
+      <button
+        onClick={() => {
+          const idx = agents.indexOf(agent);
+          onAgentChange(agents[(idx + 1) % agents.length]);
+        }}
+        className="relative w-[120px] h-[120px] cursor-pointer group"
+        style={{ filter: mounted ? `url(#${filterId})` : 'none' }}
+        aria-label={`현재 에이전트: ${AGENT_LABELS[agent]}. 클릭하여 전환`}
+      >
+        {/* Layer 1 — Core sphere */}
         <div
-          className="absolute inset-[-24px] rounded-full transition-all duration-700"
+          className="absolute inset-0 rounded-full transition-all duration-1000"
           style={{
-            border: `1px dashed ${color}08`,
-            animation: mounted ? `orbRingSpin 20s linear infinite reverse` : 'none',
+            background: `radial-gradient(circle at 40% 35%, ${palette.secondary}90, ${palette.primary}80, ${palette.accent}40)`,
+            animation: mounted ? `orbRotate1 ${isActive ? '4s' : '8s'} ease-in-out infinite` : 'none',
           }}
         />
 
-        {/* Core orb */}
-        <button
-          onClick={() => {
-            const idx = agents.indexOf(agent);
-            onAgentChange(agents[(idx + 1) % agents.length]);
+        {/* Layer 2 — Inner glow wave */}
+        <div
+          className="absolute inset-[8px] rounded-full transition-all duration-1000 mix-blend-screen"
+          style={{
+            background: `radial-gradient(ellipse at 60% 30%, ${palette.secondary}CC, transparent 60%), radial-gradient(ellipse at 30% 70%, ${palette.accent}88, transparent 50%)`,
+            animation: mounted ? `orbRotate2 ${isActive ? '3s' : '6s'} ease-in-out infinite reverse` : 'none',
           }}
-          className="relative w-20 h-20 rounded-full cursor-pointer transition-transform duration-500 hover:scale-105 active:scale-95"
+        />
+
+        {/* Layer 3 — Highlight shimmer */}
+        <div
+          className="absolute inset-[4px] rounded-full transition-all duration-1000 mix-blend-overlay"
           style={{
             background: `
-              radial-gradient(circle at 35% 35%, ${color}30, transparent 50%),
-              radial-gradient(circle at 65% 65%, ${color}15, transparent 50%),
-              radial-gradient(circle at 50% 50%, ${color}08, var(--color-bg-subtle))
+              radial-gradient(ellipse at 35% 25%, rgba(255,255,255,0.5), transparent 45%),
+              radial-gradient(ellipse at 70% 60%, ${palette.primary}60, transparent 50%)
             `,
-            border: `1.5px solid ${color}20`,
-            boxShadow: `
-              0 0 0 1px ${color}06,
-              0 4px 20px ${color}12,
-              inset 0 1px 0 rgba(255,255,255,0.5)
-            `,
-            animation: isActive
-              ? 'orbPulse 1.5s ease-in-out infinite'
-              : 'orbBreathe 4s ease-in-out infinite',
+            animation: mounted ? `orbRotate3 ${isActive ? '5s' : '10s'} ease-in-out infinite` : 'none',
           }}
-          aria-label={`현재 에이전트: ${AGENT_LABELS[agent]}. 클릭하여 전환`}
-        >
-          {/* Inner shine */}
+        />
+
+        {/* Layer 4 — Edge luminance */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: `radial-gradient(circle at 50% 50%, transparent 40%, ${palette.primary}20 70%, ${palette.primary}05 100%)`,
+            boxShadow: `
+              inset 0 0 30px ${palette.primary}20,
+              0 0 40px ${palette.primary}25,
+              0 0 80px ${palette.secondary}15
+            `,
+            transition: 'box-shadow 1s, background 1s',
+          }}
+        />
+
+        {/* Active pulse ring */}
+        {isActive && (
           <div
-            className="absolute inset-[6px] rounded-full"
+            className="absolute inset-[-6px] rounded-full"
             style={{
-              background: `radial-gradient(circle at 40% 30%, rgba(255,255,255,0.4), transparent 60%)`,
+              border: `1px solid ${palette.primary}30`,
+              animation: 'orbPulseRing 2s ease-out infinite',
             }}
           />
-          {/* Agent initial */}
-          <span
-            className="absolute inset-0 flex items-center justify-center text-[18px] font-semibold transition-all duration-500"
-            style={{ color, fontFamily: 'var(--font-display)' }}
-          >
-            {AGENT_LABELS[agent][0]}
-          </span>
-        </button>
-      </div>
+        )}
+      </button>
 
-      {/* Agent label + switcher */}
-      <div className="flex items-center gap-1 z-10">
+      {/* Agent switcher */}
+      <div className="flex items-center gap-0.5 z-10">
         {agents.map((a) => {
           const isSelected = a === agent;
           const c = AGENT_COLORS[a];
@@ -110,7 +149,7 @@ export default function AgentOrb({ agent, isThinking, isStreaming, onAgentChange
             <button
               key={a}
               onClick={() => onAgentChange(a)}
-              className="group relative px-3 py-1.5 text-[12px] font-medium transition-all duration-200 cursor-pointer rounded-full"
+              className="relative px-3 py-1.5 text-[12px] font-medium transition-all duration-200 cursor-pointer rounded-full"
               style={{
                 color: isSelected ? c : 'var(--color-text-muted)',
                 background: isSelected ? `${c}08` : 'transparent',
@@ -123,6 +162,7 @@ export default function AgentOrb({ agent, isThinking, isStreaming, onAgentChange
                     backgroundColor: c,
                     opacity: isSelected ? 1 : 0.3,
                     transform: isSelected ? 'scale(1)' : 'scale(0.7)',
+                    boxShadow: isSelected ? `0 0 6px ${c}60` : 'none',
                   }}
                 />
                 {AGENT_LABELS[a]}
@@ -132,26 +172,32 @@ export default function AgentOrb({ agent, isThinking, isStreaming, onAgentChange
         })}
       </div>
 
-      {/* Status text */}
+      {/* Status */}
       {isActive && (
         <p className="text-[11px] text-text-muted animate-fade-up tracking-wide">
           {isThinking && !isStreaming ? '생각하고 있어요...' : '응답 중...'}
         </p>
       )}
 
-      {/* Keyframes injected via style */}
       <style>{`
-        @keyframes orbBreathe {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.03); }
+        @keyframes orbRotate1 {
+          0%, 100% { transform: rotate(0deg) scale(1); }
+          25% { transform: rotate(3deg) scale(1.02); }
+          50% { transform: rotate(-2deg) scale(0.98); }
+          75% { transform: rotate(1deg) scale(1.01); }
         }
-        @keyframes orbPulse {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0px ${color}10; }
-          50% { transform: scale(1.06); box-shadow: 0 0 0 12px ${color}00; }
+        @keyframes orbRotate2 {
+          0%, 100% { transform: rotate(0deg) scale(1) translate(0, 0); }
+          33% { transform: rotate(-5deg) scale(1.05) translate(2px, -2px); }
+          66% { transform: rotate(3deg) scale(0.95) translate(-2px, 2px); }
         }
-        @keyframes orbRingSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes orbRotate3 {
+          0%, 100% { transform: rotate(0deg); opacity: 0.8; }
+          50% { transform: rotate(180deg); opacity: 1; }
+        }
+        @keyframes orbPulseRing {
+          0% { transform: scale(1); opacity: 0.6; }
+          100% { transform: scale(1.4); opacity: 0; }
         }
       `}</style>
     </div>
