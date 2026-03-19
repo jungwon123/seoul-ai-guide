@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Menu, MapPin, Calendar, Ticket } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { AGENT_COLORS } from '@/lib/utils';
@@ -47,8 +47,8 @@ export default function Home() {
   const agentColor = AGENT_COLORS[selectedAgent];
   const hasOnlyWelcome = messages.length <= 1;
 
-  // Sync localStorage → state (only on hydration, no cascading render)
-  useEffect(() => {
+  // Sync localStorage → state before paint (no cascading render warning)
+  useLayoutEffect(() => {
     if (storedOnboarded === 'true') setOnboarded(true);
   }, [storedOnboarded]);
 
