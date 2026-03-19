@@ -1,0 +1,70 @@
+[
+  {
+    "id": "itin-001",
+    "title": "종로 반나절 문화 코스",
+    "date": "2024-03-15",
+    "stops": [
+      {
+        "order": 1,
+        "placeId": "place-001",
+        "placeName": "경복궁",
+        "arrivalTime": "10:00",
+        "duration": 60,
+        "transportToNext": "walk",
+        "travelTimeToNext": 15
+      },
+      {
+        "order": 2,
+        "placeId": "place-002",
+        "placeName": "북촌한옥마을",
+        "arrivalTime": "11:15",
+        "duration": 90,
+        "transportToNext": "subway",
+        "travelTimeToNext": 20
+      },
+      {
+        "order": 3,
+        "placeId": "place-006",
+        "placeName": "인사동 쌈지길",
+        "arrivalTime": "13:05",
+        "duration": 60,
+        "transportToNext": "walk",
+        "travelTimeToNext": 10
+      },
+      {
+        "order": 4,
+        "placeId": "place-003",
+        "placeName": "광장시장",
+        "arrivalTime": "14:15",
+        "duration": 90,
+        "transportToNext": "walk",
+        "travelTimeToNext": 0
+      }
+    ]
+  },
+  {
+    "id": "itin-002",
+    "title": "서울 야경 투어",
+    "date": "2024-03-16",
+    "stops": [
+      {
+        "order": 1,
+        "placeId": "place-004",
+        "placeName": "명동 쇼핑거리",
+        "arrivalTime": "17:00",
+        "duration": 120,
+        "transportToNext": "taxi",
+        "travelTimeToNext": 15
+      },
+      {
+        "order": 2,
+        "placeId": "place-005",
+        "placeName": "남산타워",
+        "arrivalTime": "19:15",
+        "duration": 90,
+        "transportToNext": "walk",
+        "travelTimeToNext": 0
+      }
+    ]
+  }
+]

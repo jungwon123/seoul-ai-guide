@@ -1,0 +1,22 @@
+[
+  {
+    "id": "book-001",
+    "placeId": "place-003",
+    "placeName": "광장시장",
+    "date": "2024-03-15",
+    "time": "14:00",
+    "partySize": 2,
+    "status": "confirmed",
+    "confirmationNumber": "MOCK-8A3F21"
+  },
+  {
+    "id": "book-002",
+    "placeId": "place-005",
+    "placeName": "남산타워",
+    "date": "2024-03-16",
+    "time": "19:00",
+    "partySize": 2,
+    "status": "pending",
+    "confirmationNumber": "MOCK-7B2E44"
+  }
+]

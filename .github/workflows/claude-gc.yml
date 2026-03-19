@@ -1,0 +1,56 @@
+name: 🤖 Claude 자동 가비지 컬렉션
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 매일 자정 (KST 09:00)
+  workflow_dispatch:     # 수동 실행도 가능
+
+jobs:
+  claude-cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Claude Code 설치
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 브랜치 생성
+        run: |
+          BRANCH="chore/auto-cleanup-$(date +%Y%m%d)"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          git checkout -b $BRANCH
+
+      - name: Claude 품질 스캔 & 수정
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude --dangerously-skip-permissions -p "
+            docs/QUALITY_SCORE.md 의 체크리스트를 기준으로 코드베이스 전체를 스캔해줘.
+            위반 사항을 발견하면 직접 수정하고, 수정한 내용을 정리해줘.
+            수정 범위: 타입 오류, 네이밍 컨벤션, 빈 상태 처리 누락, any 타입 사용.
+            AGENTS.md 의 스키마와 맞지 않는 컴포넌트도 수정해줘.
+            수정이 없으면 'NO_CHANGES' 라고만 출력해줘.
+          " > /tmp/claude-output.txt
+          cat /tmp/claude-output.txt
+          grep -q "NO_CHANGES" /tmp/claude-output.txt && echo "SKIP=true" >> $GITHUB_ENV || echo "SKIP=false" >> $GITHUB_ENV
+
+      - name: 변경사항 커밋 & PR 생성
+        if: env.SKIP == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "claude-bot"
+          git config user.email "claude-bot@noreply"
+          git add .
+          git commit -m "chore: 자동 품질 정리 $(date +%Y-%m-%d)"
+          git push origin $BRANCH
+
+          gh pr create \
+            --title "chore: 자동 품질 정리 $(date +%Y-%m-%d)" \
+            --body "$(cat /tmp/claude-output.txt)" \
+            --label "auto-cleanup" \
+            --base main

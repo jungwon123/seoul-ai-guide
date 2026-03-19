@@ -1,0 +1,66 @@
+name: 🔍 Claude PR 자동 리뷰
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude Code 설치
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 변경된 파일 수집
+        run: |
+          git diff origin/main...HEAD --name-only > /tmp/changed-files.txt
+          cat /tmp/changed-files.txt
+
+      - name: Claude 코드 리뷰
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          CHANGED=$(cat /tmp/changed-files.txt)
+          claude -p "
+            다음 문서를 먼저 읽어줘:
+            - AGENTS.md (스키마 및 에이전트 규칙)
+            - docs/FRONTEND.md (컴포넌트 설계 원칙)
+            - docs/QUALITY_SCORE.md (품질 기준)
+
+            그 다음 이 PR의 변경 파일들을 리뷰해줘:
+            $CHANGED
+
+            리뷰 기준:
+            1. AGENTS.md 출력 스키마를 준수하는가
+            2. any 타입 사용 여부
+            3. 빈 상태(Empty State) 처리 여부
+            4. FRONTEND.md 컴포넌트 단일 책임 원칙 준수 여부
+            5. Mock 데이터가 스키마와 일치하는가
+
+            형식:
+            ## ✅ 통과
+            ## ⚠️ 개선 권장
+            ## ❌ 필수 수정
+          " > /tmp/review-output.txt
+          cat /tmp/review-output.txt
+
+      - name: PR에 리뷰 코멘트 작성
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "## 🤖 Claude 자동 리뷰
+
+          $(cat /tmp/review-output.txt)
+
+          ---
+          *이 리뷰는 AGENTS.md, FRONTEND.md, QUALITY_SCORE.md 기준으로 자동 생성되었습니다.*"

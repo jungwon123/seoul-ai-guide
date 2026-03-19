@@ -1,0 +1,108 @@
+name: 🚀 Claude 마일스톤 자동 실행
+
+on:
+  issues:
+    types: [labeled]       # 이슈에 'claude-run' 라벨 붙이면 자동 시작
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: '실행할 마일스톤 (예: M2, M3)'
+        required: true
+        default: 'M2'
+
+jobs:
+  run-milestone:
+    runs-on: ubuntu-latest
+    # 'claude-run' 라벨이 붙은 이슈만 처리
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.label.name, 'claude-run')
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Claude Code 설치
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 마일스톤 파싱
+        run: |
+          if [ "${{ github.event_name }}" == "issues" ]; then
+            # 이슈 제목에서 마일스톤 추출 (예: "[M2] 채팅 UI 구현")
+            MILESTONE=$(echo "${{ github.event.issue.title }}" | grep -oP 'M\d+')
+            ISSUE_NUMBER=${{ github.event.issue.number }}
+          else
+            MILESTONE=${{ github.event.inputs.milestone }}
+            ISSUE_NUMBER=""
+          fi
+          echo "MILESTONE=$MILESTONE" >> $GITHUB_ENV
+          echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
+          echo "BRANCH=feat/auto-${MILESTONE,,}-$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+
+      - name: 브랜치 생성
+        run: git checkout -b $BRANCH
+
+      - name: Claude 마일스톤 실행
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude --dangerously-skip-permissions -p "
+            다음 문서들을 순서대로 읽어줘:
+            1. AGENTS.md
+            2. ARCHITECTURE.md
+            3. docs/FRONTEND.md
+            4. docs/DESIGN.md
+            5. docs/PLANS.md
+
+            그 다음 docs/PLANS.md 에서 $MILESTONE 마일스톤의
+            체크리스트 항목을 전부 구현해줘.
+
+            규칙:
+            - AGENTS.md 스키마 반드시 준수
+            - Mock 데이터는 /src/mocks/ 에 작성
+            - 컴포넌트는 docs/FRONTEND.md 구조 따를 것
+            - any 타입 사용 금지
+            - 모든 컴포넌트에 빈 상태(Empty State) 처리 포함
+
+            완료 후 변경된 파일 목록과 구현 요약을 출력해줘.
+          " > /tmp/milestone-output.txt
+          cat /tmp/milestone-output.txt
+
+      - name: 커밋 & PR 생성
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "claude-bot"
+          git config user.email "claude-bot@noreply"
+          git add .
+          git commit -m "feat: $MILESTONE 자동 구현 $(date +%Y-%m-%d)"
+          git push origin $BRANCH
+
+          PR_BODY="## 구현 내용
+          $(cat /tmp/milestone-output.txt)
+
+          ## 관련 이슈
+          $( [ -n '$ISSUE_NUMBER' ] && echo 'Closes #'$ISSUE_NUMBER || echo '없음' )
+
+          ## 체크리스트
+          - [ ] AGENTS.md 스키마 준수 확인
+          - [ ] Mock 데이터 포함 여부
+          - [ ] 빈 상태 처리 여부
+          - [ ] 모바일 반응형 확인"
+
+          gh pr create \
+            --title "feat: $MILESTONE 자동 구현" \
+            --body "$PR_BODY" \
+            --label "phase:1,auto-generated" \
+            --base main
+
+      - name: 이슈 클로즈
+        if: env.ISSUE_NUMBER != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue close $ISSUE_NUMBER \
+            --comment "✅ Claude가 $MILESTONE 구현을 완료하고 PR을 생성했습니다."
