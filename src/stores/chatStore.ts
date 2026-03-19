@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import type { AgentType, Message } from '@/types';
-import { processMessage, getWelcomeMessage } from '@/mocks/agent-responses';
+import { streamResponse, getWelcomeMessage } from '@/mocks/agent-responses';
 
 interface ChatStore {
   messages: Message[];
   isLoading: boolean;
+  streamingText: string;
   selectedAgent: AgentType;
   sessionId: string;
 
@@ -17,6 +18,7 @@ interface ChatStore {
 export const useChatStore = create<ChatStore>((set, get) => ({
   messages: [],
   isLoading: false,
+  streamingText: '',
   selectedAgent: 'claude',
   sessionId: `session-${Date.now()}`,
 
@@ -24,7 +26,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const { selectedAgent, messages } = get();
     if (messages.length > 0) return;
     const welcomeMsg: Message = {
-      id: `msg-welcome`,
+      id: 'msg-welcome',
       role: 'agent',
       agent: selectedAgent,
       text: getWelcomeMessage(selectedAgent),
@@ -43,24 +45,32 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       timestamp: new Date().toISOString(),
     };
 
-    set({ messages: [...messages, userMsg], isLoading: true });
+    set({ messages: [...messages, userMsg], isLoading: true, streamingText: '' });
 
     try {
-      const response = await processMessage(text, selectedAgent);
+      const stream = streamResponse(text, text);
+      let finalData: { places?: Message['places']; itinerary?: Message['itinerary']; booking?: Message['booking'] } = {};
+
+      for await (const chunk of stream) {
+        if (chunk.done) {
+          finalData = { places: chunk.places, itinerary: chunk.itinerary, booking: chunk.booking };
+        }
+        set({ streamingText: chunk.text });
+      }
+
       const agentMsg: Message = {
         id: `msg-${Date.now()}-agent`,
         role: 'agent',
         agent: selectedAgent,
-        text: response.text || '',
+        text: get().streamingText,
         timestamp: new Date().toISOString(),
-        places: response.places,
-        itinerary: response.itinerary,
-        booking: response.booking,
+        ...finalData,
       };
 
       set((state) => ({
         messages: [...state.messages, agentMsg],
         isLoading: false,
+        streamingText: '',
       }));
     } catch {
       const errorMsg: Message = {
@@ -73,12 +83,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       set((state) => ({
         messages: [...state.messages, errorMsg],
         isLoading: false,
+        streamingText: '',
       }));
     }
   },
 
   setAgent: (agent: AgentType) => {
-    set({ selectedAgent: agent, messages: [] });
+    set({ selectedAgent: agent, messages: [], streamingText: '' });
     setTimeout(() => {
       const welcomeMsg: Message = {
         id: `msg-welcome-${agent}`,
@@ -91,5 +102,5 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }, 0);
   },
 
-  clearChat: () => set({ messages: [], isLoading: false }),
+  clearChat: () => set({ messages: [], isLoading: false, streamingText: '' }),
 }));

@@ -32,24 +32,29 @@ jobs:
           CHANGED=$(cat /tmp/changed-files.txt)
           claude -p "
             다음 문서를 먼저 읽어줘:
-            - AGENTS.md (스키마 및 에이전트 규칙)
-            - docs/FRONTEND.md (컴포넌트 설계 원칙)
-            - docs/QUALITY_SCORE.md (품질 기준)
+            - AGENTS.md
+            - docs/FRONTEND.md
+            - docs/QUALITY_SCORE.md
+            - docs/REACT_BEST_PRACTICE.md
+            - docs/design-docs/ui-improvement-criteria.md
 
-            그 다음 이 PR의 변경 파일들을 리뷰해줘:
-            $CHANGED
+            이 PR의 변경 파일들을 리뷰해줘: $CHANGED
 
             리뷰 기준:
-            1. AGENTS.md 출력 스키마를 준수하는가
+            1. AGENTS.md 출력 스키마 준수 여부
             2. any 타입 사용 여부
-            3. 빈 상태(Empty State) 처리 여부
-            4. FRONTEND.md 컴포넌트 단일 책임 원칙 준수 여부
-            5. Mock 데이터가 스키마와 일치하는가
+            3. 빈 상태 / 로딩 / 에러 3종 처리 여부
+            4. FRONTEND.md 컴포넌트 단일 책임 준수
+            5. useEffect 의존성 배열 완전 명시 여부
+            6. 에이전트 로직이 agents/에 분리되어 있는가
+            7. aria-label, alt 누락 여부
+            8. 하드코딩 색상 사용 여부 (CSS Variables 써야 함)
+            9. barrel export 사용 여부
 
             형식:
             ## ✅ 통과
-            ## ⚠️ 개선 권장
-            ## ❌ 필수 수정
+            ## ⚠️ 개선 권장 (머지 가능)
+            ## ❌ 필수 수정 (머지 블락)
           " > /tmp/review-output.txt
           cat /tmp/review-output.txt
 
@@ -63,4 +68,4 @@ jobs:
           $(cat /tmp/review-output.txt)
 
           ---
-          *이 리뷰는 AGENTS.md, FRONTEND.md, QUALITY_SCORE.md 기준으로 자동 생성되었습니다.*"
+          *AGENTS.md · FRONTEND.md · QUALITY_SCORE.md · REACT_BEST_PRACTICE.md · ui-improvement-criteria.md 기준으로 자동 생성*"

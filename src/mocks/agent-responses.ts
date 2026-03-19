@@ -15,75 +15,125 @@ export function getWelcomeMessage(agent: string): string {
   return WELCOME_MESSAGES[agent] || WELCOME_MESSAGES.claude;
 }
 
-export function getMockDiscoveryResponse(query: string): { text: string; places: Place[] } {
+function matchPlaces(query: string): Place[] {
   const lower = query.toLowerCase();
 
-  let filtered = places;
   if (lower.includes('맛집') || lower.includes('음식') || lower.includes('먹')) {
-    filtered = places.filter((p) => p.category === 'food');
-  } else if (lower.includes('쇼핑') || lower.includes('사')) {
-    filtered = places.filter((p) => p.category === 'shopping');
-  } else if (lower.includes('문화') || lower.includes('한옥') || lower.includes('전통')) {
-    filtered = places.filter((p) => p.category === 'culture');
-  } else if (lower.includes('관광') || lower.includes('명소') || lower.includes('야경')) {
-    filtered = places.filter((p) => p.category === 'tourism');
+    return places.filter((p) => p.category === 'food');
   }
-
-  if (filtered.length === 0) filtered = places.slice(0, 4);
-
-  const names = filtered.map((p) => p.name).join(', ');
-  return {
-    text: `서울에서 추천드릴 곳을 찾았어요! ${names} 등이 있습니다. 카드를 확인해보세요.`,
-    places: filtered,
-  };
+  if (lower.includes('쇼핑') || lower.includes('사')) {
+    return places.filter((p) => p.category === 'shopping');
+  }
+  if (lower.includes('문화') || lower.includes('한옥') || lower.includes('전통')) {
+    return places.filter((p) => p.category === 'culture');
+  }
+  if (lower.includes('관광') || lower.includes('명소') || lower.includes('야경')) {
+    return places.filter((p) => p.category === 'tourism');
+  }
+  return places.slice(0, 4);
 }
 
-export function getMockPlanningResponse(): { text: string; itinerary: Itinerary } {
-  const itin = itineraries[0];
-  const stopNames = itin.stops.map((s) => s.placeName).join(' → ');
-  return {
-    text: `반나절 코스를 만들었어요! ${stopNames} 순서로 방문하시면 됩니다. 이동 시간까지 고려한 최적 동선이에요.`,
-    itinerary: itin,
-  };
-}
+/**
+ * Simulated streaming - yields characters one by one
+ */
+export async function* streamResponse(
+  text: string,
+  query: string,
+): AsyncGenerator<{ text: string; done: boolean; places?: Place[]; itinerary?: Itinerary; booking?: Booking }> {
+  // Simulate initial latency
+  await new Promise((r) => setTimeout(r, 300 + Math.random() * 400));
 
-export function getMockBookingResponse(placeId: string, placeName: string): { text: string; booking: Booking } {
-  const confirmNum = `MOCK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  return {
-    text: `${placeName} 예약이 완료되었습니다! 확인번호: ${confirmNum}`,
-    booking: {
+  const lower = query.toLowerCase();
+  let fullText: string;
+  let resultPlaces: Place[] | undefined;
+  let resultItinerary: Itinerary | undefined;
+  let resultBooking: Booking | undefined;
+
+  if (lower.includes('일정') || lower.includes('코스') || lower.includes('동선') || lower.includes('계획')) {
+    const itin = itineraries[0];
+    const stopNames = itin.stops.map((s) => s.placeName).join(' → ');
+    fullText = `반나절 코스를 만들었어요! ${stopNames} 순서로 방문하시면 됩니다. 이동 시간까지 고려한 최적 동선이에요.`;
+    resultItinerary = itin;
+  } else if (lower.includes('예약')) {
+    const confirmNum = `MOCK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    fullText = `광장시장 예약이 완료되었습니다! 확인번호: ${confirmNum}`;
+    resultBooking = {
       id: `book-${Date.now()}`,
-      placeId,
-      placeName,
+      placeId: 'place-003',
+      placeName: '광장시장',
       date: '2024-03-15',
       time: '14:00',
       partySize: 2,
       status: 'confirmed',
       confirmationNumber: confirmNum,
-    },
+    };
+  } else {
+    const filtered = matchPlaces(query);
+    const names = filtered.map((p) => p.name).join(', ');
+    fullText = `서울에서 추천드릴 곳을 찾았어요! ${names} 등이 있습니다. 카드를 확인해보세요.`;
+    resultPlaces = filtered;
+  }
+
+  // Stream characters with variable speed
+  let accumulated = '';
+  for (let i = 0; i < fullText.length; i++) {
+    accumulated += fullText[i];
+    const delay = fullText[i] === '.' || fullText[i] === '!' ? 80 : 15 + Math.random() * 25;
+    await new Promise((r) => setTimeout(r, delay));
+    yield { text: accumulated, done: false };
+  }
+
+  // Final yield with data
+  yield {
+    text: fullText,
+    done: true,
+    places: resultPlaces,
+    itinerary: resultItinerary,
+    booking: resultBooking,
   };
 }
 
+/**
+ * Non-streaming fallback (for backward compatibility)
+ */
 export async function processMessage(
   text: string,
-  agent: string
+  _agent: string,
 ): Promise<Partial<Message>> {
-  // Simulate network delay
   await new Promise((r) => setTimeout(r, 800 + Math.random() * 700));
 
   const lower = text.toLowerCase();
 
   if (lower.includes('일정') || lower.includes('코스') || lower.includes('동선') || lower.includes('계획')) {
-    const resp = getMockPlanningResponse();
-    return { text: resp.text, itinerary: resp.itinerary };
+    const itin = itineraries[0];
+    const stopNames = itin.stops.map((s) => s.placeName).join(' → ');
+    return {
+      text: `반나절 코스를 만들었어요! ${stopNames} 순서로 방문하시면 됩니다.`,
+      itinerary: itin,
+    };
   }
 
   if (lower.includes('예약')) {
-    const resp = getMockBookingResponse('place-003', '광장시장');
-    return { text: resp.text, booking: resp.booking };
+    const confirmNum = `MOCK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    return {
+      text: `광장시장 예약이 완료되었습니다! 확인번호: ${confirmNum}`,
+      booking: {
+        id: `book-${Date.now()}`,
+        placeId: 'place-003',
+        placeName: '광장시장',
+        date: '2024-03-15',
+        time: '14:00',
+        partySize: 2,
+        status: 'confirmed',
+        confirmationNumber: confirmNum,
+      },
+    };
   }
 
-  // Default: discovery
-  const resp = getMockDiscoveryResponse(text);
-  return { text: resp.text, places: resp.places };
+  const filtered = matchPlaces(text);
+  const names = filtered.map((p) => p.name).join(', ');
+  return {
+    text: `서울에서 추천드릴 곳을 찾았어요! ${names} 등이 있습니다.`,
+    places: filtered,
+  };
 }
