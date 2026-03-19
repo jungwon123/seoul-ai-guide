@@ -30,12 +30,8 @@ export default function Home() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [onboarded, setOnboarded] = useState(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      return localStorage.getItem('seoul-ai-guide-onboarded') === 'true';
-    } catch { return false; }
-  });
+  const [mounted, setMounted] = useState(false);
+  const [onboarded, setOnboarded] = useState(false);
 
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
@@ -48,6 +44,14 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const agentColor = AGENT_COLORS[selectedAgent];
   const hasOnlyWelcome = messages.length <= 1;
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const stored = localStorage.getItem('seoul-ai-guide-onboarded');
+      if (stored === 'true') setOnboarded(true);
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => { initWelcome(); }, [initWelcome]);
 
@@ -66,7 +70,7 @@ export default function Home() {
     setOnboarded(true);
   };
 
-  if (onboarded === null) return <div className="h-full bg-bg-base" />;
+  if (!mounted) return <div className="h-full bg-bg-base" />;
   if (!onboarded) return <OnboardingFlow onComplete={handleOnboardingComplete} />;
 
   return (
