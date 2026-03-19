@@ -1,33 +1,25 @@
 'use client';
 
+import type { LucideIcon } from 'lucide-react';
+
 interface EmptyStateProps {
-  iconPath: string;
+  icon: LucideIcon;
   title: string;
   description: string;
-  color?: string;
 }
 
-export default function EmptyState({ iconPath, title, description, color = '#00FFB2' }: EmptyStateProps) {
+export default function EmptyState({ icon: Icon, title, description }: EmptyStateProps) {
   return (
-    <div className="h-full flex items-center justify-center p-8">
-      <div className="text-center animate-message-in">
-        <svg
-          width={64}
-          height={64}
-          viewBox="0 0 24 24"
-          fill={color}
-          className="mx-auto mb-4"
-          style={{ filter: `drop-shadow(0 0 12px ${color})` }}
-        >
-          <path d={iconPath} />
-        </svg>
+    <div className="h-full flex items-center justify-center p-12">
+      <div className="text-center animate-fade-up">
+        <Icon size={40} strokeWidth={1} className="mx-auto mb-4 text-text-muted" />
         <h3
-          className="text-lg font-bold text-text-primary mb-1 tracking-tight"
-          style={{ fontFamily: 'var(--font-display)' }}
+          className="text-xl text-text-primary mb-1"
+          style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.3px' }}
         >
           {title}
         </h3>
-        <p className="text-[13px] text-text-secondary max-w-[220px] mx-auto leading-relaxed">
+        <p className="text-[13px] text-text-muted max-w-[240px] mx-auto leading-relaxed">
           {description}
         </p>
       </div>

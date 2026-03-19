@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
@@ -34,34 +35,23 @@ export default function ChatInput({ onSend, disabled, showChips }: ChatInputProp
   };
 
   return (
-    <div className="glass-panel border-t border-border-default p-4 shrink-0">
+    <div className="p-3 shrink-0">
       {showChips && (
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-3 px-1">
           {EXAMPLE_CHIPS.map((chip) => (
             <button
               key={chip}
               onClick={() => onSend(chip)}
-              className="px-4 py-2 text-[13px] text-text-secondary bg-bg-glass rounded-full border border-border-default hover:border-border-active hover:text-neon-mint hover:bg-neon-mint-glow transition-all duration-200 cursor-pointer whitespace-nowrap"
-              style={{ backdropFilter: 'blur(8px)' }}
+              className="px-3.5 py-[7px] text-[13px] text-text-secondary bg-bg-surface rounded-full border border-border hover:border-brand hover:text-brand hover:bg-brand-subtle transition-all duration-150 cursor-pointer whitespace-nowrap"
             >
               {chip}
             </button>
           ))}
         </div>
       )}
-      <form onSubmit={handleSubmit} className="flex items-center gap-1">
+      <form onSubmit={handleSubmit}>
         <div
-          className={cn(
-            'flex-1 flex items-center bg-bg-elevated border border-border-default rounded-2xl px-4 py-1 transition-all duration-200',
-            'focus-within:border-border-active',
-          )}
-          style={{ transition: 'border-color 0.2s, box-shadow 0.2s' }}
-          onFocus={(e) => {
-            e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 178, 0.25), 0 0 60px rgba(0, 255, 178, 0.1)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.boxShadow = 'none';
-          }}
+          className="flex items-end gap-2 bg-bg-surface border border-border rounded-xl px-3.5 py-2.5 shadow-sm transition-all duration-150 focus-within:border-brand focus-within:shadow-[0_0_0_3px_rgba(28,110,242,0.08)]"
         >
           <input
             type="text"
@@ -71,32 +61,23 @@ export default function ChatInput({ onSend, disabled, showChips }: ChatInputProp
             placeholder="서울에서 무엇을 하고 싶으세요?"
             disabled={disabled}
             className={cn(
-              'flex-1 bg-transparent border-none outline-none text-sm text-text-primary',
-              'placeholder:text-text-muted py-2',
-              disabled && 'opacity-50',
+              'flex-1 bg-transparent border-none outline-none text-[14px] text-text-primary',
+              'placeholder:text-text-muted leading-[1.5]',
+              disabled && 'opacity-40',
             )}
-            style={{ fontFamily: 'var(--font-body)' }}
           />
           <button
             type="submit"
             disabled={!text.trim() || disabled}
             className={cn(
-              'w-9 h-9 rounded-[10px] flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
-              !text.trim() || disabled ? 'opacity-30' : 'hover:scale-105',
+              'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0',
+              text.trim() && !disabled
+                ? 'bg-brand text-white hover:bg-[#1558CC] hover:scale-103'
+                : 'bg-bg-subtle text-text-muted',
             )}
-            style={{
-              background: text.trim() && !disabled
-                ? 'linear-gradient(135deg, #00FFB2, #00C8A0)'
-                : 'var(--color-bg-elevated)',
-              color: text.trim() && !disabled ? '#050810' : 'var(--color-text-muted)',
-              boxShadow: text.trim() && !disabled ? '0 0 20px rgba(0, 255, 178, 0.25)' : 'none',
-            }}
             aria-label="전송"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
+            <Send size={14} />
           </button>
         </div>
       </form>

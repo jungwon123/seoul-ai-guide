@@ -1,122 +1,68 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* Background */
-  --color-bg-base: #050810;
-  --color-bg-panel: rgba(10, 15, 30, 0.85);
-  --color-bg-elevated: rgba(20, 30, 55, 0.9);
-  --color-bg-glass: rgba(255, 255, 255, 0.04);
+  --color-bg-base: #FAFAF9;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-subtle: #F4F4F2;
+  --color-bg-overlay: rgba(0,0,0,0.03);
 
-  /* Neon Brand */
-  --color-neon-mint: #00FFB2;
-  --color-neon-mint-glow: rgba(0, 255, 178, 0.15);
-  --color-neon-purple: #9B6DFF;
-  --color-neon-purple-glow: rgba(155, 109, 255, 0.2);
-  --color-neon-cyan: #00D4FF;
-  --color-neon-coral: #FF6B8A;
+  --color-text-primary: #1A1A18;
+  --color-text-secondary: #6B6B63;
+  --color-text-muted: #A8A89E;
 
-  /* Text */
-  --color-text-primary: #E8F0FF;
-  --color-text-secondary: rgba(180, 200, 255, 0.6);
-  --color-text-muted: rgba(120, 150, 200, 0.4);
+  --color-brand: #1C6EF2;
+  --color-brand-subtle: #EEF4FF;
 
-  /* Border */
-  --color-border-default: rgba(255, 255, 255, 0.06);
-  --color-border-active: rgba(0, 255, 178, 0.3);
+  --color-agent-claude: #7C5CBF;
+  --color-agent-gpt: #19A97B;
+  --color-agent-gemini: #E8700A;
 
-  /* Shadow */
-  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255,255,255,0.05);
-  --shadow-neon-mint: 0 0 20px rgba(0, 255, 178, 0.25), 0 0 60px rgba(0, 255, 178, 0.1);
-  --shadow-neon-purple: 0 0 20px rgba(155, 109, 255, 0.3);
+  --color-border: #E8E8E4;
+  --color-border-strong: #D4D4CE;
 
-  /* Font */
-  --font-display: 'Syne', 'Pretendard Variable', sans-serif;
-  --font-body: 'DM Sans', 'Pretendard Variable', sans-serif;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+
+  --font-display: 'DM Serif Display', 'Pretendard Variable', serif;
+  --font-body: 'Pretendard Variable', -apple-system, sans-serif;
 }
 
 @layer base {
   body {
-    background: radial-gradient(ellipse at 20% 50%, #0d1528 0%, #050810 60%);
+    background: var(--color-bg-base);
     color: var(--color-text-primary);
     font-family: var(--font-body);
-    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Noise grain overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  body > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  ::-webkit-scrollbar {
-    width: 5px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(120, 150, 200, 0.2);
-    border-radius: 3px;
-  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
 }
 
-/* === Animations === */
 @keyframes messageIn {
-  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
-  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes neonPulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px var(--color-neon-mint); }
+@keyframes dot {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.85); }
+  30% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes panelIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes scanline {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100vw); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.animate-message-in {
-  animation: messageIn 0.3s ease-out forwards;
-}
-
-.animate-panel-in {
-  animation: panelIn 0.25s ease-out forwards;
-}
-
-.animate-scale-in {
-  animation: scaleIn 0.4s ease-out forwards;
-}
-
-/* Glass panel */
-.glass-panel {
-  background: var(--color-bg-panel);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--color-border-default);
-}
+.animate-message { animation: messageIn 0.2s ease-out; }
+.animate-fade-up { animation: fadeUp 0.2s ease-out; }
+.animate-scale-in { animation: scaleIn 0.15s ease-out; }
