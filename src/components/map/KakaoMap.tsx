@@ -79,18 +79,21 @@ export default function KakaoMap({ markers, selectedPlace, onSelectPlace }: Kaka
           background: ${cat.color};
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
-          font-size: ${isSelected ? 18 : 14}px;
+          font-size: ${isSelected ? 13 : 11}px;
+          font-weight: 600;
+          color: white;
           cursor: pointer;
-          box-shadow: 0 0 ${glowSize}px ${cat.color}80;
+          box-shadow: 0 2px 8px ${cat.color}40;
           transition: all 0.2s;
-          border: 2px solid ${isSelected ? '#fff' : 'transparent'};
-        "><svg width="16" height="16" viewBox="0 0 24 24" fill="#050810"><path d="${cat.icon}"/></svg></div>
+          border: 2px solid ${isSelected ? 'white' : `${cat.color}80`};
+        ">${cat.label[0]}</div>
         <div style="
-          font-size: 10px; color: #F0F4FF;
-          background: rgba(10,14,26,0.85);
+          font-size: 11px; color: #1A1A18;
+          background: white;
           padding: 2px 6px; border-radius: 4px;
           margin-top: 4px; text-align: center;
           white-space: nowrap;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         ">${place.name}</div>
       `;
       content.style.cssText = 'display:flex;flex-direction:column;align-items:center;';

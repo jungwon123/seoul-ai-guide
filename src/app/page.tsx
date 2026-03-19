@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { MapPin, Calendar, Ticket } from 'lucide-react';
 import ChatPanel from '@/components/chat/ChatPanel';
 import MapPanel from '@/components/map/MapPanel';
 import CalendarPanel from '@/components/calendar/CalendarPanel';
@@ -15,10 +16,10 @@ import type { AgentType } from '@/types';
 type ContextTab = 'map' | 'calendar' | 'booking';
 type MobileTab = 'chat' | 'map' | 'calendar' | 'booking';
 
-const CONTEXT_TABS: { key: ContextTab; label: string }[] = [
-  { key: 'map', label: '지도' },
-  { key: 'calendar', label: '일정' },
-  { key: 'booking', label: '예약' },
+const CONTEXT_TABS: { key: ContextTab; label: string; icon: typeof MapPin }[] = [
+  { key: 'map', label: '지도', icon: MapPin },
+  { key: 'calendar', label: '일정', icon: Calendar },
+  { key: 'booking', label: '예약', icon: Ticket },
 ];
 
 export default function Home() {
@@ -39,86 +40,48 @@ export default function Home() {
     setOnboarded(true);
   };
 
-  if (onboarded === null) {
-    return <div className="h-full" style={{ background: 'radial-gradient(ellipse at 20% 50%, #0d1528 0%, #050810 60%)' }} />;
-  }
-
-  if (!onboarded) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
-  }
+  if (onboarded === null) return <div className="h-full bg-bg-base" />;
+  if (!onboarded) return <OnboardingFlow onComplete={handleOnboardingComplete} />;
 
   return (
     <ErrorBoundary>
-      <div className="h-full flex flex-col">
-        {/* Header with scanline */}
+      <div className="h-full flex flex-col bg-bg-base">
+        {/* Header */}
         <header
-          className="relative flex items-center justify-between px-4 sm:px-6 py-3 shrink-0 overflow-hidden"
-          style={{
-            background: 'rgba(5, 8, 16, 0.9)',
-            backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid var(--color-border-default)',
-            boxShadow: '0 1px 0 rgba(0, 255, 178, 0.1)',
-          }}
+          className="flex items-center justify-between px-5 shrink-0 border-b border-border"
+          style={{ height: '52px', background: 'rgba(250,250,249,0.85)', backdropFilter: 'blur(12px)' }}
         >
-          {/* Neon scanline */}
-          <div
-            className="absolute bottom-0 left-0 h-px"
-            style={{
-              width: '100px',
-              background: 'linear-gradient(90deg, transparent, #00FFB2, transparent)',
-              animation: 'scanline 3s linear infinite',
-            }}
-          />
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span
-              className="text-lg sm:text-xl font-extrabold tracking-tight"
-              style={{
-                fontFamily: 'var(--font-display)',
-                background: 'linear-gradient(135deg, #00FFB2, #00D4FF)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              S
-            </span>
-            <h1
-              className="text-base sm:text-lg font-bold text-text-primary tracking-tight"
-              style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.5px' }}
-            >
-              Seoul AI Guide
-            </h1>
-          </div>
-          <span className="text-[10px] sm:text-xs text-text-muted">Phase 1</span>
+          <h1 className="text-[18px] text-text-primary" style={{ fontFamily: 'var(--font-display)' }}>
+            Seoul AI Guide
+          </h1>
+          <span className="text-[11px] text-text-muted font-medium">Phase 1</span>
         </header>
 
-        {/* === Desktop Layout === */}
-        <div className="flex-1 hidden lg:flex overflow-hidden">
-          <div className="w-[60%] border-r border-border-default flex flex-col">
+        {/* Desktop */}
+        <div className="flex-1 hidden lg:grid overflow-hidden" style={{ gridTemplateColumns: '420px 1fr' }}>
+          <div className="border-r border-border flex flex-col">
             <ErrorBoundary><ChatPanel /></ErrorBoundary>
           </div>
-
-          <div className="w-[40%] flex flex-col">
-            <div className="flex glass-panel border-b border-border-default shrink-0">
-              {CONTEXT_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setContextTab(tab.key)}
-                  className={cn(
-                    'flex-1 flex items-center justify-center px-4 py-3 text-[13px] font-medium transition-all duration-200 cursor-pointer',
-                    contextTab === tab.key
-                      ? 'text-neon-mint'
-                      : 'text-text-muted hover:text-text-secondary',
-                  )}
-                  style={contextTab === tab.key ? {
-                    borderBottom: '2px solid #00FFB2',
-                    background: 'rgba(0, 255, 178, 0.05)',
-                    boxShadow: '0 2px 8px rgba(0, 255, 178, 0.1)',
-                  } : undefined}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          <div className="flex flex-col bg-bg-base">
+            <div className="flex border-b border-border px-4 shrink-0">
+              {CONTEXT_TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setContextTab(tab.key)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium transition-all duration-150 cursor-pointer -mb-px',
+                      contextTab === tab.key
+                        ? 'text-brand border-b-2 border-brand'
+                        : 'text-text-muted hover:text-text-secondary border-b-2 border-transparent',
+                    )}
+                  >
+                    <Icon size={14} strokeWidth={1.5} />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
             <div className="flex-1 overflow-hidden">
               <ErrorBoundary>
@@ -130,7 +93,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* === Mobile Layout === */}
+        {/* Mobile */}
         <div className="flex-1 flex flex-col lg:hidden overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <ErrorBoundary>

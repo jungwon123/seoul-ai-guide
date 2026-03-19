@@ -1,71 +1,57 @@
 'use client';
 
 import type { Message } from '@/types';
-import { AGENT_CONFIG, cn } from '@/lib/utils';
+import { AGENT_COLORS } from '@/lib/utils';
 import PlaceCard from './PlaceCard';
 import ItineraryCard from './ItineraryCard';
 import BookingCard from './BookingCard';
 
 export default function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
-  const agentConfig = message.agent ? AGENT_CONFIG[message.agent] : null;
+  const agentColor = message.agent ? AGENT_COLORS[message.agent] : '#7C5CBF';
 
   return (
-    <div
-      className={cn(
-        'flex gap-3 animate-message-in',
-        isUser ? 'flex-row-reverse' : 'flex-row',
-      )}
-    >
-      {/* Avatar */}
-      {!isUser && agentConfig && (
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-          style={{
-            backgroundColor: `${agentConfig.color}30`,
-            border: `1px solid ${agentConfig.color}50`,
-            boxShadow: `0 0 10px ${agentConfig.glowColor}`,
-            fontFamily: 'var(--font-display)',
-          }}
-        >
-          {agentConfig.label[0]}
-        </div>
-      )}
-
-      {/* Bubble */}
-      <div className={cn('max-w-[80%] space-y-2', isUser && 'items-end')}>
-        <div
-          className={cn(
-            'px-[18px] py-[14px] text-sm leading-relaxed',
-            isUser
-              ? 'rounded-2xl rounded-tr-none ml-auto'
-              : 'rounded-2xl rounded-tl-none',
-          )}
-          style={isUser ? {
-            background: 'linear-gradient(135deg, rgba(0,255,178,0.1), rgba(0,212,255,0.05))',
-            border: '1px solid rgba(0,255,178,0.2)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-          } : {
-            background: 'var(--color-bg-elevated)',
-            border: '1px solid var(--color-border-default)',
-            borderLeft: `2px solid ${agentConfig?.color || '#9B6DFF'}`,
-            boxShadow: `0 4px 20px rgba(0,0,0,0.3), -4px 0 16px ${agentConfig?.glowColor || 'rgba(155,109,255,0.08)'}`,
-          }}
-        >
-          {message.text}
-        </div>
-
-        {message.places && message.places.length > 0 && (
-          <div className="space-y-2 mt-2">
-            {message.places.map((place) => (
-              <PlaceCard key={place.id} place={place} />
-            ))}
+    <div className="animate-message">
+      {isUser ? (
+        /* User message */
+        <div className="flex justify-end">
+          <div
+            className="max-w-[75%] rounded-[14px] rounded-br-[4px] px-3.5 py-2.5 text-[14px] leading-[1.55] text-text-primary"
+            style={{
+              background: 'var(--color-brand-subtle)',
+              border: '1px solid rgba(28,110,242,0.12)',
+            }}
+          >
+            {message.text}
           </div>
-        )}
+        </div>
+      ) : (
+        /* Agent message */
+        <div className="flex gap-2.5 items-start px-0">
+          <div
+            className="w-7 h-7 rounded-lg bg-bg-subtle border border-border flex items-center justify-center text-[12px] font-semibold text-text-secondary shrink-0"
+            style={{ color: agentColor }}
+          >
+            {message.agent?.[0]?.toUpperCase() || 'A'}
+          </div>
+          <div className="flex-1 min-w-0 pt-1 space-y-2">
+            <div className="text-[14px] leading-[1.65] text-text-primary">
+              {message.text}
+            </div>
 
-        {message.itinerary && <ItineraryCard itinerary={message.itinerary} />}
-        {message.booking && <BookingCard booking={message.booking} />}
-      </div>
+            {message.places && message.places.length > 0 && (
+              <div className="space-y-2 mt-3">
+                {message.places.map((place) => (
+                  <PlaceCard key={place.id} place={place} />
+                ))}
+              </div>
+            )}
+
+            {message.itinerary && <ItineraryCard itinerary={message.itinerary} />}
+            {message.booking && <BookingCard booking={message.booking} />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

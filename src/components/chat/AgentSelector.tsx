@@ -1,41 +1,45 @@
 'use client';
 
 import type { AgentType } from '@/types';
-import { AGENT_CONFIG, cn } from '@/lib/utils';
+import { AGENT_COLORS, cn } from '@/lib/utils';
 
 interface AgentSelectorProps {
   selected: AgentType;
   onSelect: (agent: AgentType) => void;
 }
 
-const agents: AgentType[] = ['claude', 'gpt', 'gemini'];
+const agents: { key: AgentType; label: string }[] = [
+  { key: 'claude', label: 'Claude' },
+  { key: 'gpt', label: 'GPT' },
+  { key: 'gemini', label: 'Gemini' },
+];
 
 export default function AgentSelector({ selected, onSelect }: AgentSelectorProps) {
   return (
-    <div className="flex gap-0.5 bg-bg-elevated border border-border-default rounded-full p-1">
+    <div className="flex border-b border-border px-4">
       {agents.map((agent) => {
-        const config = AGENT_CONFIG[agent];
-        const isActive = selected === agent;
+        const isActive = selected === agent.key;
+        const color = AGENT_COLORS[agent.key];
         return (
           <button
-            key={agent}
-            onClick={() => onSelect(agent)}
+            key={agent.key}
+            onClick={() => onSelect(agent.key)}
             className={cn(
-              'flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 cursor-pointer',
-              isActive ? 'text-white' : 'text-text-secondary hover:text-text-primary',
+              'flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium transition-all duration-150 cursor-pointer -mb-px',
+              isActive ? '' : 'text-text-muted hover:text-text-secondary',
             )}
             style={isActive ? {
-              background: `linear-gradient(135deg, ${config.glowColor}, ${config.glowColor.replace('0.2', '0.05')})`,
-              border: `1px solid ${config.color}60`,
-              color: config.color,
-              boxShadow: `0 0 12px ${config.glowColor}`,
-            } : undefined}
+              color,
+              borderBottom: `2px solid ${color}`,
+            } : {
+              borderBottom: '2px solid transparent',
+            }}
           >
             <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: config.color, boxShadow: isActive ? `0 0 6px ${config.color}` : 'none' }}
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: isActive ? color : 'currentColor' }}
             />
-            <span>{config.label}</span>
+            {agent.label}
           </button>
         );
       })}
