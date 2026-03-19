@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapPin, Calendar, Ticket } from 'lucide-react';
+import { Menu, MapPin, Calendar, Ticket } from 'lucide-react';
 import ChatPanel from '@/components/chat/ChatPanel';
+import ChatSidebar from '@/components/chat/ChatSidebar';
 import MapPanel from '@/components/map/MapPanel';
 import CalendarPanel from '@/components/calendar/CalendarPanel';
 import BookingPanel from '@/components/booking/BookingPanel';
@@ -26,6 +27,7 @@ const CONTEXT_TABS: { key: ContextTab; label: string; icon: typeof MapPin }[] = 
 export default function Home() {
   const [contextTab, setContextTab] = useState<ContextTab>('map');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('chat');
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   const setAgent = useChatStore((s) => s.setAgent);
@@ -49,8 +51,16 @@ export default function Home() {
     <ErrorBoundary>
       <div className="h-full flex flex-col bg-bg-base">
         {/* Header */}
-        <header className="flex items-center justify-between px-5 h-[48px] shrink-0 border-b border-border bg-bg-surface/80 backdrop-blur-md z-20">
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between px-3 sm:px-5 h-[48px] shrink-0 border-b border-border bg-bg-surface/80 backdrop-blur-md z-20">
+          <div className="flex items-center gap-2">
+            {/* Hamburger */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
+              aria-label="대화 내역 열기"
+            >
+              <Menu size={18} strokeWidth={1.8} />
+            </button>
             <h1 className="text-[17px] text-text-primary" style={{ fontFamily: 'var(--font-display)' }}>
               Seoul Edit
             </h1>
@@ -82,7 +92,10 @@ export default function Home() {
           </div>
         </header>
 
-        {/* === Desktop Layout — Chat centered, context as side sheet === */}
+        {/* Chat Sidebar */}
+        <ChatSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+        {/* Desktop — Chat centered, context as side sheet */}
         <div className="flex-1 hidden lg:flex overflow-hidden justify-center">
           <div className="w-full max-w-[520px] flex flex-col border-x border-border">
             <ErrorBoundary><ChatPanel /></ErrorBoundary>
@@ -104,7 +117,7 @@ export default function Home() {
           </SideSheet>
         </div>
 
-        {/* === Mobile Layout === */}
+        {/* Mobile */}
         <div className="flex-1 flex flex-col lg:hidden overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <ErrorBoundary>
