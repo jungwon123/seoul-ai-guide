@@ -8,6 +8,7 @@ import CalendarPanel from '@/components/calendar/CalendarPanel';
 import BookingPanel from '@/components/booking/BookingPanel';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
 import MobileTabBar from '@/components/ui/MobileTabBar';
+import SideSheet from '@/components/ui/SideSheet';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { useChatStore } from '@/stores/chatStore';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,7 @@ const CONTEXT_TABS: { key: ContextTab; label: string; icon: typeof MapPin }[] = 
 
 export default function Home() {
   const [contextTab, setContextTab] = useState<ContextTab>('map');
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('chat');
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
   const setAgent = useChatStore((s) => s.setAgent);
@@ -47,61 +49,62 @@ export default function Home() {
     <ErrorBoundary>
       <div className="h-full flex flex-col bg-bg-base">
         {/* Header */}
-        <header className="flex items-center justify-between px-5 h-[52px] shrink-0 border-b border-border bg-bg-base/85 backdrop-blur-md z-10">
+        <header className="flex items-center justify-between px-5 h-[48px] shrink-0 border-b border-border bg-bg-surface/80 backdrop-blur-md z-20">
           <div className="flex items-center gap-3">
-            <h1
-              className="text-[18px] text-text-primary"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
+            <h1 className="text-[17px] text-text-primary" style={{ fontFamily: 'var(--font-display)' }}>
               Seoul Edit
             </h1>
-            <span className="h-4 w-px bg-border" />
-            <span className="text-[11px] text-text-muted font-medium tracking-[0.04em]">AI Travel Curation</span>
           </div>
-          <span className="text-[11px] text-text-muted font-medium">Phase 1</span>
+          {/* Desktop context tab buttons */}
+          <div className="hidden lg:flex items-center gap-1">
+            {CONTEXT_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = sheetOpen && contextTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    setContextTab(tab.key);
+                    setSheetOpen(!(sheetOpen && contextTab === tab.key));
+                  }}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer',
+                    isActive
+                      ? 'bg-brand-subtle text-brand'
+                      : 'text-text-muted hover:text-text-secondary hover:bg-bg-subtle',
+                  )}
+                >
+                  <Icon size={13} strokeWidth={1.5} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </header>
 
-        {/* Desktop */}
-        <div className="flex-1 hidden lg:grid overflow-hidden" style={{ gridTemplateColumns: '420px 1fr' }}>
-          <div className="border-r border-border flex flex-col">
+        {/* === Desktop Layout — Chat centered, context as side sheet === */}
+        <div className="flex-1 hidden lg:flex overflow-hidden justify-center">
+          <div className="w-full max-w-[520px] flex flex-col border-x border-border">
             <ErrorBoundary><ChatPanel /></ErrorBoundary>
-          </div>
-          <div className="flex flex-col bg-bg-base">
-            {/* Context tabs */}
-            <div className="flex border-b border-border px-5 shrink-0">
-              {CONTEXT_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = contextTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setContextTab(tab.key)}
-                    className={cn(
-                      'group relative flex items-center gap-1.5 px-3 py-3.5 text-[13px] font-medium transition-colors duration-150 cursor-pointer',
-                      isActive ? 'text-brand' : 'text-text-muted hover:text-text-secondary',
-                    )}
-                  >
-                    <Icon size={14} strokeWidth={1.5} />
-                    {tab.label}
-                    <span
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-brand transition-all duration-200"
-                      style={{ opacity: isActive ? 1 : 0, transform: isActive ? 'scaleX(1)' : 'scaleX(0)' }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <ErrorBoundary>
-                {contextTab === 'map' && <MapPanel />}
-                {contextTab === 'calendar' && <CalendarPanel />}
-                {contextTab === 'booking' && <BookingPanel />}
-              </ErrorBoundary>
-            </div>
           </div>
         </div>
 
-        {/* Mobile */}
+        {/* Desktop side sheet */}
+        <div className="hidden lg:block">
+          <SideSheet
+            isOpen={sheetOpen}
+            onClose={() => setSheetOpen(false)}
+            title={CONTEXT_TABS.find((t) => t.key === contextTab)?.label || ''}
+          >
+            <ErrorBoundary>
+              {contextTab === 'map' && <MapPanel />}
+              {contextTab === 'calendar' && <CalendarPanel />}
+              {contextTab === 'booking' && <BookingPanel />}
+            </ErrorBoundary>
+          </SideSheet>
+        </div>
+
+        {/* === Mobile Layout === */}
         <div className="flex-1 flex flex-col lg:hidden overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <ErrorBoundary>
