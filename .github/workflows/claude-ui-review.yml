@@ -1,29 +1,26 @@
-name: 🎨 Claude UI 시각 리뷰 & DESIGN.md 자동 개선
+name: 🎨 Claude UI 시각 리뷰
 
 on:
-  # 방식 1: 배포 후 자동 (URL 있을 때)
+  # Vercel이 배포 완료하면 자동 트리거
   deployment_status:
 
-  # 방식 2: 수동 트리거 (스크린샷 직접 지정)
+  # 수동 트리거
   workflow_dispatch:
     inputs:
-      screenshot_url:
-        description: '분석할 스크린샷 URL (없으면 자동 촬영)'
-        required: false
       deploy_url:
-        description: '배포된 앱 URL (스크린샷 자동 촬영용)'
+        description: '배포된 앱 URL'
         required: false
-        default: 'http://localhost:3000'
+        default: 'https://seoul-ai-guide.vercel.app'
 
 jobs:
   ui-visual-review:
     runs-on: ubuntu-latest
-    # 방식 1: 배포 성공 시에만 실행
+    # 배포 성공 시에만 실행 (또는 수동)
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.event.deployment_status.state == 'success'
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
 
     steps:
@@ -34,248 +31,116 @@ jobs:
         with:
           node-version: '20'
 
-      # 방식 1: Playwright로 자동 스크린샷
-      - name: Playwright 설치 및 스크린샷 촬영
-        if: github.event.inputs.screenshot_url == ''
+      - name: Preview URL 결정
+        id: url
         run: |
-          npm install -g playwright
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "url=${{ github.event.inputs.deploy_url }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=${{ github.event.deployment_status.target_url }}" >> $GITHUB_OUTPUT
+          fi
+          echo "Preview URL: $(cat $GITHUB_OUTPUT | grep url | cut -d= -f2)"
+
+      - name: Playwright 설치 및 스크린샷 촬영
+        run: |
           npx playwright install chromium
 
-          DEPLOY_URL="${{ github.event.inputs.deploy_url || github.event.deployment_status.target_url || 'http://localhost:3000' }}"
-
-          node << 'EOF'
+          node << 'SCRIPT'
           const { chromium } = require('playwright');
           (async () => {
             const browser = await chromium.launch();
-            const page = await browser.newPage();
-            await page.setViewportSize({ width: 1440, height: 900 });
+            const url = '${{ steps.url.outputs.url }}';
+            console.log('스크린샷 촬영:', url);
 
-            const url = process.env.DEPLOY_URL || 'http://localhost:3000';
-            await page.goto(url, { waitUntil: 'networkidle' });
-            await page.screenshot({ path: '/tmp/ui-desktop.png', fullPage: false });
+            // 데스크탑
+            const desktop = await browser.newPage();
+            await desktop.setViewportSize({ width: 1440, height: 900 });
+            await desktop.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+            await desktop.waitForTimeout(2000);
+            await desktop.screenshot({ path: '/tmp/ui-desktop.png', fullPage: false });
 
-            await page.setViewportSize({ width: 375, height: 812 });
-            await page.screenshot({ path: '/tmp/ui-mobile.png', fullPage: false });
+            // 모바일
+            const mobile = await browser.newPage();
+            await mobile.setViewportSize({ width: 375, height: 812 });
+            await mobile.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+            await mobile.waitForTimeout(2000);
+            await mobile.screenshot({ path: '/tmp/ui-mobile.png', fullPage: false });
 
             await browser.close();
             console.log('스크린샷 촬영 완료');
           })();
-          EOF
-        env:
-          DEPLOY_URL: ${{ github.event.inputs.deploy_url || github.event.deployment_status.target_url }}
+          SCRIPT
 
-      # 방식 2: 외부 URL 스크린샷 다운로드
-      - name: 스크린샷 URL에서 다운로드
-        if: github.event.inputs.screenshot_url != ''
-        run: |
-          curl -L "${{ github.event.inputs.screenshot_url }}" -o /tmp/ui-desktop.png
-
-      # Claude Vision API로 UI 분석
       - name: Claude Vision으로 UI 분석
+        if: env.ANTHROPIC_API_KEY != ''
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          node << 'EOF'
+          node << 'SCRIPT'
           const fs = require('fs');
-          const path = require('path');
 
-          // 스크린샷을 base64로 변환
-          const screenshotPath = '/tmp/ui-desktop.png';
-          if (!fs.existsSync(screenshotPath)) {
-            console.log('스크린샷 없음, 스킵');
-            fs.writeFileSync('/tmp/ui-analysis.json', JSON.stringify({ skip: true }));
-            process.exit(0);
-          }
-
-          const imageData = fs.readFileSync(screenshotPath).toString('base64');
-
-          // DESIGN.md와 ui-improvement-criteria.md 읽기
+          const desktopImg = fs.readFileSync('/tmp/ui-desktop.png').toString('base64');
+          const mobileImg = fs.readFileSync('/tmp/ui-mobile.png').toString('base64');
           const designDoc = fs.readFileSync('docs/DESIGN.md', 'utf8');
-          const criteriaDoc = fs.readFileSync('docs/design-docs/ui-improvement-criteria.md', 'utf8');
 
-          const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': process.env.ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-6',
-              max_tokens: 4000,
-              messages: [{
-                role: 'user',
-                content: [
-                  {
-                    type: 'image',
-                    source: {
-                      type: 'base64',
-                      media_type: 'image/png',
-                      data: imageData
-                    }
-                  },
-                  {
-                    type: 'text',
-                    text: `
-이 UI 스크린샷을 분석해줘.
+          (async () => {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+              },
+              body: JSON.stringify({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 3000,
+                messages: [{
+                  role: 'user',
+                  content: [
+                    { type: 'image', source: { type: 'base64', media_type: 'image/png', data: desktopImg } },
+                    { type: 'image', source: { type: 'base64', media_type: 'image/png', data: mobileImg } },
+                    { type: 'text', text: `UI 리뷰를 해줘. 첫 번째 이미지는 데스크탑, 두 번째는 모바일(375px).
 
-현재 DESIGN.md 내용:
-${designDoc}
+DESIGN.md 기준:
+${designDoc.substring(0, 3000)}
 
-ui-improvement-criteria.md 내용:
-${criteriaDoc}
+분석 항목:
+1. DESIGN.md 준수도 (0-100)
+2. 데스크탑/모바일 각각 문제점 (최대 5개씩)
+3. 접근성 이슈
+4. 개선 제안
 
-분석 요청:
-1. DESIGN.md 의 콘셉트("서울 야경 네온")와 실제 UI가 얼마나 일치하는지 (0~100점)
-2. 구체적으로 어긋난 부분 목록 (최대 10개)
-3. DESIGN.md에 추가하거나 더 구체화해야 할 명세 (Claude Code가 잘못 해석한 부분)
-4. ui-improvement-criteria.md 에서 Claude가 자율 수정 가능한 항목 중 위반된 것
+마크다운으로 응답해줘.` }
+                  ]
+                }]
+              })
+            });
 
-반드시 JSON으로만 응답해줘:
-{
-  "score": 숫자,
-  "problems": [
-    { "area": "영역명", "issue": "문제 설명", "severity": "critical|warning|minor" }
-  ],
-  "design_md_updates": [
-    { "section": "섹션명", "current": "현재 내용 요약", "update": "추가/수정할 내용" }
-  ],
-  "auto_fixable": ["자율 수정 가능한 항목들"]
-}
-                    `
-                  }
-                ]
-              }]
-            })
-          });
+            const data = await response.json();
+            const review = data.content[0].text;
+            fs.writeFileSync('/tmp/ui-review.md', review);
+            console.log(review);
+          })();
+          SCRIPT
 
-          const data = await response.json();
-          const text = data.content[0].text;
-
-          // JSON 파싱
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { skip: true, raw: text };
-
-          fs.writeFileSync('/tmp/ui-analysis.json', JSON.stringify(analysis, null, 2));
-          console.log('분석 완료:', JSON.stringify(analysis, null, 2));
-          EOF
-
-      # 분석 결과로 DESIGN.md 자동 업데이트
-      - name: DESIGN.md 자동 업데이트
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          node << 'EOF'
-          const fs = require('fs');
-
-          const analysis = JSON.parse(fs.readFileSync('/tmp/ui-analysis.json', 'utf8'));
-          if (analysis.skip || !analysis.design_md_updates?.length) {
-            console.log('업데이트 불필요');
-            process.exit(0);
-          }
-
-          const currentDesign = fs.readFileSync('docs/DESIGN.md', 'utf8');
-
-          const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': process.env.ANTHROPIC_API_KEY,
-              'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-              model: 'claude-sonnet-4-6',
-              max_tokens: 8000,
-              messages: [{
-                role: 'user',
-                content: `
-현재 DESIGN.md:
-${currentDesign}
-
-UI 분석 결과에서 도출된 업데이트 필요 사항:
-${JSON.stringify(analysis.design_md_updates, null, 2)}
-
-점수: ${analysis.score}/100
-문제 목록: ${JSON.stringify(analysis.problems, null, 2)}
-
-요청:
-위 분석을 반영해서 DESIGN.md를 업데이트해줘.
-- Claude Code가 다음에 같은 실수를 반복하지 않도록 더 구체적인 명세 추가
-- 잘못 해석된 부분은 "❌ 이렇게 하지 말 것" 형태로 명확히 금지 명시
-- 기존 구조는 유지하고 필요한 섹션만 수정/추가
-
-업데이트된 전체 DESIGN.md 내용만 출력해줘 (마크다운 코드블록 없이).
-                `
-              }]
-            })
-          });
-
-          const data = await response.json();
-          const updatedDesign = data.content[0].text.trim();
-
-          fs.writeFileSync('docs/DESIGN.md', updatedDesign);
-          console.log('DESIGN.md 업데이트 완료');
-
-          // 분석 결과 저장
-          const report = {
-            date: new Date().toISOString(),
-            score: analysis.score,
-            problems: analysis.problems,
-            auto_fixable: analysis.auto_fixable
-          };
-          
-          const historyPath = 'docs/design-docs/ui-review-history.md';
-          const existing = fs.existsSync(historyPath) ? fs.readFileSync(historyPath, 'utf8') : '# UI 리뷰 히스토리\n\n';
-          const newEntry = `
-## ${new Date().toLocaleDateString('ko-KR')} — 점수: ${analysis.score}/100
-
-### 발견된 문제
-${analysis.problems.map(p => `- **[${p.severity}]** ${p.area}: ${p.issue}`).join('\n')}
-
-### 자동 수정 가능 항목
-${(analysis.auto_fixable || []).map(i => `- ${i}`).join('\n')}
-
----
-`;
-          fs.writeFileSync(historyPath, existing + newEntry);
-          EOF
-
-      - name: 변경사항 PR 생성
+      - name: PR에 리뷰 코멘트 작성
+        if: github.event.deployment_status.environment == 'Preview' && env.ANTHROPIC_API_KEY != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # 변경사항 확인
-          if git diff --quiet docs/DESIGN.md docs/design-docs/; then
-            echo "변경사항 없음"
-            exit 0
+          # Vercel Preview는 PR과 연결됨 — 해당 PR 찾기
+          BRANCH="${{ github.event.deployment.ref }}"
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$PR_NUMBER" ] && [ -f "/tmp/ui-review.md" ]; then
+            REVIEW=$(cat /tmp/ui-review.md)
+            gh pr comment "$PR_NUMBER" --body "## 🎨 Claude UI 시각 리뷰
+
+**Preview URL**: ${{ steps.url.outputs.url }}
+
+${REVIEW}
+
+---
+*Vercel Preview 배포 후 자동 생성된 리뷰입니다.*"
           fi
-
-          ANALYSIS=$(cat /tmp/ui-analysis.json)
-          SCORE=$(echo $ANALYSIS | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); console.log(JSON.parse(d).score || 'N/A')")
-
-          BRANCH="docs/ui-review-$(date +%Y%m%d%H%M)"
-          git checkout -b $BRANCH
-          git config user.name "claude-bot"
-          git config user.email "claude-bot@noreply"
-          git add docs/DESIGN.md docs/design-docs/
-          git commit -m "docs: UI 시각 리뷰 반영 — 점수 ${SCORE}/100"
-          git push origin $BRANCH
-
-          gh pr create \
-            --title "🎨 UI 시각 리뷰 반영 (점수: ${SCORE}/100)" \
-            --body "## 🤖 Claude UI 분석 결과
-
-          **현재 점수**: ${SCORE}/100
-
-          ### 발견된 문제들
-          \`\`\`json
-          $(cat /tmp/ui-analysis.json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log(JSON.stringify(j.problems, null, 2))")
-          \`\`\`
-
-          ### DESIGN.md 변경 내용
-          Claude Code가 다음 작업 시 같은 실수를 반복하지 않도록 명세를 구체화했습니다.
-
-          ---
-          *UI 스크린샷 → Claude Vision 분석 → DESIGN.md 자동 개선*" \
-            --label "docs,design,auto-generated" \
-            --base main
