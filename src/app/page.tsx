@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, MapPin, Calendar, Ticket } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { AGENT_COLORS } from '@/lib/utils';
+import { useHydrated, useLocalStorage } from '@/lib/useHydrated';
 import CompactOrb from '@/components/agent/CompactOrb';
 import AgentSwitcher from '@/components/chat/AgentSwitcher';
 import ChatSidebar from '@/components/chat/ChatSidebar';
@@ -30,7 +31,8 @@ export default function Home() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useHydrated();
+  const storedOnboarded = useLocalStorage('seoul-ai-guide-onboarded');
   const [onboarded, setOnboarded] = useState(false);
 
   const messages = useChatStore((s) => s.messages);
@@ -45,13 +47,10 @@ export default function Home() {
   const agentColor = AGENT_COLORS[selectedAgent];
   const hasOnlyWelcome = messages.length <= 1;
 
+  // Sync localStorage → state (only on hydration, no cascading render)
   useEffect(() => {
-    setMounted(true);
-    try {
-      const stored = localStorage.getItem('seoul-ai-guide-onboarded');
-      if (stored === 'true') setOnboarded(true);
-    } catch { /* ignore */ }
-  }, []);
+    if (storedOnboarded === 'true') setOnboarded(true);
+  }, [storedOnboarded]);
 
   useEffect(() => { initWelcome(); }, [initWelcome]);
 
@@ -70,7 +69,7 @@ export default function Home() {
     setOnboarded(true);
   };
 
-  if (!mounted) return <div className="h-full bg-bg-base" />;
+  if (!hydrated) return <div className="h-full bg-bg-base" />;
   if (!onboarded) return <OnboardingFlow onComplete={handleOnboardingComplete} />;
 
   return (
