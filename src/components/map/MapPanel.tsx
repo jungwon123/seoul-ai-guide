@@ -1,13 +1,17 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { MapPin } from 'lucide-react';
 import { useMapStore } from '@/stores/mapStore';
 import PlaceCard from '@/components/chat/PlaceCard';
 import EmptyState from '@/components/ui/EmptyState';
-import KakaoMap from './KakaoMap';
+
+const KakaoMap = dynamic(() => import('./KakaoMap'), { ssr: false });
 
 export default function MapPanel() {
-  const { markers, selectedPlace, selectPlace } = useMapStore();
+  const markers = useMapStore((s) => s.markers);
+  const selectedPlace = useMapStore((s) => s.selectedPlace);
+  const selectPlace = useMapStore((s) => s.selectPlace);
 
   return (
     <div className="h-full flex flex-col bg-bg-base">

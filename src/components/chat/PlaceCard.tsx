@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { MapPin, Star } from 'lucide-react';
 import type { Place } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
-import BookingForm from '@/components/booking/BookingForm';
 import { useMapStore } from '@/stores/mapStore';
+
+const BookingForm = dynamic(() => import('@/components/booking/BookingForm'));
 
 interface PlaceCardProps {
   place: Place;
@@ -13,7 +15,8 @@ interface PlaceCardProps {
 }
 
 export default function PlaceCard({ place, compact }: PlaceCardProps) {
-  const { selectPlace, setMarkers } = useMapStore();
+  const selectPlace = useMapStore((s) => s.selectPlace);
+  const setMarkers = useMapStore((s) => s.setMarkers);
   const [bookingOpen, setBookingOpen] = useState(false);
 
   const cat = CATEGORY_CONFIG[place.category];
@@ -26,17 +29,14 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
   return (
     <>
       <div className="group bg-bg-surface border border-border rounded-2xl overflow-hidden transition-all duration-200 hover:shadow-md hover:border-border-strong hover:-translate-y-[1px]">
-        {/* Image area */}
         <div className="relative h-28 bg-bg-subtle overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-          {/* Category label */}
           <span
             className="absolute top-3 left-3 px-2 py-0.5 rounded-md text-[11px] font-medium text-white/90 backdrop-blur-sm"
             style={{ backgroundColor: `${cat.color}CC` }}
           >
             {cat.label}
           </span>
-          {/* Rating */}
           <span className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-white/90 bg-black/30 backdrop-blur-sm">
             <Star size={10} fill="currentColor" />
             {place.rating}
@@ -77,12 +77,14 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
         </div>
       </div>
 
-      <BookingForm
-        place={place}
-        isOpen={bookingOpen}
-        onClose={() => setBookingOpen(false)}
-        onSubmit={() => setBookingOpen(false)}
-      />
+      {bookingOpen && (
+        <BookingForm
+          place={place}
+          isOpen={bookingOpen}
+          onClose={() => setBookingOpen(false)}
+          onSubmit={() => setBookingOpen(false)}
+        />
+      )}
     </>
   );
 }

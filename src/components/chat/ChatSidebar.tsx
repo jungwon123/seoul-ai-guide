@@ -25,7 +25,11 @@ function formatDate(dateStr: string): string {
 }
 
 export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
-  const { sessions, sessionId, newChat, loadSession, deleteSession } = useChatStore();
+  const sessions = useChatStore((s) => s.sessions);
+  const sessionId = useChatStore((s) => s.sessionId);
+  const newChat = useChatStore((s) => s.newChat);
+  const loadSession = useChatStore((s) => s.loadSession);
+  const deleteSession = useChatStore((s) => s.deleteSession);
 
   const handleNewChat = () => {
     newChat();
@@ -39,22 +43,16 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
 
   return (
     <>
-      {/* Backdrop */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[2px]"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[2px]" onClick={onClose} />
       )}
 
-      {/* Sidebar */}
       <div
         className={cn(
           'fixed left-0 top-0 bottom-0 z-50 w-[300px] bg-bg-surface border-r border-border flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
           isOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 h-[52px] border-b border-border shrink-0">
           <h2 className="text-[14px] font-semibold text-text-primary">대화 내역</h2>
           <button
@@ -66,7 +64,6 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
           </button>
         </div>
 
-        {/* New chat button */}
         <div className="px-3 pt-3 pb-1">
           <button
             onClick={handleNewChat}
@@ -77,7 +74,6 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
           </button>
         </div>
 
-        {/* Sessions list */}
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
           {sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -94,18 +90,14 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
                   key={session.id}
                   className={cn(
                     'group flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150',
-                    isActive
-                      ? 'bg-brand-subtle'
-                      : 'hover:bg-bg-subtle',
+                    isActive ? 'bg-brand-subtle' : 'hover:bg-bg-subtle',
                   )}
                   onClick={() => handleLoadSession(session.id)}
                 >
-                  {/* Agent dot */}
                   <div
                     className="w-[6px] h-[6px] rounded-full mt-[7px] shrink-0"
                     style={{ backgroundColor: agentColor }}
                   />
-
                   <div className="flex-1 min-w-0">
                     <p className={cn(
                       'text-[13px] leading-tight truncate',
@@ -119,13 +111,8 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
                       <span>{messageCount}개 메시지</span>
                     </p>
                   </div>
-
-                  {/* Delete */}
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteSession(session.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
                     className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all cursor-pointer shrink-0 mt-0.5"
                     aria-label="대화 삭제"
                   >

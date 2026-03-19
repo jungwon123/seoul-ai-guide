@@ -33,13 +33,19 @@ export default function Home() {
   const setAgent = useChatStore((s) => s.setAgent);
 
   useEffect(() => {
-    const stored = localStorage.getItem('seoul-ai-guide-onboarded');
-    setOnboarded(stored === 'true');
+    try {
+      const stored = localStorage.getItem('seoul-ai-guide-onboarded');
+      setOnboarded(stored === 'true');
+    } catch {
+      setOnboarded(false);
+    }
   }, []);
 
   const handleOnboardingComplete = (agent: AgentType, _interests: string[]) => {
-    localStorage.setItem('seoul-ai-guide-onboarded', 'true');
-    localStorage.setItem('seoul-ai-guide-agent', agent);
+    try {
+      localStorage.setItem('seoul-ai-guide-onboarded', 'true');
+      localStorage.setItem('seoul-ai-guide-agent', agent);
+    } catch { /* ignore */ }
     setAgent(agent);
     setOnboarded(true);
   };
@@ -53,7 +59,6 @@ export default function Home() {
         {/* Header */}
         <header className="flex items-center justify-between px-3 sm:px-5 h-[48px] shrink-0 border-b border-border bg-bg-surface/80 backdrop-blur-md z-20">
           <div className="flex items-center gap-2">
-            {/* Hamburger */}
             <button
               onClick={() => setSidebarOpen(true)}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
@@ -65,7 +70,6 @@ export default function Home() {
               Seoul Edit
             </h1>
           </div>
-          {/* Desktop context tab buttons */}
           <div className="hidden lg:flex items-center gap-1">
             {CONTEXT_TABS.map((tab) => {
               const Icon = tab.icon;
@@ -79,9 +83,7 @@ export default function Home() {
                   }}
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 cursor-pointer',
-                    isActive
-                      ? 'bg-brand-subtle text-brand'
-                      : 'text-text-muted hover:text-text-secondary hover:bg-bg-subtle',
+                    isActive ? 'bg-brand-subtle text-brand' : 'text-text-muted hover:text-text-secondary hover:bg-bg-subtle',
                   )}
                 >
                   <Icon size={13} strokeWidth={1.5} />
@@ -92,17 +94,15 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Chat Sidebar */}
         <ChatSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        {/* Desktop — Chat centered, context as side sheet */}
+        {/* Desktop */}
         <div className="flex-1 hidden lg:flex overflow-hidden justify-center">
           <div className="w-full max-w-[520px] flex flex-col border-x border-border">
             <ErrorBoundary><ChatPanel /></ErrorBoundary>
           </div>
         </div>
 
-        {/* Desktop side sheet */}
         <div className="hidden lg:block">
           <SideSheet
             isOpen={sheetOpen}
