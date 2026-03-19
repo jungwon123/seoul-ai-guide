@@ -30,7 +30,12 @@ export default function Home() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  const [onboarded, setOnboarded] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return localStorage.getItem('seoul-ai-guide-onboarded') === 'true';
+    } catch { return false; }
+  });
 
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
@@ -43,13 +48,6 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const agentColor = AGENT_COLORS[selectedAgent];
   const hasOnlyWelcome = messages.length <= 1;
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('seoul-ai-guide-onboarded');
-      setOnboarded(stored === 'true');
-    } catch { setOnboarded(false); }
-  }, []);
 
   useEffect(() => { initWelcome(); }, [initWelcome]);
 
