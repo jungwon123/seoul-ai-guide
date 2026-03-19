@@ -32,8 +32,7 @@ export default function RootLayout({
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-          // @ts-expect-error fetchpriority not yet in React types
-          fetchpriority="high"
+          fetchPriority="high"
         />
       </head>
       <body className="h-full overflow-hidden">
