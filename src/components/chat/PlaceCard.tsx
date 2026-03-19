@@ -5,6 +5,7 @@ import type { Place } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import NeonIcon from '@/components/ui/NeonIcon';
 import BookingForm from '@/components/booking/BookingForm';
 import { useMapStore } from '@/stores/mapStore';
 
@@ -26,22 +27,35 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
 
   return (
     <>
-      <div className="bg-bg-secondary border border-border-default rounded-xl p-3 hover:border-border-active transition-all duration-200">
+      <div
+        className="rounded-xl p-3 hover:border-border-active transition-all duration-200"
+        style={{
+          background: 'var(--color-bg-panel)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid var(--color-border-default)',
+          boxShadow: 'var(--shadow-card)',
+        }}
+      >
         <div className="flex items-start gap-3">
           <div
-            className="w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0"
+            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
             style={{ backgroundColor: `${cat.color}15` }}
           >
-            {cat.emoji}
+            <NeonIcon path={cat.icon} color={cat.color} size={20} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-text-primary text-sm truncate">{place.name}</h4>
+              <h4
+                className="font-bold text-text-primary text-sm truncate"
+                style={{ fontFamily: 'var(--font-body)' }}
+              >
+                {place.name}
+              </h4>
               <Badge color={cat.color}>{cat.label}</Badge>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-text-secondary">
-              <span className="text-accent-gold">★ {place.rating}</span>
-              <span>·</span>
+              <span style={{ color: '#FFD166', filter: 'drop-shadow(0 0 4px rgba(255,209,102,0.4))' }}>★ {place.rating}</span>
+              <span className="opacity-40">·</span>
               <span className="truncate">{place.address}</span>
             </div>
             {!compact && (

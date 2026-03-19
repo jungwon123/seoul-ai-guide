@@ -84,7 +84,7 @@ export default function KakaoMap({ markers, selectedPlace, onSelectPlace }: Kaka
           box-shadow: 0 0 ${glowSize}px ${cat.color}80;
           transition: all 0.2s;
           border: 2px solid ${isSelected ? '#fff' : 'transparent'};
-        ">${cat.emoji}</div>
+        "><svg width="16" height="16" viewBox="0 0 24 24" fill="#050810"><path d="${cat.icon}"/></svg></div>
         <div style="
           font-size: 10px; color: #F0F4FF;
           background: rgba(10,14,26,0.85);

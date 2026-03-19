@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { cn } from '@/lib/utils';
 
 interface ModalProps {
   isOpen: boolean;
@@ -26,20 +25,29 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(2, 4, 8, 0.75)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
     >
       <div
-        className={cn(
-          'bg-bg-secondary border border-border-default rounded-2xl shadow-card',
-          'w-full max-w-md mx-4 p-6 animate-scale-in',
-        )}
+        className="w-full max-w-md mx-4 p-6 rounded-2xl animate-scale-in"
+        style={{
+          background: 'var(--color-bg-panel)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid var(--color-border-default)',
+          boxShadow: 'var(--shadow-card)',
+        }}
       >
         {title && (
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+            <h3
+              className="text-lg font-bold text-text-primary"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              {title}
+            </h3>
             <button
               onClick={onClose}
               className="text-text-muted hover:text-text-primary transition-colors text-xl leading-none cursor-pointer"
