@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Send } from 'lucide-react';
+import { useState, useRef, type FormEvent, type KeyboardEvent } from 'react';
+import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
@@ -19,6 +19,8 @@ const EXAMPLE_CHIPS = [
 
 export default function ChatInput({ onSend, disabled, showChips }: ChatInputProps) {
   const [text, setText] = useState('');
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -34,15 +36,17 @@ export default function ChatInput({ onSend, disabled, showChips }: ChatInputProp
     }
   };
 
+  const canSend = text.trim() && !disabled;
+
   return (
-    <div className="p-3 shrink-0">
+    <div className="px-4 pb-4 pt-2 shrink-0">
       {showChips && (
-        <div className="flex flex-wrap gap-2 mb-3 px-1">
+        <div className="flex flex-wrap gap-2 mb-3 stagger-children">
           {EXAMPLE_CHIPS.map((chip) => (
             <button
               key={chip}
               onClick={() => onSend(chip)}
-              className="px-3.5 py-[7px] text-[13px] text-text-secondary bg-bg-surface rounded-full border border-border hover:border-brand hover:text-brand hover:bg-brand-subtle transition-all duration-150 cursor-pointer whitespace-nowrap"
+              className="group px-3.5 py-2 text-[13px] text-text-secondary bg-bg-surface rounded-full border border-border transition-all duration-200 cursor-pointer whitespace-nowrap hover:border-brand/30 hover:text-brand hover:bg-brand-subtle hover:shadow-xs"
             >
               {chip}
             </button>
@@ -51,33 +55,42 @@ export default function ChatInput({ onSend, disabled, showChips }: ChatInputProp
       )}
       <form onSubmit={handleSubmit}>
         <div
-          className="flex items-end gap-2 bg-bg-surface border border-border rounded-xl px-3.5 py-2.5 shadow-sm transition-all duration-150 focus-within:border-brand focus-within:shadow-[0_0_0_3px_rgba(28,110,242,0.08)]"
+          className={cn(
+            'flex items-center gap-2 bg-bg-surface rounded-[14px] pl-4 pr-1.5 py-1.5 transition-all duration-200',
+            focused
+              ? 'border-2 border-brand/40 shadow-focus'
+              : 'border border-border shadow-sm hover:border-border-strong',
+          )}
         >
           <input
+            ref={inputRef}
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             placeholder="서울에서 무엇을 하고 싶으세요?"
             disabled={disabled}
             className={cn(
               'flex-1 bg-transparent border-none outline-none text-[14px] text-text-primary',
-              'placeholder:text-text-muted leading-[1.5]',
+              'placeholder:text-text-muted leading-[1.5] min-w-0',
               disabled && 'opacity-40',
             )}
+            aria-label="메시지 입력"
           />
           <button
             type="submit"
-            disabled={!text.trim() || disabled}
+            disabled={!canSend}
             className={cn(
-              'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer shrink-0',
-              text.trim() && !disabled
-                ? 'bg-brand text-white hover:bg-[#1558CC] hover:scale-103'
+              'w-8 h-8 rounded-[10px] flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
+              canSend
+                ? 'bg-brand text-white shadow-xs hover:bg-brand-hover active:scale-95'
                 : 'bg-bg-subtle text-text-muted',
             )}
             aria-label="전송"
           >
-            <Send size={14} />
+            <ArrowUp size={15} strokeWidth={2.5} />
           </button>
         </div>
       </form>

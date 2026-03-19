@@ -47,13 +47,17 @@ export default function Home() {
     <ErrorBoundary>
       <div className="h-full flex flex-col bg-bg-base">
         {/* Header */}
-        <header
-          className="flex items-center justify-between px-5 shrink-0 border-b border-border"
-          style={{ height: '52px', background: 'rgba(250,250,249,0.85)', backdropFilter: 'blur(12px)' }}
-        >
-          <h1 className="text-[18px] text-text-primary" style={{ fontFamily: 'var(--font-display)' }}>
-            Seoul AI Guide
-          </h1>
+        <header className="flex items-center justify-between px-5 h-[52px] shrink-0 border-b border-border bg-bg-base/85 backdrop-blur-md z-10">
+          <div className="flex items-center gap-3">
+            <h1
+              className="text-[18px] text-text-primary"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              Seoul Edit
+            </h1>
+            <span className="h-4 w-px bg-border" />
+            <span className="text-[11px] text-text-muted font-medium tracking-[0.04em]">AI Travel Curation</span>
+          </div>
           <span className="text-[11px] text-text-muted font-medium">Phase 1</span>
         </header>
 
@@ -63,22 +67,26 @@ export default function Home() {
             <ErrorBoundary><ChatPanel /></ErrorBoundary>
           </div>
           <div className="flex flex-col bg-bg-base">
-            <div className="flex border-b border-border px-4 shrink-0">
+            {/* Context tabs */}
+            <div className="flex border-b border-border px-5 shrink-0">
               {CONTEXT_TABS.map((tab) => {
                 const Icon = tab.icon;
+                const isActive = contextTab === tab.key;
                 return (
                   <button
                     key={tab.key}
                     onClick={() => setContextTab(tab.key)}
                     className={cn(
-                      'flex items-center gap-1.5 px-4 py-3.5 text-[13px] font-medium transition-all duration-150 cursor-pointer -mb-px',
-                      contextTab === tab.key
-                        ? 'text-brand border-b-2 border-brand'
-                        : 'text-text-muted hover:text-text-secondary border-b-2 border-transparent',
+                      'group relative flex items-center gap-1.5 px-3 py-3.5 text-[13px] font-medium transition-colors duration-150 cursor-pointer',
+                      isActive ? 'text-brand' : 'text-text-muted hover:text-text-secondary',
                     )}
                   >
                     <Icon size={14} strokeWidth={1.5} />
                     {tab.label}
+                    <span
+                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-brand transition-all duration-200"
+                      style={{ opacity: isActive ? 1 : 0, transform: isActive ? 'scaleX(1)' : 'scaleX(0)' }}
+                    />
                   </button>
                 );
               })}

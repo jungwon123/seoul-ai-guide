@@ -12,9 +12,7 @@ export default function ChatPanel() {
   const { messages, isLoading, streamingText, selectedAgent, sendMessage, setAgent, initWelcome } = useChatStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    initWelcome();
-  }, [initWelcome]);
+  useEffect(() => { initWelcome(); }, [initWelcome]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -27,25 +25,29 @@ export default function ChatPanel() {
 
   return (
     <div className="flex flex-col h-full bg-bg-surface">
-      <AgentSelector selected={selectedAgent} onSelect={setAgent} />
+      {/* Agent tabs */}
+      <div className="border-b border-border shrink-0">
+        <AgentSelector selected={selectedAgent} onSelect={setAgent} />
+      </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
         ))}
 
         {/* Streaming */}
         {isLoading && streamingText && (
-          <div className="flex gap-2.5 items-start animate-message">
+          <div className="flex gap-3 pr-12 animate-message">
             <div
-              className="w-7 h-7 rounded-lg bg-bg-subtle border border-border flex items-center justify-center text-[12px] font-semibold shrink-0"
-              style={{ color: agentColor }}
+              className="w-7 h-7 rounded-[10px] flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5"
+              style={{ backgroundColor: `${agentColor}08`, color: agentColor, border: `1px solid ${agentColor}15` }}
             >
               {selectedAgent[0].toUpperCase()}
             </div>
-            <div className="flex-1 pt-1 text-[14px] leading-[1.65] text-text-primary">
+            <div className="flex-1 text-[14px] leading-[1.7] text-text-primary tracking-[-0.006em]">
               {streamingText}
-              <span className="inline-block w-[2px] h-[14px] bg-brand ml-0.5 align-middle animate-pulse" />
+              <span className="inline-block w-[2px] h-[15px] bg-brand ml-[2px] align-text-bottom" style={{ animation: 'cursorBlink 1s step-end infinite' }} />
             </div>
           </div>
         )}
