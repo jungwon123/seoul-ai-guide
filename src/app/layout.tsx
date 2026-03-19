@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
+import { DM_Serif_Display, DM_Sans } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+
+const dmSerif = DM_Serif_Display({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: "Seoul AI Guide",
@@ -13,7 +27,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full antialiased">
+    <html lang="ko" className={`h-full antialiased ${dmSerif.variable} ${dmSans.variable}`}>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+          // @ts-expect-error fetchpriority not yet in React types
+          fetchpriority="high"
+        />
+      </head>
       <body className="h-full overflow-hidden">
         {children}
         <Script
