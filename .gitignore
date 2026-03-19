@@ -36,6 +36,10 @@ yarn-error.log*
 # local docs & plugin state
 seoul-ai-guide-docs-v*/
 .omc/
+.agents/
+.agent/
+.claude/skills/
+skills-lock.json
 
 # vercel
 .vercel
