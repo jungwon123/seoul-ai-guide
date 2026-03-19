@@ -28,8 +28,8 @@ export default function ChatPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-default bg-bg-secondary/50 backdrop-blur-sm shrink-0">
-        <h2 className="text-sm font-semibold text-text-primary">Chat</h2>
+      <div className="flex items-center justify-between px-4 py-3 glass-panel border-b border-border-default shrink-0">
+        <h2 className="text-sm font-semibold text-text-primary" style={{ fontFamily: 'var(--font-display)' }}>Chat</h2>
         <AgentSelector selected={selectedAgent} onSelect={setAgent} />
       </div>
 
@@ -41,30 +41,39 @@ export default function ChatPanel() {
 
         {/* Streaming text */}
         {isLoading && streamingText && (
-          <div className="flex items-start gap-3 animate-fade-in-up">
+          <div className="flex items-start gap-3 animate-message-in">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-              style={{ backgroundColor: agentConfig.color }}
+              style={{
+                backgroundColor: `${agentConfig.color}30`,
+                border: `1px solid ${agentConfig.color}50`,
+                fontFamily: 'var(--font-display)',
+              }}
             >
               {agentConfig.label[0]}
             </div>
-            <div className="bg-bg-elevated rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-primary leading-relaxed max-w-[80%]">
+            <div
+              className="rounded-2xl rounded-tl-none px-[18px] py-[14px] text-sm text-text-primary leading-relaxed max-w-[80%]"
+              style={{
+                background: 'var(--color-bg-elevated)',
+                border: '1px solid var(--color-border-default)',
+                borderLeft: `2px solid ${agentConfig.color}`,
+                boxShadow: `0 4px 20px rgba(0,0,0,0.3), -4px 0 16px ${agentConfig.glowColor}`,
+              }}
+            >
               {streamingText}
-              <span className="inline-block w-0.5 h-4 bg-brand-primary ml-0.5 animate-pulse align-middle" />
+              <span
+                className="inline-block w-0.5 h-4 ml-0.5 align-middle animate-pulse"
+                style={{ backgroundColor: 'var(--color-neon-mint)' }}
+              />
             </div>
           </div>
         )}
 
-        {/* Typing indicator (before streaming starts) */}
         {isLoading && !streamingText && <TypingIndicator agent={selectedAgent} />}
       </div>
 
-      {/* Input */}
-      <ChatInput
-        onSend={sendMessage}
-        disabled={isLoading}
-        showChips={hasOnlyWelcome}
-      />
+      <ChatInput onSend={sendMessage} disabled={isLoading} showChips={hasOnlyWelcome} />
     </div>
   );
 }

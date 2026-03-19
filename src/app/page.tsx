@@ -15,10 +15,10 @@ import type { AgentType } from '@/types';
 type ContextTab = 'map' | 'calendar' | 'booking';
 type MobileTab = 'chat' | 'map' | 'calendar' | 'booking';
 
-const CONTEXT_TABS: { key: ContextTab; label: string; emoji: string }[] = [
-  { key: 'map', label: '지도', emoji: '🗺️' },
-  { key: 'calendar', label: '일정', emoji: '📅' },
-  { key: 'booking', label: '예약', emoji: '🎟' },
+const CONTEXT_TABS: { key: ContextTab; label: string }[] = [
+  { key: 'map', label: '지도' },
+  { key: 'calendar', label: '일정' },
+  { key: 'booking', label: '예약' },
 ];
 
 export default function Home() {
@@ -40,7 +40,7 @@ export default function Home() {
   };
 
   if (onboarded === null) {
-    return <div className="h-full bg-bg-primary" />;
+    return <div className="h-full" style={{ background: 'radial-gradient(ellipse at 20% 50%, #0d1528 0%, #050810 60%)' }} />;
   }
 
   if (!onboarded) {
@@ -49,45 +49,74 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
-      <div className="h-full flex flex-col bg-bg-primary">
-        {/* Header */}
-        <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border-default bg-bg-secondary/50 backdrop-blur-sm shrink-0">
+      <div className="h-full flex flex-col">
+        {/* Header with scanline */}
+        <header
+          className="relative flex items-center justify-between px-4 sm:px-6 py-3 shrink-0 overflow-hidden"
+          style={{
+            background: 'rgba(5, 8, 16, 0.9)',
+            backdropFilter: 'blur(20px)',
+            borderBottom: '1px solid var(--color-border-default)',
+            boxShadow: '0 1px 0 rgba(0, 255, 178, 0.1)',
+          }}
+        >
+          {/* Neon scanline */}
+          <div
+            className="absolute bottom-0 left-0 h-px"
+            style={{
+              width: '100px',
+              background: 'linear-gradient(90deg, transparent, #00FFB2, transparent)',
+              animation: 'scanline 3s linear infinite',
+            }}
+          />
+
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-primary/20 flex items-center justify-center">
-              <span className="text-brand-primary font-bold text-xs sm:text-sm">S</span>
-            </div>
-            <h1 className="text-base sm:text-lg font-bold text-text-primary tracking-tight">
+            <span
+              className="text-lg sm:text-xl font-extrabold tracking-tight"
+              style={{
+                fontFamily: 'var(--font-display)',
+                background: 'linear-gradient(135deg, #00FFB2, #00D4FF)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              S
+            </span>
+            <h1
+              className="text-base sm:text-lg font-bold text-text-primary tracking-tight"
+              style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.5px' }}
+            >
               Seoul AI Guide
             </h1>
           </div>
-          <span className="text-[10px] sm:text-xs text-text-muted">Phase 1 · Mock</span>
+          <span className="text-[10px] sm:text-xs text-text-muted">Phase 1</span>
         </header>
 
         {/* === Desktop Layout === */}
         <div className="flex-1 hidden lg:flex overflow-hidden">
-          {/* Chat Panel - Left 60% */}
           <div className="w-[60%] border-r border-border-default flex flex-col">
-            <ErrorBoundary>
-              <ChatPanel />
-            </ErrorBoundary>
+            <ErrorBoundary><ChatPanel /></ErrorBoundary>
           </div>
 
-          {/* Context Panel - Right 40% */}
           <div className="w-[40%] flex flex-col">
-            <div className="flex border-b border-border-default bg-bg-secondary/30 shrink-0">
+            <div className="flex glass-panel border-b border-border-default shrink-0">
               {CONTEXT_TABS.map((tab) => (
                 <button
                   key={tab.key}
                   onClick={() => setContextTab(tab.key)}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 cursor-pointer',
+                    'flex-1 flex items-center justify-center px-4 py-3 text-[13px] font-medium transition-all duration-200 cursor-pointer',
                     contextTab === tab.key
-                      ? 'text-brand-primary border-b-2 border-brand-primary bg-brand-primary/5'
+                      ? 'text-neon-mint'
                       : 'text-text-muted hover:text-text-secondary',
                   )}
+                  style={contextTab === tab.key ? {
+                    borderBottom: '2px solid #00FFB2',
+                    background: 'rgba(0, 255, 178, 0.05)',
+                    boxShadow: '0 2px 8px rgba(0, 255, 178, 0.1)',
+                  } : undefined}
                 >
-                  <span>{tab.emoji}</span>
-                  <span>{tab.label}</span>
+                  {tab.label}
                 </button>
               ))}
             </div>

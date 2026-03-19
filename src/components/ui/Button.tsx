@@ -11,10 +11,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-primary text-bg-primary hover:brightness-110 shadow-glow',
-  secondary: 'bg-bg-elevated text-text-primary hover:bg-bg-elevated/80 border border-border-default',
-  ghost: 'bg-transparent text-brand-primary hover:bg-brand-primary/10',
-  danger: 'bg-accent-coral text-white hover:brightness-110',
+  primary: 'text-bg-base hover:scale-105',
+  secondary: 'bg-bg-elevated text-text-primary border border-border-default hover:border-border-active',
+  ghost: 'bg-transparent text-neon-mint hover:bg-neon-mint-glow',
+  danger: 'bg-neon-coral/20 text-neon-coral border border-neon-coral/30 hover:bg-neon-coral/30',
 };
 
 const sizeStyles = {
@@ -33,11 +33,15 @@ export default function Button({
   return (
     <button
       className={cn(
-        'rounded-lg font-medium transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+        'rounded-[10px] font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
         variantStyles[variant],
         sizeStyles[size],
         className,
       )}
+      style={variant === 'primary' ? {
+        background: 'linear-gradient(135deg, #00FFB2, #00C8A0)',
+        boxShadow: props.disabled ? 'none' : '0 0 20px rgba(0, 255, 178, 0.25)',
+      } : undefined}
       {...props}
     >
       {children}

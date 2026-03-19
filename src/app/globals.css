@@ -1,85 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css');
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #0A0E1A;
-  --color-bg-secondary: #111827;
-  --color-bg-elevated: #1C2333;
+  /* Background */
+  --color-bg-base: #050810;
+  --color-bg-panel: rgba(10, 15, 30, 0.85);
+  --color-bg-elevated: rgba(20, 30, 55, 0.9);
+  --color-bg-glass: rgba(255, 255, 255, 0.04);
 
-  --color-brand-primary: #4FFFB0;
-  --color-brand-secondary: #7B61FF;
-  --color-brand-gpt: #10A37F;
-  --color-brand-gemini: #4285F4;
+  /* Neon Brand */
+  --color-neon-mint: #00FFB2;
+  --color-neon-mint-glow: rgba(0, 255, 178, 0.15);
+  --color-neon-purple: #9B6DFF;
+  --color-neon-purple-glow: rgba(155, 109, 255, 0.2);
+  --color-neon-cyan: #00D4FF;
+  --color-neon-coral: #FF6B8A;
 
-  --color-text-primary: #F0F4FF;
-  --color-text-secondary: #8B95A8;
-  --color-text-muted: #4A5568;
+  /* Text */
+  --color-text-primary: #E8F0FF;
+  --color-text-secondary: rgba(180, 200, 255, 0.6);
+  --color-text-muted: rgba(120, 150, 200, 0.4);
 
-  --color-accent-coral: #FF6B6B;
-  --color-accent-gold: #FFD166;
+  /* Border */
+  --color-border-default: rgba(255, 255, 255, 0.06);
+  --color-border-active: rgba(0, 255, 178, 0.3);
 
-  --color-border-default: rgba(255, 255, 255, 0.08);
-  --color-border-active: rgba(79, 255, 176, 0.4);
+  /* Shadow */
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-neon-mint: 0 0 20px rgba(0, 255, 178, 0.25), 0 0 60px rgba(0, 255, 178, 0.1);
+  --shadow-neon-purple: 0 0 20px rgba(155, 109, 255, 0.3);
 
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(79, 255, 176, 0.15);
+  /* Font */
+  --font-display: 'Syne', 'Pretendard Variable', sans-serif;
+  --font-body: 'DM Sans', 'Pretendard Variable', sans-serif;
 }
 
 @layer base {
   body {
-    background-color: var(--color-bg-primary);
+    background: radial-gradient(ellipse at 20% 50%, #0d1528 0%, #050810 60%);
     color: var(--color-text-primary);
-    font-family: 'Pretendard', 'DM Sans', system-ui, sans-serif;
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+
+  /* Noise grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body > * {
+    position: relative;
+    z-index: 1;
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--color-bg-primary);
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--color-text-muted);
+    background: rgba(120, 150, 200, 0.2);
     border-radius: 3px;
   }
 }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* === Animations === */
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes neonPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px var(--color-neon-mint); }
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scanline {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100vw); }
 }
 
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.8); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes slideUp {
   from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  to { transform: translateY(0); }
 }
 
-@keyframes bounceDot {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+.animate-message-in {
+  animation: messageIn 0.3s ease-out forwards;
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.2s ease-out forwards;
+.animate-panel-in {
+  animation: panelIn 0.25s ease-out forwards;
 }
 
 .animate-scale-in {
   animation: scaleIn 0.4s ease-out forwards;
 }
 
-.animate-slide-right {
-  animation: slideInRight 0.25s ease-out forwards;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s ease-out forwards;
+/* Glass panel */
+.glass-panel {
+  background: var(--color-bg-panel);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border-default);
 }
