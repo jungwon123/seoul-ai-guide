@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Menu, MapPin, Calendar, Ticket } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { AGENT_COLORS } from '@/lib/utils';
@@ -33,7 +33,8 @@ export default function Home() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const hydrated = useHydrated();
   const storedOnboarded = useLocalStorage('seoul-ai-guide-onboarded');
-  const [onboarded, setOnboarded] = useState(false);
+  const onboarded = storedOnboarded === 'true';
+  const [, forceRender] = useState(0);
 
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
@@ -46,11 +47,6 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const agentColor = AGENT_COLORS[selectedAgent];
   const hasOnlyWelcome = messages.length <= 1;
-
-  // Sync localStorage → state before paint (no cascading render warning)
-  useLayoutEffect(() => {
-    if (storedOnboarded === 'true') setOnboarded(true);
-  }, [storedOnboarded]);
 
   useEffect(() => { initWelcome(); }, [initWelcome]);
 
@@ -66,7 +62,7 @@ export default function Home() {
       localStorage.setItem('seoul-ai-guide-agent', agent);
     } catch { /* ignore */ }
     setAgent(agent);
-    setOnboarded(true);
+    forceRender((n) => n + 1); // trigger re-read of useLocalStorage
   };
 
   if (!hydrated) return <div className="h-full bg-bg-base" />;
