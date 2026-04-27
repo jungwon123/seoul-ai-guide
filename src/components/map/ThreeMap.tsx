@@ -1,9 +1,11 @@
-'use client';
+
 
 import { useEffect, useRef, useCallback } from 'react';
 import { MapScene3D } from '@/lib/three-scene';
-import { fetchBuildings } from '@/lib/overpass';
+import { fetchBuildings, fetchBuildingsNearPoint } from '@/lib/overpass';
 import type { Place } from '@/types';
+import { useMapStore } from '@/stores/mapStore';
+import type { NavigationState } from '@/stores/mapStore';
 
 interface ThreeMapProps {
   markers: Place[];
@@ -13,6 +15,7 @@ interface ThreeMapProps {
   onLoadingChange: (loading: boolean) => void;
   onBuildingCount: (count: number) => void;
   onError: (msg: string) => void;
+  navigation?: NavigationState | null;
 }
 
 export default function ThreeMap({
@@ -23,6 +26,7 @@ export default function ThreeMap({
   onLoadingChange,
   onBuildingCount,
   onError,
+  navigation,
 }: ThreeMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<MapScene3D | null>(null);
@@ -69,7 +73,6 @@ export default function ThreeMap({
 
     onLoadingChange(true);
     try {
-      // Calculate bounds from center + zoom
       const latSpan = 0.01 * Math.pow(2, 16 - zoom);
       const lonSpan = latSpan * 1.3;
       const bounds = {
@@ -79,16 +82,27 @@ export default function ThreeMap({
         east: center.lng + lonSpan / 2,
       };
 
-      const buildings = await fetchBuildings(bounds.south, bounds.west, bounds.north, bounds.east);
-      onBuildingCount(buildings.length);
+      // Set center first so markers render immediately
+      scene.loadBuildings([], { lat: center.lat, lon: center.lng });
 
-      scene.loadBuildings(buildings, { lat: center.lat, lon: center.lng });
-      await scene.loadGround(bounds, zoom);
+      // Load ground tiles + buildings in parallel
+      const [buildings] = await Promise.all([
+        fetchBuildings(bounds.south, bounds.west, bounds.north, bounds.east),
+        scene.loadGround(bounds, zoom),
+      ]);
+
+      // Ground is visible now — hide spinner
+      onLoadingChange(false);
       scene.resetCamera();
+
+      // Add buildings (non-blocking visual enhancement)
+      if (buildings.length > 0) {
+        scene.loadBuildings(buildings, { lat: center.lat, lon: center.lng });
+        onBuildingCount(buildings.length);
+      }
     } catch (err) {
       onError(err instanceof Error ? err.message : '3D 로딩 실패');
       loadedCenterRef.current = '';
-    } finally {
       onLoadingChange(false);
     }
   }, [center, zoom, onLoadingChange, onBuildingCount, onError]);
@@ -101,6 +115,68 @@ export default function ThreeMap({
   useEffect(() => {
     sceneRef.current?.setPlaceMarkers(markers, selectedPlace?.id);
   }, [markers, selectedPlace]);
+
+  // Navigation: render route + fly to current stop + per-stop buildings
+  const prevNavRef = useRef<string | null>(null);
+  const prevStopBuildingRef = useRef<number>(-1);
+  const navId = navigation?.itinerary.id ?? null;
+  const navStopIndex = navigation?.stopIndex ?? -1;
+  const navIsPlaying = navigation?.isPlaying ?? false;
+  const navStopCount = navigation?.itinerary.stops.length ?? 0;
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    if (!navigation) {
+      scene.clearRoute();
+      prevNavRef.current = null;
+      prevStopBuildingRef.current = -1;
+      return;
+    }
+
+    // Build stop coords from markers
+    const stopCoords = navigation.itinerary.stops.map((stop) => {
+      const place = markers.find((m) => m.id === stop.placeId);
+      return place ? { lat: place.lat, lng: place.lng } : null;
+    }).filter((c): c is { lat: number; lng: number } => c !== null);
+
+    if (stopCoords.length < 2) return;
+
+    // Only render route once per itinerary
+    if (prevNavRef.current !== navId) {
+      scene.renderRoute(stopCoords);
+      prevNavRef.current = navId;
+    }
+
+    // Fly to current stop
+    scene.flyToStop(navStopIndex, stopCoords);
+
+    // Load buildings around current stop (skip if same stop)
+    if (prevStopBuildingRef.current !== navStopIndex) {
+      prevStopBuildingRef.current = navStopIndex;
+      const coord = stopCoords[navStopIndex];
+      if (coord) {
+        fetchBuildingsNearPoint(coord.lat, coord.lng, 500).then((buildings) => {
+          if (!sceneRef.current) return;
+          sceneRef.current.transitionBuildings(buildings, { lat: coord.lat, lon: coord.lng });
+          onBuildingCount(buildings.length);
+        });
+      }
+    }
+  }, [navId, navStopIndex, navigation, markers, onBuildingCount]);
+
+  // Auto-play: advance stops when isPlaying (primitive deps)
+  useEffect(() => {
+    if (!navIsPlaying) return;
+    if (navStopIndex >= navStopCount - 1) return;
+
+    const timer = setTimeout(() => {
+      useMapStore.getState().goToStop(navStopIndex + 1);
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, [navIsPlaying, navStopIndex, navStopCount]);
 
   return (
     <div ref={containerRef} className="w-full h-full relative" style={{ minHeight: 300 }}>

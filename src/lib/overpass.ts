@@ -2,9 +2,89 @@
  * Overpass API를 통해 OpenStreetMap 건물 데이터를 가져옴
  */
 
+// Pre-cached bounds for instant loading
+const CACHED_BOUNDS = { south: 37.562, west: 126.970, north: 37.585, east: 126.999 };
+
+function isWithinCachedBounds(south: number, west: number, north: number, east: number): boolean {
+  return south >= CACHED_BOUNDS.south && west >= CACHED_BOUNDS.west &&
+         north <= CACHED_BOUNDS.north && east <= CACHED_BOUNDS.east;
+}
+
+let cachedBuildings: BuildingData[] | null = null;
+
+async function loadCachedBuildings(): Promise<BuildingData[]> {
+  if (cachedBuildings) return cachedBuildings;
+  const data = await import('@/mocks/buildings-jongno.json');
+  const raw = (data.default || data) as { c: [number, number][]; h: number }[];
+  cachedBuildings = raw.map((b, i) => ({
+    id: `cached-${i}`,
+    coords: b.c,
+    height: b.h,
+    tags: {},
+  }));
+  return cachedBuildings;
+}
+
+// Haversine distance approximation in meters
+function distanceM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Per-point building cache (keyed by "lat,lng")
+const pointCache = new Map<string, BuildingData[]>();
+
+/**
+ * Fetch buildings within a radius around a point.
+ * Uses cached data if available, otherwise falls back to Overpass.
+ */
+export async function fetchBuildingsNearPoint(
+  lat: number,
+  lng: number,
+  radiusM = 500,
+): Promise<BuildingData[]> {
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)},${radiusM}`;
+  if (pointCache.has(key)) return pointCache.get(key)!;
+
+  // Degree offset for the radius
+  const latOffset = radiusM / 111320;
+  const lngOffset = radiusM / (111320 * Math.cos(lat * Math.PI / 180));
+  const south = lat - latOffset;
+  const north = lat + latOffset;
+  const west = lng - lngOffset;
+  const east = lng + lngOffset;
+
+  let allBuildings: BuildingData[];
+
+  if (isWithinCachedBounds(south, west, north, east)) {
+    // Filter from local cache by distance
+    const cached = await loadCachedBuildings();
+    allBuildings = cached.filter((b) => {
+      const centroid = b.coords.reduce(
+        (acc, [blat, blon]) => [acc[0] + blat, acc[1] + blon],
+        [0, 0],
+      );
+      centroid[0] /= b.coords.length;
+      centroid[1] /= b.coords.length;
+      return distanceM(lat, lng, centroid[0], centroid[1]) <= radiusM;
+    });
+  } else {
+    allBuildings = await fetchBuildings(south, west, north, east);
+  }
+
+  pointCache.set(key, allBuildings);
+  return allBuildings;
+}
+
 const OVERPASS_URLS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
 ];
 
 const MAX_BBOX_DEGREES = 0.015;
@@ -22,6 +102,11 @@ export async function fetchBuildings(
   north: number,
   east: number,
 ): Promise<BuildingData[]> {
+  // Use cached data if within pre-loaded bounds
+  if (isWithinCachedBounds(south, west, north, east)) {
+    return loadCachedBuildings();
+  }
+
   const latSpan = north - south;
   const lonSpan = east - west;
 
@@ -47,25 +132,30 @@ export async function fetchBuildings(
     out skel qt;
   `;
 
-  for (const url of OVERPASS_URLS) {
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(query)}`,
-        signal: AbortSignal.timeout(60000),
-      });
+  // Race all servers simultaneously — first success wins
+  const controller = new AbortController();
+  const body = `data=${encodeURIComponent(query)}`;
 
-      if (!response.ok) continue;
-
-      const data = await response.json();
-      return parseBuildings(data);
-    } catch {
-      continue;
-    }
+  try {
+    const result = await Promise.any(
+      OVERPASS_URLS.map(async (url) => {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
+        });
+        if (!response.ok) throw new Error(`${response.status}`);
+        const data = await response.json();
+        controller.abort(); // cancel remaining requests
+        return parseBuildings(data);
+      }),
+    );
+    return result;
+  } catch {
+    console.warn('Overpass: 모든 서버 응답 실패 — 건물 없이 진행');
+    return [];
   }
-
-  throw new Error('모든 Overpass 서버가 응답하지 않습니다.');
 }
 
 interface OverpassElement {
