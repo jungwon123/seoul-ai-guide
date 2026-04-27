@@ -1,9 +1,9 @@
-'use client';
+
 
 import { Calendar, Download } from 'lucide-react';
 import { useCalendarStore } from '@/stores/calendarStore';
 import { TRANSPORT_LABELS } from '@/lib/utils';
-import { downloadICS } from '@/lib/kakao-calendar';
+import { downloadICS } from '@/lib/ics-export';
 import EmptyState from '@/components/ui/EmptyState';
 import type { Itinerary } from '@/types';
 

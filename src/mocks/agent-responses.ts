@@ -6,9 +6,9 @@ const places = placesData as Place[];
 const itineraries = itineraryData as Itinerary[];
 
 const WELCOME_MESSAGES: Record<string, string> = {
-  claude: '안녕하세요! Claude입니다. 서울의 숨겨진 매력을 찾아드릴게요. 어디를 가고 싶으세요?',
-  gpt: '안녕하세요! GPT입니다. 서울 여행 계획을 도와드릴게요. 무엇이 궁금하세요?',
-  gemini: '안녕하세요! Gemini입니다. 서울의 다양한 경험을 추천해드릴게요. 어떤 걸 찾고 계세요?',
+  claude: '안녕하세요! 서울의 숨겨진 매력을 찾아드릴게요. 어디를 가고 싶으세요?',
+  gpt: '안녕하세요! 서울 여행 계획을 도와드릴게요. 무엇이 궁금하세요?',
+  gemini: '안녕하세요! 서울의 다양한 경험을 추천해드릴게요. 어떤 걸 찾고 계세요?',
 };
 
 export function getWelcomeMessage(agent: string): string {

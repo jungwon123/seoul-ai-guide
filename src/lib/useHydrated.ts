@@ -1,33 +1,21 @@
-import { useSyncExternalStore } from 'react';
-
-const emptySubscribe = () => () => {};
+import { useState } from 'react';
 
 /**
- * Returns true after hydration is complete (client-only).
- * No setState, no useEffect — zero cascading render warnings.
- */
-export function useHydrated(): boolean {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => true,   // client
-    () => false,   // server
-  );
-}
-
-/**
- * Read a localStorage value safely after hydration.
- * Returns null on server and fallback on error.
+ * Read a localStorage value safely.
+ * SSR is no longer used (Vite CSR), so no hydration mismatch concern.
  */
 export function useLocalStorage(key: string, fallback: string | null = null): string | null {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => {
-      try {
-        return localStorage.getItem(key);
-      } catch {
-        return fallback;
-      }
-    },
-    () => fallback, // server
-  );
+  const [value] = useState(() => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return fallback;
+    }
+  });
+  return value;
+}
+
+/** Always true in CSR-only app. Kept for API compat. */
+export function useHydrated(): true {
+  return true;
 }

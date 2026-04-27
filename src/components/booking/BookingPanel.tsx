@@ -1,4 +1,4 @@
-'use client';
+
 
 import { Ticket, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import bookingsData from '@/mocks/bookings.json';

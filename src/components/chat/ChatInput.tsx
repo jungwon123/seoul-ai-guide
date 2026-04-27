@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useRef, type FormEvent, type KeyboardEvent } from 'react';
+import { memo, useState, useRef, type FormEvent, type KeyboardEvent } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +15,7 @@ const EXAMPLE_CHIPS = [
   '한강 근처 맛집 알려줘',
 ];
 
-export default function ChatInput({ onSend, disabled, showChips }: ChatInputProps) {
+export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInputProps) {
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,4 +94,4 @@ export default function ChatInput({ onSend, disabled, showChips }: ChatInputProp
       </form>
     </div>
   );
-}
+});

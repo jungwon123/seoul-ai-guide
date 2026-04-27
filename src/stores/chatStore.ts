@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AgentType, Message } from '@/types';
 import { streamResponse, getWelcomeMessage } from '@/mocks/agent-responses';
+import { useMapStore } from './mapStore';
 
 export interface ChatSession {
   id: string;
@@ -91,6 +92,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         timestamp: new Date().toISOString(),
         ...finalData,
       };
+
+      // Push recommendation places to the map (replaces previous recommendations)
+      if (finalData.places && finalData.places.length > 0) {
+        useMapStore.getState().setMarkers(finalData.places);
+      }
 
       const allMessages = [...get().messages, agentMsg];
       const now = new Date().toISOString();

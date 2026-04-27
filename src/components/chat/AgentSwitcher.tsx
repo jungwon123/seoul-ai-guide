@@ -1,4 +1,4 @@
-'use client';
+
 
 import { X } from 'lucide-react';
 import type { AgentType } from '@/types';
@@ -67,13 +67,6 @@ export default function AgentSwitcher({ isOpen, current, onSelect, onClose }: Ag
           })}
         </div>
       </div>
-      <style>{`
-        @keyframes slide-up {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-        .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
-      `}</style>
     </>
   );
 }
