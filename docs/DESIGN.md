@@ -18,34 +18,34 @@
 
 ```css
 :root {
-  /* 배경 — 순백 기반, 차갑지 않게 */
-  --bg-base: #FAFAF9;          /* 따뜻한 오프화이트 */
-  --bg-surface: #FFFFFF;       /* 카드, 패널 */
-  --bg-subtle: #F4F4F2;        /* 구분선 대신 쓰는 배경 */
-  --bg-overlay: rgba(0,0,0,0.03);
+  /* 배경 — Claude 크림 톤 */
+  --bg-base: #F5F1EB;          /* 따뜻한 크림 (claude.ai) */
+  --bg-surface: #FAF7F2;       /* 카드, 패널 */
+  --bg-subtle: #EDE7DD;        /* 구분선 대신 쓰는 배경 */
+  --bg-overlay: rgba(20,16,10,0.04);
 
-  /* 텍스트 — 순수 검정 금지, 차분하게 */
-  --text-primary: #1A1A18;     /* 제목 */
-  --text-secondary: #6B6B63;   /* 설명 */
-  --text-muted: #A8A89E;       /* 힌트, 플레이스홀더 */
+  /* 텍스트 — 잉크 톤, 순수 검정 금지 */
+  --text-primary: #2C2519;     /* 제목 */
+  --text-secondary: #5C5246;   /* 설명 */
+  --text-muted: #8B8071;       /* 힌트, 플레이스홀더 */
 
-  /* 브랜드 — 딱 하나, 절제된 포인트 */
-  --brand: #1C6EF2;            /* 주요 액션, 링크 */
-  --brand-subtle: #EEF4FF;     /* 브랜드 배경 */
+  /* 브랜드 — 테라코타 */
+  --brand: #C96442;            /* 주요 액션, 링크 */
+  --brand-subtle: #F5E6DD;     /* 브랜드 배경 */
 
-  /* 에이전트 색상 — 과하지 않게 */
-  --agent-claude: #7C5CBF;     /* 소프트 퍼플 */
-  --agent-gpt: #19A97B;        /* 소프트 그린 */
-  --agent-gemini: #E8700A;     /* 소프트 오렌지 */
+  /* 에이전트 색상 — 절제된 톤 */
+  --agent-claude: #C96442;     /* 테라코타 */
+  --agent-gpt: #6B8E5A;        /* 세이지 그린 */
+  --agent-gemini: #B89968;     /* 머스타드 베이지 */
 
-  /* 보더 */
-  --border: #E8E8E4;
-  --border-strong: #D4D4CE;
+  /* 보더 — 베이지 */
+  --border: #E0D6C7;
+  --border-strong: #C9BCA8;
 
-  /* 그림자 — 최소한으로 */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.1);
+  /* 그림자 — 따뜻한 톤, 부드럽게 */
+  --shadow-sm: 0 1px 3px rgba(60,40,20,0.06), 0 1px 2px rgba(60,40,20,0.03);
+  --shadow-md: 0 4px 16px rgba(60,40,20,0.06);
+  --shadow-lg: 0 12px 40px rgba(60,40,20,0.08);
 }
 ```
 
@@ -54,22 +54,21 @@
 ## 타이포그래피
 
 ```css
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css');
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --font-display: 'DM Serif Display', 'Pretendard Variable', serif; /* 로고, 빈 상태 헤딩 */
-  --font-body: 'Pretendard Variable', -apple-system, sans-serif;    /* 모든 본문 */
+  --font-display: 'Fraunces', 'DM Serif Display', serif;   /* 로고, 헤딩, 카드 제목 */
+  --font-body: 'Inter', 'Pretendard Variable', -apple-system, sans-serif; /* 본문 */
 }
 ```
 
 | 용도 | 폰트 | 굵기 | 크기 |
 |------|------|------|------|
-| 로고 | DM Serif Display | 400 | 18px |
-| 페이지 제목 | Pretendard | 700 | 22px |
-| 카드 제목 | Pretendard | 600 | 15px |
-| 본문 | Pretendard | 400 | 14px |
-| 캡션/레이블 | Pretendard | 500 | 12px |
+| 로고 | Fraunces | 500 | 18px |
+| 페이지 제목 | Fraunces | 600 | 22px |
+| 카드 제목 | Fraunces | 500 | 15px |
+| 본문 | Inter | 400 | 14px |
+| 캡션/레이블 | Inter | 500 | 12px |
 
 ---
 
