@@ -1,5 +1,4 @@
-'use client';
-
+import { memo } from 'react';
 import { X, Plus, MessageCircle, Trash2 } from 'lucide-react';
 import { useChatStore, type ChatSession } from '@/stores/chatStore';
 import { AGENT_COLORS, cn } from '@/lib/utils';
@@ -24,7 +23,7 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
-export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
+export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   const sessions = useChatStore((s) => s.sessions);
   const sessionId = useChatStore((s) => s.sessionId);
   const newChat = useChatStore((s) => s.newChat);
@@ -126,4 +125,4 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
       </div>
     </>
   );
-}
+});

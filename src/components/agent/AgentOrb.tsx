@@ -1,4 +1,4 @@
-'use client';
+
 
 import { useEffect, useState, useMemo } from 'react';
 import type { AgentType } from '@/types';
@@ -15,9 +15,9 @@ const agents: AgentType[] = ['claude', 'gpt', 'gemini'];
 const AGENT_LABELS: Record<AgentType, string> = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini' };
 
 const AGENT_PALETTES: Record<AgentType, { primary: string; secondary: string; accent: string }> = {
-  claude: { primary: '#7C3AED', secondary: '#3B82F6', accent: '#EC4899' },
-  gpt: { primary: '#059669', secondary: '#06B6D4', accent: '#10B981' },
-  gemini: { primary: '#EA580C', secondary: '#F59E0B', accent: '#EF4444' },
+  claude: { primary: '#1F3A8B', secondary: '#DC2127', accent: '#F4A12C' },   /* 88 emblem swirl: navy + red + orange */
+  gpt: { primary: '#00853E', secondary: '#5BA86A', accent: '#F4A12C' },       /* olympic green + sage + warm accent */
+  gemini: { primary: '#F4A12C', secondary: '#FFC72C', accent: '#DC2127' },    /* orange + yellow + red */
 };
 
 export default function AgentOrb({ agent, isThinking, isStreaming, onAgentChange }: AgentOrbProps) {
@@ -179,27 +179,6 @@ export default function AgentOrb({ agent, isThinking, isStreaming, onAgentChange
         </p>
       )}
 
-      <style>{`
-        @keyframes orbRotate1 {
-          0%, 100% { transform: rotate(0deg) scale(1); }
-          25% { transform: rotate(3deg) scale(1.02); }
-          50% { transform: rotate(-2deg) scale(0.98); }
-          75% { transform: rotate(1deg) scale(1.01); }
-        }
-        @keyframes orbRotate2 {
-          0%, 100% { transform: rotate(0deg) scale(1) translate(0, 0); }
-          33% { transform: rotate(-5deg) scale(1.05) translate(2px, -2px); }
-          66% { transform: rotate(3deg) scale(0.95) translate(-2px, 2px); }
-        }
-        @keyframes orbRotate3 {
-          0%, 100% { transform: rotate(0deg); opacity: 0.8; }
-          50% { transform: rotate(180deg); opacity: 1; }
-        }
-        @keyframes orbPulseRing {
-          0% { transform: scale(1); opacity: 0.6; }
-          100% { transform: scale(1.4); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }

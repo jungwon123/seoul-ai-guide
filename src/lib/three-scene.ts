@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { BuildingData } from './overpass';
 import type { Place } from '@/types';
 
@@ -43,6 +44,8 @@ export class MapScene3D {
   private placeMarkers: THREE.Group[] = [];
   private gpsMarker: THREE.Group | null = null;
   private running = false;
+  private renderRequested = false;
+  private dampingFrames = 0;
 
   private centerMercX = 0;
   private centerMercY = 0;
@@ -78,6 +81,10 @@ export class MapScene3D {
     this.controls.minPolarAngle = 0.1;
     this.controls.minDistance = 50;
     this.controls.maxDistance = 4000;
+    this.controls.addEventListener('change', () => {
+      this.dampingFrames = 30; // render extra frames for damping ease-out
+      this.requestRender();
+    });
 
     // Lights
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -96,7 +103,7 @@ export class MapScene3D {
     this.scene.add(new THREE.DirectionalLight(0x8ecae6, 0.3).translateX(-300).translateY(200).translateZ(-200));
     this.scene.add(new THREE.HemisphereLight(0xb8d4e8, 0x444444, 0.4));
 
-    this.animate = this.animate.bind(this);
+    this.requestRender = this.requestRender.bind(this);
   }
 
   // ── Mercator ──
@@ -185,6 +192,7 @@ export class MapScene3D {
     group.position.y = -0.1;
     this.scene.add(group);
     this.tileGroup = group;
+    this.requestRender();
   }
 
   // ── Buildings ──
@@ -193,13 +201,24 @@ export class MapScene3D {
     this.clearBuildings();
     this.setCenter(center.lat, center.lon);
 
-    const getColor = (h: number) => {
-      if (h > 60) return 0x1a3a5c;
-      if (h > 30) return 0x2d5a8e;
-      if (h > 15) return 0x4a8cc7;
-      if (h > 8) return 0x6baed6;
+    if (buildings.length === 0) return;
+
+    const COLOR_BUCKETS: { min: number; color: number }[] = [
+      { min: 60, color: 0x1a3a5c },
+      { min: 30, color: 0x2d5a8e },
+      { min: 15, color: 0x4a8cc7 },
+      { min: 8, color: 0x6baed6 },
+      { min: 0, color: 0x9ecae1 },
+    ];
+
+    const getColorBucket = (h: number) => {
+      for (const b of COLOR_BUCKETS) if (h > b.min) return b.color;
       return 0x9ecae1;
     };
+
+    // Group geometries by color for merging
+    const buckets = new Map<number, THREE.BufferGeometry[]>();
+    for (const bucket of COLOR_BUCKETS) buckets.set(bucket.color, []);
 
     for (const b of buildings) {
       try {
@@ -212,27 +231,33 @@ export class MapScene3D {
         const geo = new THREE.ExtrudeGeometry(shape, { depth: b.height, bevelEnabled: false });
         geo.rotateX(-Math.PI / 2);
 
-        const mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
-          color: getColor(b.height),
-          transparent: true,
-          opacity: 0.92,
-          shininess: 30,
-        }));
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.scale.y = 0.01;
-        mesh.userData.targetScaleY = 1;
-
-        // Edge lines
-        const edges = new THREE.LineSegments(
-          new THREE.EdgesGeometry(geo, 30),
-          new THREE.LineBasicMaterial({ color: b.height > 30 ? 0x0f2744 : 0x2a4a6b, transparent: true, opacity: 0.3 }),
-        );
-        mesh.add(edges);
-
-        this.scene.add(mesh);
-        this.buildings.push(mesh);
+        const color = getColorBucket(b.height);
+        buckets.get(color)!.push(geo);
       } catch { /* skip invalid */ }
+    }
+
+    // Merge each color bucket into a single mesh
+    for (const [color, geos] of buckets) {
+      if (geos.length === 0) continue;
+      const merged = mergeGeometries(geos, false);
+      if (!merged) continue;
+
+      // Dispose individual geometries after merge
+      for (const g of geos) g.dispose();
+
+      const mesh = new THREE.Mesh(merged, new THREE.MeshPhongMaterial({
+        color,
+        transparent: true,
+        opacity: 0.92,
+        shininess: 30,
+      }));
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.scale.y = 0.01;
+      mesh.userData.targetScaleY = 1;
+
+      this.scene.add(mesh);
+      this.buildings.push(mesh);
     }
 
     this.animateBuildings();
@@ -245,9 +270,59 @@ export class MapScene3D {
       const progress = Math.min((now - start) / duration, 1);
       const ease = 1 + 2.7 * Math.pow(progress - 1, 3) + 1.7 * Math.pow(progress - 1, 2);
       for (const m of this.buildings) m.scale.y = ease * m.userData.targetScaleY;
+      this.requestRender();
       if (progress < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
+  }
+
+  /**
+   * Fade out current buildings, then load new ones with fade in.
+   * Keeps center unchanged (navigation uses flyToStop for camera).
+   */
+  transitionBuildings(buildings: BuildingData[], center: { lat: number; lon: number }) {
+    if (this.buildings.length === 0) {
+      // No existing buildings — just load directly
+      this.loadBuildings(buildings, center);
+      return;
+    }
+
+    // Fade out existing buildings
+    const oldMeshes = [...this.buildings];
+    const fadeOutDuration = 300;
+    const fadeStart = performance.now();
+
+    const fadeOut = (now: number) => {
+      const t = Math.min((now - fadeStart) / fadeOutDuration, 1);
+      for (const m of oldMeshes) {
+        const mat = m.material as THREE.MeshPhongMaterial;
+        mat.opacity = 0.92 * (1 - t);
+        m.scale.y = m.userData.targetScaleY * (1 - t * 0.3);
+      }
+      this.requestRender();
+      if (t < 1) {
+        requestAnimationFrame(fadeOut);
+      } else {
+        // Remove old meshes
+        for (const m of oldMeshes) {
+          m.traverse((c) => {
+            if ((c as THREE.Mesh).geometry) (c as THREE.Mesh).geometry.dispose();
+            const mat = (c as THREE.Mesh).material;
+            if (mat) {
+              if (Array.isArray(mat)) mat.forEach((mm) => mm.dispose());
+              else (mat as THREE.Material).dispose();
+            }
+          });
+          this.scene.remove(m);
+        }
+        this.buildings = [];
+
+        // Load new buildings with fade in
+        this.loadBuildings(buildings, center);
+      }
+    };
+
+    requestAnimationFrame(fadeOut);
   }
 
   private clearBuildings() {
@@ -279,7 +354,7 @@ export class MapScene3D {
     this.placeMarkers = [];
 
     const categoryColors: Record<string, number> = {
-      tourism: 0x2563eb, shopping: 0xea580c, culture: 0x7c3aed, food: 0xdc2626,
+      tourism: 0x1f3a8b, shopping: 0xdc2127, culture: 0xf4a12c, food: 0x00853e,
     };
 
     for (const place of places) {
@@ -326,6 +401,168 @@ export class MapScene3D {
       this.scene.add(group);
       this.placeMarkers.push(group);
     }
+    this.requestRender();
+  }
+
+  // ── Route polyline ──
+
+  private routeLine: THREE.Line | null = null;
+  private routeGlow: THREE.Line | null = null;
+  private routePoints: THREE.Vector3[] = [];
+  private flyAnimation: { id: number } | null = null;
+
+  renderRoute(stops: { lat: number; lng: number }[]) {
+    this.clearRoute();
+    if (stops.length < 2) return;
+
+    this.routePoints = stops.map((s) => {
+      const pos = this.latLonToLocal(s.lat, s.lng);
+      return new THREE.Vector3(pos.x, 3, pos.z);
+    });
+
+    // Smooth curve through all stops
+    const curve = new THREE.CatmullRomCurve3(this.routePoints, false, 'centripetal', 0.5);
+    const curvePoints = curve.getPoints(stops.length * 40);
+
+    const geo = new THREE.BufferGeometry().setFromPoints(curvePoints);
+
+    // Main route line
+    this.routeLine = new THREE.Line(
+      geo,
+      new THREE.LineBasicMaterial({ color: 0x2563eb, linewidth: 2 }),
+    );
+    this.scene.add(this.routeLine);
+
+    // Glow line underneath
+    const glowGeo = new THREE.BufferGeometry().setFromPoints(
+      curvePoints.map((p) => new THREE.Vector3(p.x, 1.5, p.z)),
+    );
+    this.routeGlow = new THREE.Line(
+      glowGeo,
+      new THREE.LineBasicMaterial({ color: 0x60a5fa, linewidth: 1, transparent: true, opacity: 0.4 }),
+    );
+    this.scene.add(this.routeGlow);
+    this.requestRender();
+  }
+
+  clearRoute() {
+    if (this.routeLine) {
+      this.routeLine.geometry.dispose();
+      (this.routeLine.material as THREE.Material).dispose();
+      this.scene.remove(this.routeLine);
+      this.routeLine = null;
+    }
+    if (this.routeGlow) {
+      this.routeGlow.geometry.dispose();
+      (this.routeGlow.material as THREE.Material).dispose();
+      this.scene.remove(this.routeGlow);
+      this.routeGlow = null;
+    }
+    this.routePoints = [];
+    this.cancelFly();
+    this.requestRender();
+  }
+
+  /**
+   * Animate camera to look at a specific stop from a 45-degree angle
+   */
+  flyToStop(stopIndex: number, stops: { lat: number; lng: number }[]) {
+    this.cancelFly();
+    if (stopIndex < 0 || stopIndex >= stops.length) return;
+
+    const target = this.latLonToLocal(stops[stopIndex].lat, stops[stopIndex].lng);
+    const targetVec = new THREE.Vector3(target.x, 0, target.z);
+
+    // Camera offset: behind and above the target, facing forward
+    const nextIdx = Math.min(stopIndex + 1, stops.length - 1);
+    const next = this.latLonToLocal(stops[nextIdx].lat, stops[nextIdx].lng);
+    const dir = new THREE.Vector3(next.x - target.x, 0, next.z - target.z);
+
+    // If same point (last stop), use previous direction
+    if (dir.lengthSq() < 0.01 && stopIndex > 0) {
+      const prev = this.latLonToLocal(stops[stopIndex - 1].lat, stops[stopIndex - 1].lng);
+      dir.set(target.x - prev.x, 0, target.z - prev.z);
+    }
+    if (dir.lengthSq() < 0.01) dir.set(0, 0, -1);
+    dir.normalize();
+
+    // Position camera behind and above
+    const camPos = new THREE.Vector3(
+      targetVec.x - dir.x * 300,
+      250,
+      targetVec.z - dir.z * 300,
+    );
+
+    const startPos = this.camera.position.clone();
+    const startTarget = this.controls.target.clone();
+    const duration = 1500;
+    const startTime = performance.now();
+
+    const tick = (now: number) => {
+      const t = Math.min((now - startTime) / duration, 1);
+      // Ease in-out cubic
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+      this.camera.position.lerpVectors(startPos, camPos, ease);
+      this.controls.target.lerpVectors(startTarget, targetVec, ease);
+      this.controls.update();
+      this.requestRender();
+
+      if (t < 1) {
+        this.flyAnimation = { id: requestAnimationFrame(tick) };
+      } else {
+        this.flyAnimation = null;
+      }
+    };
+
+    this.flyAnimation = { id: requestAnimationFrame(tick) };
+  }
+
+  /**
+   * Auto-play: fly through all stops sequentially
+   */
+  flyAlongRoute(
+    stops: { lat: number; lng: number }[],
+    onStopReached: (index: number) => void,
+    startIndex = 0,
+  ) {
+    this.cancelFly();
+    if (stops.length < 2) return;
+
+    let currentIdx = startIndex;
+
+    const flyNext = () => {
+      if (currentIdx >= stops.length) return;
+      onStopReached(currentIdx);
+      this.flyToStop(currentIdx, stops);
+
+      // Wait for camera animation + dwell time, then move on
+      const dwell = currentIdx === 0 ? 2000 : 2500;
+      const timerId = window.setTimeout(() => {
+        currentIdx++;
+        if (currentIdx < stops.length) {
+          flyNext();
+        }
+      }, 1500 + dwell);
+
+      // Store timer so cancelFly can clear it
+      this._flyTimer = timerId;
+    };
+
+    flyNext();
+  }
+
+  private _flyTimer: number | null = null;
+
+  private cancelFly() {
+    if (this.flyAnimation) {
+      cancelAnimationFrame(this.flyAnimation.id);
+      this.flyAnimation = null;
+    }
+    if (this._flyTimer !== null) {
+      clearTimeout(this._flyTimer);
+      this._flyTimer = null;
+    }
   }
 
   // ── GPS marker ──
@@ -363,6 +600,7 @@ export class MapScene3D {
     }
 
     this.gpsMarker.position.set(pos.x, 0, pos.z);
+    this.requestRender();
   }
 
   removeGPSMarker() {
@@ -373,6 +611,7 @@ export class MapScene3D {
       });
       this.scene.remove(this.gpsMarker);
       this.gpsMarker = null;
+      this.requestRender();
     }
   }
 
@@ -382,33 +621,46 @@ export class MapScene3D {
     this.camera.position.set(0, 600, 800);
     this.controls.target.set(0, 0, 0);
     this.controls.update();
+    this.requestRender();
   }
 
   start() {
     this.running = true;
-    this.animate();
+    this.requestRender();
   }
 
   stop() {
     this.running = false;
   }
 
-  private animate() {
-    if (!this.running) return;
-    requestAnimationFrame(this.animate);
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+  /** Schedule a single render frame. Safe to call many times per frame. */
+  requestRender() {
+    if (!this.running || this.renderRequested) return;
+    this.renderRequested = true;
+    requestAnimationFrame(() => {
+      this.renderRequested = false;
+      if (!this.running) return;
+      this.controls.update();
+      this.renderer.render(this.scene, this.camera);
+      // Continue rendering for damping ease-out
+      if (this.dampingFrames > 0) {
+        this.dampingFrames--;
+        this.requestRender();
+      }
+    });
   }
 
   resize(w: number, h: number) {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this.requestRender();
   }
 
   dispose() {
     this.stop();
     this.clearBuildings();
+    this.clearRoute();
     this.removeGPSMarker();
     if (this.tileGroup) {
       this.tileGroup.traverse((c) => {

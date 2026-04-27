@@ -1,18 +1,10 @@
-'use client';
-
 import type { AgentType } from '@/types';
-import { AGENT_COLORS } from '@/lib/utils';
+import AgentMark from '../agent/AgentMark';
 
 export default function TypingIndicator({ agent }: { agent: AgentType }) {
-  const color = AGENT_COLORS[agent];
   return (
     <div className="flex gap-3 animate-message">
-      <div
-        className="w-7 h-7 rounded-[10px] flex items-center justify-center text-[11px] font-semibold shrink-0"
-        style={{ backgroundColor: `${color}08`, color, border: `1px solid ${color}15` }}
-      >
-        {agent[0].toUpperCase()}
-      </div>
+      <AgentMark agent={agent} size={28} />
       <div className="flex items-center gap-[5px] pt-2">
         {[0, 1, 2].map((i) => (
           <span

@@ -1,12 +1,12 @@
-'use client';
+
 
 import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import type { Booking } from '@/types';
 
 const statusConfig = {
-  pending: { label: '진행 중', color: '#EA580C', icon: Clock },
-  confirmed: { label: '예약 확정', color: '#059669', icon: CheckCircle },
-  cancelled: { label: '취소됨', color: '#DC2626', icon: AlertCircle },
+  pending: { label: '진행 중', bg: '#FFFBEB', color: '#D97706', icon: Clock },
+  confirmed: { label: '예약 확정', bg: '#ECFDF5', color: '#059669', icon: CheckCircle },
+  cancelled: { label: '취소됨', bg: '#FEF2F2', color: '#DC2626', icon: AlertCircle },
 };
 
 export default function BookingCard({ booking }: { booking: Booking }) {
@@ -18,8 +18,8 @@ export default function BookingCard({ booking }: { booking: Booking }) {
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-[14px] font-semibold text-text-primary tracking-[-0.02em]">{booking.placeName}</h4>
         <span
-          className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md"
-          style={{ backgroundColor: `${status.color}0A`, color: status.color }}
+          className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
+          style={{ backgroundColor: status.bg, color: status.color }}
         >
           <StatusIcon size={11} />
           {status.label}
@@ -40,7 +40,7 @@ export default function BookingCard({ booking }: { booking: Booking }) {
         </div>
         <div className="flex justify-between">
           <span className="text-text-muted">확인번호</span>
-          <span className="text-text-muted font-mono text-[11px]">{booking.confirmationNumber}</span>
+          <span className="text-text-muted text-[11px] tabular-nums">{booking.confirmationNumber}</span>
         </div>
       </div>
     </div>

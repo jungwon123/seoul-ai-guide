@@ -1,19 +1,13 @@
-'use client';
 
-import { useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import { MapPin, ShoppingBag, Palette, UtensilsCrossed, Moon, Music, ArrowRight } from 'lucide-react';
-import type { AgentType } from '@/types';
-import { AGENT_COLORS, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import LottiePlayer from '@/components/ui/LottiePlayer';
 
 interface OnboardingFlowProps {
-  onComplete: (agent: AgentType, interests: string[]) => void;
+  onComplete: (interests: string[]) => void;
 }
-
-const AGENTS: { key: AgentType; label: string; company: string; desc: string }[] = [
-  { key: 'claude', label: 'Claude', company: 'Anthropic', desc: '섬세한 큐레이션' },
-  { key: 'gpt', label: 'GPT', company: 'OpenAI', desc: '빠른 탐색' },
-  { key: 'gemini', label: 'Gemini', company: 'Google', desc: '다양한 시각' },
-];
 
 const INTERESTS = [
   { key: 'tourism', label: '관광 명소', icon: MapPin },
@@ -24,11 +18,10 @@ const INTERESTS = [
   { key: 'entertainment', label: '엔터테인먼트', icon: Music },
 ];
 
-type Step = 'splash' | 'agent' | 'interests';
+type Step = 'splash' | 'interests' | 'success';
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState<Step>('splash');
-  const [selectedAgent, setSelectedAgent] = useState<AgentType>('claude');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
   const toggleInterest = (key: string) => {
@@ -36,6 +29,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
   };
+
+  const handleFinish = () => {
+    setStep('success');
+  };
+
+  // Auto-dismiss the success celebration after the Lottie has time to play
+  useEffect(() => {
+    if (step !== 'success') return;
+    const t = setTimeout(() => onComplete(selectedInterests), 1600);
+    return () => clearTimeout(t);
+  }, [step, onComplete, selectedInterests]);
 
   if (step === 'splash') {
     return (
@@ -56,7 +60,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             AI 에이전트가 여행을 설계합니다.
           </p>
           <button
-            onClick={() => setStep('agent')}
+            onClick={() => setStep('interests')}
             className="group inline-flex items-center gap-2 px-6 py-3 bg-text-primary text-text-inverse rounded-full text-[14px] font-medium transition-all duration-200 hover:shadow-lg active:scale-[0.98] cursor-pointer"
           >
             시작하기
@@ -67,60 +71,32 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     );
   }
 
-  if (step === 'agent') {
+  if (step === 'success') {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 bg-bg-base">
-        <div className="w-full max-w-sm animate-fade-up">
-          <p className="text-[12px] text-text-muted font-medium tracking-[0.08em] uppercase mb-2 text-center">Step 1 of 2</p>
+        <div className="text-center animate-fade-up">
+          <LottiePlayer
+            src="/animations/success.json"
+            className="w-40 h-40 mx-auto mb-4"
+            loop={false}
+            ariaLabel="설정 완료"
+            fallback={
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-brand-subtle flex items-center justify-center">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-brand">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            }
+          />
           <h2
-            className="text-[24px] text-text-primary text-center mb-8"
+            className="text-[24px] text-text-primary mb-2"
             style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
           >
-            어떤 에이전트와 함께할까요?
+            모든 준비가 끝났어요
           </h2>
-          <div className="space-y-2.5 mb-8 stagger-children">
-            {AGENTS.map((agent) => {
-              const color = AGENT_COLORS[agent.key];
-              const isSelected = selectedAgent === agent.key;
-              return (
-                <button
-                  key={agent.key}
-                  onClick={() => setSelectedAgent(agent.key)}
-                  className={cn(
-                    'w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer text-left',
-                    isSelected ? 'bg-bg-surface shadow-md' : 'bg-bg-base hover:bg-bg-surface',
-                  )}
-                  style={{ borderColor: isSelected ? color : 'var(--color-border)' }}
-                >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center font-semibold text-[15px] shrink-0"
-                    style={{ backgroundColor: `${color}0A`, color }}
-                  >
-                    {agent.label[0]}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-semibold text-text-primary">{agent.label}</span>
-                      <span className="text-[11px] text-text-muted">{agent.company}</span>
-                    </div>
-                    <span className="text-[13px] text-text-secondary">{agent.desc}</span>
-                  </div>
-                  <div
-                    className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
-                    style={{ borderColor: isSelected ? color : 'var(--color-border)' }}
-                  >
-                    {isSelected && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <button
-            onClick={() => setStep('interests')}
-            className="w-full py-3 bg-text-primary text-text-inverse rounded-full text-[14px] font-medium transition-all duration-200 hover:shadow-lg active:scale-[0.98] cursor-pointer"
-          >
-            다음
-          </button>
+          <p className="text-[14px] text-text-secondary">
+            서울의 모든 순간을 함께할게요.
+          </p>
         </div>
       </div>
     );
@@ -129,7 +105,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   return (
     <div className="h-full flex flex-col items-center justify-center p-8 bg-bg-base">
       <div className="w-full max-w-sm animate-fade-up">
-        <p className="text-[12px] text-text-muted font-medium tracking-[0.08em] uppercase mb-2 text-center">Step 2 of 2</p>
         <h2
           className="text-[24px] text-text-primary text-center mb-8"
           style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
@@ -160,7 +135,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           })}
         </div>
         <button
-          onClick={() => onComplete(selectedAgent, selectedInterests)}
+          onClick={handleFinish}
           className="w-full py-3 bg-text-primary text-text-inverse rounded-full text-[14px] font-medium transition-all duration-200 hover:shadow-lg active:scale-[0.98] cursor-pointer"
         >
           시작하기

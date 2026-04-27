@@ -7,6 +7,13 @@ export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
 
 export type TransportMode = 'walk' | 'subway' | 'bus' | 'taxi';
 
+export type CongestionLevel = 'low' | 'medium' | 'high';
+
+export interface Congestion {
+  level: CongestionLevel;
+  updatedAt?: string;
+}
+
 // === Place ===
 export interface Place {
   id: string;
@@ -19,6 +26,7 @@ export interface Place {
   rating: number;
   summary: string;
   image?: string;
+  congestion?: Congestion;
 }
 
 // === Itinerary ===
@@ -93,4 +101,22 @@ export interface RoutePoint {
 export interface PlaceMarkerData {
   place: Place;
   isSelected: boolean;
+}
+
+// === Bookmarks ===
+export interface MessageSnapshot {
+  role: 'assistant';
+  createdAt: string;
+  content: string;
+  agent?: AgentType;
+  places?: Place[];
+  itinerary?: Itinerary | null;
+}
+
+export interface MessageBookmarkItem {
+  bookmarkId: string;
+  messageId: string;
+  conversationId: string;
+  snapshot: MessageSnapshot;
+  createdAt: string;
 }

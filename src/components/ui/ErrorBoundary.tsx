@@ -1,4 +1,4 @@
-'use client';
+
 
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 import Button from './Button';
