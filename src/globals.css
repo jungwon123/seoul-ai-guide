@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+/* Fonts loaded non-blocking via index.html preload pattern */
+
+@theme {
+  /* Backgrounds — 오래된 포스터 종이 톤 */
+  --color-bg-base: #F2EBD9;          /* 빛바랜 크림 */
+  --color-bg-surface: #FFFFFF;       /* 카드는 순백 — 포스터 위 사각 컷 느낌 */
+  --color-bg-subtle: #E8DFC7;
+  --color-bg-warm: #F5EDD7;
+  --color-bg-overlay: rgba(15,15,15,0.05);
+
+  /* Text — 잉크처럼 진한 블랙 (레트로 인쇄 톤) */
+  --color-text-primary: #0F0F0F;
+  --color-text-secondary: #3A3A3A;
+  --color-text-muted: #7A7A7A;
+  --color-text-inverse: #F2EBD9;
+
+  /* Brand — 태극 빨강 (포스터 메인 컬러) */
+  --color-brand: #DC2127;
+  --color-brand-hover: #B81B20;
+  --color-brand-subtle: #FCE4E5;
+
+  /* Agent palette — 88 엠블럼 삼색 스월 */
+  --color-agent-claude: #1F3A8B;     /* 네이비 — 엠블럼 외곽 */
+  --color-agent-gpt: #00853E;        /* 올림픽 그린 */
+  --color-agent-gemini: #F4A12C;     /* 주황 — 엠블럼 가운데 */
+
+  /* Category — 올림픽 5색 링 매핑 */
+  --color-cat-tourism: #1F3A8B;      /* 네이비 — 관광 */
+  --color-cat-shopping: #DC2127;     /* 빨강 — 쇼핑 */
+  --color-cat-culture: #F4A12C;      /* 주황 — 문화 */
+  --color-cat-food: #00853E;         /* 그린 — 음식 */
+
+  /* Borders — 굵은 검정이 시그니처, 일반 보더는 베이지 */
+  --color-border: #D4CCB8;
+  --color-border-strong: #0F0F0F;    /* 레트로 굵은 흑선용 */
+  --color-border-focus: #DC2127;
+
+  /* Shadows — chunky offset (옵션) + 일반 소프트 */
+  --shadow-xs: 0 1px 2px rgba(15,15,15,0.06);
+  --shadow-sm: 0 2px 4px rgba(15,15,15,0.08);
+  --shadow-md: 2px 2px 0 rgba(15,15,15,0.9);                /* 레트로 chunky drop */
+  --shadow-lg: 4px 4px 0 rgba(15,15,15,0.9);                /* 레트로 강조용 */
+  --shadow-focus: 0 0 0 3px rgba(220,33,39,0.2);
+
+  /* Typography — 포스터의 굵은 지오메트릭 + Pretendard 한글 */
+  --font-display: 'Archivo Black', 'Archivo', 'Pretendard Variable', sans-serif;
+  --font-body: 'Inter', 'Pretendard Variable', -apple-system, sans-serif;
+  --font-sans: 'Inter', 'Pretendard Variable', -apple-system, sans-serif;
+}
+
+@layer base {
+  body {
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgba(220,33,39,0.22);
+    color: var(--color-text-primary);
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-strong);
+  }
+
+  /* Focus visible */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* === Animations === */
+
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dot {
+  0%, 60%, 100% { opacity: 0.2; transform: scale(0.8); }
+  30% { opacity: 0.8; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes compactBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@keyframes compactPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes orbRotate1 {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(3deg) scale(1.02); }
+  50% { transform: rotate(-2deg) scale(0.98); }
+  75% { transform: rotate(1deg) scale(1.01); }
+}
+
+@keyframes orbRotate2 {
+  0%, 100% { transform: rotate(0deg) scale(1) translate(0, 0); }
+  33% { transform: rotate(-5deg) scale(1.05) translate(2px, -2px); }
+  66% { transform: rotate(3deg) scale(0.95) translate(-2px, 2px); }
+}
+
+@keyframes orbRotate3 {
+  0%, 100% { transform: rotate(0deg); opacity: 0.8; }
+  50% { transform: rotate(180deg); opacity: 1; }
+}
+
+@keyframes orbPulseRing {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes orbSpin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+
+.animate-message { animation: messageIn 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.animate-fade-up { animation: fadeUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.animate-scale-in { animation: scaleIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+
+/* Stagger children */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.22s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.26s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.30s; }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-bg-subtle) 25%, var(--color-bg-base) 50%, var(--color-bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite ease-in-out;
+}
