@@ -124,6 +124,16 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes overlayOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+@keyframes tabContentIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes compactBreathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.04); }
@@ -169,6 +179,7 @@
 .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
 
 .animate-message { animation: messageIn 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.animate-tab-content { animation: tabContentIn 0.22s cubic-bezier(0.32, 0.72, 0, 1) both; }
 .animate-fade-up { animation: fadeUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
 .animate-scale-in { animation: scaleIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
 

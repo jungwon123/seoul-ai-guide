@@ -33,13 +33,21 @@ export default function BookmarkPanel({ onClose }: Props) {
 
   return (
     <div className="h-full flex flex-col bg-bg-base">
-      {/* Segmented tabs */}
+      {/* Segmented tabs — 슬라이딩 pill 인디케이터 */}
       <div className="px-4 pt-4 pb-3 shrink-0">
         <div
           role="tablist"
           aria-label="북마크 종류"
           className="relative flex items-center gap-1 p-1 bg-bg-subtle rounded-full border border-border/60"
         >
+          {/* sliding pill — 활성 탭 인덱스(0/1)에 따라 50% 슬라이드 */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-bg-surface shadow-sm border border-border transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            style={{
+              transform: tab === 'message' ? 'translateX(calc(100% + 0.25rem))' : 'translateX(0)',
+            }}
+          />
           <TabButton
             active={tab === 'place'}
             label="장소"
@@ -57,13 +65,15 @@ export default function BookmarkPanel({ onClose }: Props) {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content — 탭 변경 시 cross-fade */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        {tab === 'place' ? (
-          <PlaceBookmarks places={places} onClose={onClose} />
-        ) : (
-          <MessageBookmarks items={messageItems} onClose={onClose} />
-        )}
+        <div key={tab} className="animate-tab-content">
+          {tab === 'place' ? (
+            <PlaceBookmarks places={places} onClose={onClose} />
+          ) : (
+            <MessageBookmarks items={messageItems} onClose={onClose} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -78,10 +88,8 @@ function TabButton({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        'flex-1 flex items-center justify-center gap-1.5 h-9 rounded-full text-[13px] font-medium transition-all duration-200 cursor-pointer',
-        active
-          ? 'bg-bg-surface text-text-primary shadow-sm border border-border'
-          : 'text-text-muted hover:text-text-secondary',
+        'relative z-10 flex-1 flex items-center justify-center gap-1.5 h-9 rounded-full text-[13px] font-medium transition-colors duration-200 cursor-pointer active:scale-[0.97] motion-safe:transition-transform',
+        active ? 'text-text-primary' : 'text-text-muted hover:text-text-secondary',
       )}
     >
       {icon}
