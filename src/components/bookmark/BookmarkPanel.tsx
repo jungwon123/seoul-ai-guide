@@ -139,12 +139,22 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
               className="relative w-[68px] h-[68px] rounded-xl bg-bg-subtle shrink-0 overflow-hidden flex items-center justify-center"
               style={{ backgroundColor: `${cat.color}0f` }}
             >
-              <span
-                className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold tracking-wider"
-                style={{ color: cat.color }}
-              >
-                {cat.label.toUpperCase()}
-              </span>
+              {place.image ? (
+                <img
+                  src={place.image}
+                  alt={place.name}
+                  loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : (
+                <span
+                  className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold tracking-wider"
+                  style={{ color: cat.color }}
+                >
+                  {cat.label.toUpperCase()}
+                </span>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1">
@@ -239,16 +249,27 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
 
             {placeCount > 0 && (
               <div className="mt-2.5 flex items-center gap-1.5">
-                <div className="flex -space-x-1">
+                <div className="flex -space-x-2">
                   {(item.snapshot.places ?? []).slice(0, 3).map((p) => {
                     const cat = CATEGORY_CONFIG[p.category];
                     return (
                       <span
                         key={p.id}
-                        className="w-5 h-5 rounded-full border-2 border-bg-surface flex items-center justify-center text-[9px] font-semibold"
+                        className="w-7 h-7 rounded-full border-2 border-bg-surface overflow-hidden shrink-0 flex items-center justify-center text-[10px] font-semibold"
                         style={{ backgroundColor: `${cat.color}18`, color: cat.color }}
+                        title={p.name}
                       >
-                        {cat.label[0]}
+                        {p.image ? (
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          cat.label[0]
+                        )}
                       </span>
                     );
                   })}
