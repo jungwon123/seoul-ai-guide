@@ -74,7 +74,12 @@ export const useMapStore = create<MapStore>((set, get) => ({
 
   setRoute: (route) => set({ route }),
 
-  selectPlace: (place) => set({ selectedPlace: place }),
+  selectPlace: (place) =>
+    set({
+      selectedPlace: place,
+      // 카드 클릭 시 지도 중심을 해당 장소로 이동.
+      mapCenter: place ? { lat: place.lat, lng: place.lng } : SEOUL_CENTER,
+    }),
 
   clearMap: () => set({ markers: [], route: [], selectedPlace: null, mapCenter: SEOUL_CENTER }),
 

@@ -117,6 +117,12 @@ export default function App() {
     if (navigation) setOverlay('map');
   }, [navigation]);
 
+  // 카드 클릭(selectPlace) 시 지도 오버레이 자동 오픈.
+  const selectedPlace = useMapStore((s) => s.selectedPlace);
+  useEffect(() => {
+    if (selectedPlace) setOverlay('map');
+  }, [selectedPlace]);
+
   const handleOnboardingComplete = useCallback(() => {
     try { localStorage.setItem('seoul-ai-guide-onboarded', 'true'); } catch { /* ignore */ }
     setOnboardedOverride(true);

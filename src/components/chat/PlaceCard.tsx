@@ -32,7 +32,11 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
     <>
       <article
         aria-label={`${place.name} - ${cat.label}`}
-        className="group bg-bg-surface border border-border rounded-2xl overflow-hidden transition-[border-color,box-shadow,transform] duration-200 hover:shadow-md hover:border-border-strong hover:-translate-y-[1px]"
+        onClick={handleViewOnMap}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleViewOnMap(); }}
+        role="button"
+        tabIndex={0}
+        className="group bg-bg-surface border border-border rounded-2xl overflow-hidden transition-[border-color,box-shadow,transform] duration-200 hover:shadow-md hover:border-border-strong hover:-translate-y-[1px] cursor-pointer"
       >
         <div className="relative aspect-video bg-bg-subtle overflow-hidden">
           {place.image && (
