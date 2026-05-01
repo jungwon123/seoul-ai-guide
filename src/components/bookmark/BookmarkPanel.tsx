@@ -20,13 +20,14 @@ export default function BookmarkPanel({ onClose }: Props) {
   const [tab, setTab] = useState<Tab>('place');
 
   const bookmarkedIds = useBookmarkStore((s) => s.bookmarkedIds);
+  const placeSnapshots = useBookmarkStore((s) => s.placeSnapshots);
   const messageItems = useBookmarkStore((s) => s.messageItems);
   const places = useMemo(
     () =>
       bookmarkedIds
-        .map((id) => ALL_PLACES.find((p) => p.id === id))
+        .map((id) => placeSnapshots[id] ?? ALL_PLACES.find((p) => p.id === id))
         .filter((p): p is Place => p !== undefined),
-    [bookmarkedIds],
+    [bookmarkedIds, placeSnapshots],
   );
 
   const counts = { place: places.length, message: messageItems.length };

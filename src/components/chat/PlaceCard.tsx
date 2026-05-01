@@ -25,7 +25,7 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
 
   const handleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleBookmark(place.id);
+    toggleBookmark(place);
   };
 
   return (
