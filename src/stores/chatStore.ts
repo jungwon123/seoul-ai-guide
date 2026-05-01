@@ -9,6 +9,10 @@ import { useMapStore } from './mapStore';
 const ALLOWED_CATS: PlaceCategory[] = ['tourism', 'shopping', 'culture', 'food'];
 
 function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
+  // congestion은 BE 표준 스펙엔 없는 mock 확장 필드. 있으면 통과시킴.
+  const ext = it as PlaceBlockData & {
+    congestion?: { level: 'low' | 'medium' | 'high'; updatedAt: string };
+  };
   return {
     id: it.place_id,
     name: it.name,
@@ -20,6 +24,7 @@ function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
     rating: it.rating ?? 0,
     summary: it.summary ?? '',
     image: it.image_url,
+    congestion: ext.congestion,
   };
 }
 
