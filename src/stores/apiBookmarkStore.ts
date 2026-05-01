@@ -12,7 +12,7 @@ interface ApiBookmarkStore {
   loaded: boolean;
   load: (filter?: { thread_id?: string; pin_type?: PinType }) => Promise<void>;
   add: (input: { thread_id: string; message_id: string | number; pin_type: PinType; preview_text?: string }) => Promise<void>;
-  remove: (bookmark_id: string) => Promise<void>;
+  remove: (bookmark_id: string | number) => Promise<void>;
   isBookmarked: (message_id: string | number, thread_id: string) => boolean;
   findByMessage: (message_id: string | number, thread_id: string) => BookmarkItem | undefined;
 }
@@ -84,11 +84,11 @@ export const useApiBookmarkStore = create<ApiBookmarkStore>((set, get) => ({
 
   isBookmarked: (message_id, thread_id) => {
     const mid = String(message_id);
-    return get().items.some((b) => b.message_id === mid && b.thread_id === thread_id);
+    return get().items.some((b) => String(b.message_id) === mid && b.thread_id === thread_id);
   },
 
   findByMessage: (message_id, thread_id) => {
     const mid = String(message_id);
-    return get().items.find((b) => b.message_id === mid && b.thread_id === thread_id);
+    return get().items.find((b) => String(b.message_id) === mid && b.thread_id === thread_id);
   },
 }));

@@ -227,8 +227,7 @@ export const googleCalendarApi = {
   getAuthUrl: () => request<{ auth_url: string }>('/api/v1/auth/google/calendar'),
 };
 
-// ⚠️ BE 미구현 — 북마크 모듈 자체가 backend/src/api/에 없음.
-//   호출 시 모두 404. BE 구현 전엔 useApiBookmarkStore 활성화 금지.
+// 북마크 — BE dev 구현 완료 (3 endpoints, soft delete).
 export const bookmarksApi = {
   create: (body: BookmarkCreateRequest) =>
     request<BookmarkCreateResponse>('/api/v1/users/me/bookmarks', {
@@ -237,8 +236,8 @@ export const bookmarksApi = {
     }),
   list: (params?: { thread_id?: string; pin_type?: PinType; cursor?: string; limit?: number }) =>
     request<BookmarkListResponse>(buildUrl('/api/v1/users/me/bookmarks', params)),
-  delete: (bookmark_id: string) =>
-    request<void>(`/api/v1/users/me/bookmarks/${encodeURIComponent(bookmark_id)}`, { method: 'DELETE' }),
+  delete: (bookmark_id: string | number) =>
+    request<void>(`/api/v1/users/me/bookmarks/${encodeURIComponent(String(bookmark_id))}`, { method: 'DELETE' }),
 };
 
 export const chatsApi = {

@@ -32,10 +32,10 @@ type MessageRow = {
   created_at: string;
 };
 type BookmarkRow = {
-  bookmark_id: string;
+  bookmark_id: number; // BE는 BIGSERIAL int
   thread_id: string;
   thread_title: string | null;
-  message_id: string;
+  message_id: number; // BE는 int
   pin_type: PinType;
   preview_text: string | null;
   created_at: string;
@@ -46,6 +46,7 @@ const messages: MessageRow[] = [];
 const bookmarks: BookmarkRow[] = [];
 const shares = new Map<string, { thread_id: string; created_at: string }>();
 let messageSeq = 1;
+let bookmarkSeq = 1;
 
 const MOCK_USER = { user_id: 1, email: 'demo@seoul.app', nickname: 'demo', auth_provider: 'email' };
 const MOCK_TOKEN = 'mock.jwt.token';
@@ -204,22 +205,29 @@ export const restHandlers = [
   http.post('/api/v1/users/me/bookmarks', async ({ request }) => {
     const body = (await request.json()) as BookmarkCreateRequest;
     const row: BookmarkRow = {
-      bookmark_id: uuid(),
+      bookmark_id: bookmarkSeq++,
       thread_id: body.thread_id,
       thread_title: chats.get(body.thread_id)?.title ?? null,
-      message_id: String(body.message_id),
+      message_id: Number(body.message_id) || 0,
       pin_type: body.pin_type,
       preview_text: body.preview_text ?? null,
       created_at: nowIso(),
     };
     bookmarks.unshift(row);
     return HttpResponse.json(
-      { bookmark_id: row.bookmark_id, pin_type: row.pin_type, preview_text: row.preview_text, created_at: row.created_at },
+      {
+        bookmark_id: row.bookmark_id,
+        thread_id: row.thread_id,
+        message_id: row.message_id,
+        pin_type: row.pin_type,
+        preview_text: row.preview_text,
+        created_at: row.created_at,
+      },
       { status: 201 },
     );
   }),
   http.delete('/api/v1/users/me/bookmarks/:id', ({ params }) => {
-    const id = String(params.id);
+    const id = Number(params.id);
     const idx = bookmarks.findIndex((b) => b.bookmark_id === id);
     if (idx >= 0) bookmarks.splice(idx, 1);
     return new HttpResponse(null, { status: 204 });
@@ -242,8 +250,11 @@ function sseFrame(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-function pickIntent(query: string): 'GENERAL' | 'PLACE_SEARCH' | 'COURSE_PLAN' | 'CALENDAR' | 'EVENT' | 'ANALYSIS' {
+function pickIntent(query: string): 'GENERAL' | 'PLACE_SEARCH' | 'COURSE_PLAN' | 'CALENDAR' | 'EVENT' | 'ANALYSIS' | 'DETAIL_INQUIRY' {
   const q = query.toLowerCase();
+  // DETAIL_INQUIRY: "거기/그 장소/여기 영업시간/주소/전화" 등 단건 상세 질문
+  if (/(거기|여기|그\s*장소|그곳).*?(어때|영업|주소|전화|시간|얼마|메뉴|평점)/.test(q)) return 'DETAIL_INQUIRY';
+  if (/영업시간|운영시간|상세|자세히/.test(q) && q.length < 40) return 'DETAIL_INQUIRY';
   if (/비교|분석|차트/.test(q)) return 'ANALYSIS';
   if (/행사|축제|이벤트/.test(q)) return 'EVENT';
   if (/캘린더|일정\s*등록|등록해/.test(q)) return 'CALENDAR';
@@ -277,6 +288,7 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
         CALENDAR: 'Google Calendar에 일정을 등록했어요.',
         EVENT: '이번 달 서울 행사 3건을 찾았어요.',
         ANALYSIS: '두 곳을 6지표로 비교했어요. 가성비 차이가 큽니다.',
+        DETAIL_INQUIRY: '광장시장은 종로구 창경궁로에 위치한 100년 전통 시장입니다. 빈대떡과 마약김밥이 유명하고 평점은 4.5예요.',
       };
       const reply = replyMap[intent];
       for (const ch of reply) {
@@ -347,6 +359,20 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
         send('references', {
           type: 'references',
           items: [{ source_type: 'official', snippet: '문화체육관광부 후원 공식 행사', url: 'https://example.com' }],
+        });
+      } else if (intent === 'DETAIL_INQUIRY') {
+        send('place', {
+          type: 'place',
+          place_id: 'p1',
+          name: '광장시장',
+          category: 'food',
+          address: '서울특별시 종로구 창경궁로 88',
+          district: '종로구',
+          lat: 37.5703,
+          lng: 126.9990,
+          rating: 4.5,
+          image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360',
+          summary: '100년 역사의 전통시장. 빈대떡, 마약김밥, 육회 등 길거리 음식의 성지.',
         });
       } else if (intent === 'ANALYSIS') {
         send('chart', {
