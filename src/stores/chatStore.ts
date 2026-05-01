@@ -75,11 +75,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     try {
       const stream = streamResponse(text, text);
-      let finalData: { places?: Message['places']; itinerary?: Message['itinerary']; booking?: Message['booking'] } = {};
+      let finalData: {
+        places?: Message['places'];
+        itinerary?: Message['itinerary'];
+        booking?: Message['booking'];
+        blocks?: Message['blocks'];
+      } = {};
 
       for await (const chunk of stream) {
         if (chunk.done) {
-          finalData = { places: chunk.places, itinerary: chunk.itinerary, booking: chunk.booking };
+          finalData = {
+            places: chunk.places,
+            itinerary: chunk.itinerary,
+            booking: chunk.booking,
+            blocks: chunk.blocks,
+          };
         }
         set({ streamingText: chunk.text });
       }

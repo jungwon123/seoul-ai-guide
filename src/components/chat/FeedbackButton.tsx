@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { feedbackApi } from '@/lib/api';
+import { toast } from '@/stores/toastStore';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -26,8 +27,9 @@ export default function FeedbackButton({ threadId, messageId }: Props) {
     try {
       await feedbackApi.create({ thread_id: threadId, message_id: messageId, rating: next });
       setRating(next);
-    } catch {
-      // 조용히 실패 — 토스트는 후속에서
+      toast.success('피드백이 전송되었어요');
+    } catch (e) {
+      toast.error((e as Error).message || '피드백 전송에 실패했습니다');
     } finally {
       setSubmitting(false);
     }

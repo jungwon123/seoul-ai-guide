@@ -3,6 +3,7 @@
 
 import { create } from 'zustand';
 import { authApi, getToken, setToken, setOnUnauthorized } from '@/lib/api';
+import { toast } from '@/stores/toastStore';
 import type { ApiUser, TokenResponse } from '@/types/api';
 
 type AuthUser = {
@@ -82,6 +83,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const user = loadUser();
     set({ token, user, initialized: true });
     setOnUnauthorized(() => {
+      // 401이 처음 한 번만 토스트 — 이미 로그아웃된 상태면 silent
+      if (get().token) {
+        toast.error('세션이 만료되었습니다. 다시 로그인해 주세요.');
+      }
       get().logout();
     });
   },
