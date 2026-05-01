@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
-import { MapPin, Star, ChevronRight, Bookmark } from 'lucide-react';
+import { MapPin, Star, ChevronRight, Bookmark, Users } from 'lucide-react';
 import type { Place } from '@/types';
-import { CATEGORY_CONFIG } from '@/lib/utils';
+import { CATEGORY_CONFIG, CONGESTION_CONFIG } from '@/lib/utils';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 
@@ -39,9 +39,18 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
       tabIndex={0}
       aria-label={`${place.name} - ${cat.label}`}
     >
-      <div className="relative aspect-video bg-bg-subtle">
+      <div className="relative aspect-video bg-bg-subtle overflow-hidden">
+        {place.image && (
+          <img
+            src={place.image}
+            alt={place.name}
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
+        )}
         <span
-          className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-medium"
+          className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full text-[11px] font-medium"
           style={{ backgroundColor: `${cat.color}14`, color: cat.color }}
         >
           {cat.label}
@@ -49,7 +58,7 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
         <button
           type="button"
           onClick={handleBookmark}
-          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-bg-surface/90 backdrop-blur-sm transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center bg-bg-surface/90 backdrop-blur-sm transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
           aria-label={isBookmarked ? '북마크 해제' : '북마크'}
           aria-pressed={isBookmarked}
         >
@@ -60,6 +69,18 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
             className={isBookmarked ? '' : 'text-text-primary'}
           />
         </button>
+        {place.congestion && (
+          <span
+            className="absolute bottom-2 left-2 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] font-medium backdrop-blur-sm"
+            style={{
+              backgroundColor: CONGESTION_CONFIG[place.congestion.level].bg,
+              color: CONGESTION_CONFIG[place.congestion.level].color,
+            }}
+          >
+            <Users size={9} strokeWidth={2} aria-hidden="true" />
+            지금 {CONGESTION_CONFIG[place.congestion.level].label}
+          </span>
+        )}
       </div>
       <div className="p-3">
         <h4 className="text-[14px] font-semibold text-text-primary truncate">{place.name}</h4>

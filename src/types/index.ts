@@ -38,6 +38,8 @@ export interface ItineraryStop {
   duration: number; // minutes
   transportToNext: TransportMode;
   travelTimeToNext: number; // minutes
+  // SSE 어댑터로부터 직접 받은 이미지 (places.json에 없는 SSE-driven 코스용 폴백).
+  imageUrl?: string;
 }
 
 export interface Itinerary {

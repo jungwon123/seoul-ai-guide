@@ -42,6 +42,8 @@ function courseBlockToItinerary(block: CourseBlock): Itinerary {
     const arrivalTime = `${hh}:${mm}`;
     const duration = s.duration_minutes ?? 60;
     cursor += duration + 15; // 다음 정거장까지 도보 15분 가정
+    // image_url은 BE 표준 CourseStop엔 없는 mock 확장 필드. 있으면 통과.
+    const ext = s as typeof s & { image_url?: string };
     return {
       order: s.order ?? i + 1,
       placeId: s.place_id,
@@ -50,6 +52,7 @@ function courseBlockToItinerary(block: CourseBlock): Itinerary {
       duration,
       transportToNext: 'walk' as TransportMode,
       travelTimeToNext: i < block.stops.length - 1 ? 15 : 0,
+      imageUrl: ext.image_url,
     };
   });
   return {

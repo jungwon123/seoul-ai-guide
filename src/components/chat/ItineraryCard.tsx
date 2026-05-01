@@ -56,16 +56,16 @@ export default function ItineraryCard({ itinerary }: { itinerary: Itinerary }) {
                 <div
                   className="relative w-[60px] h-[60px] rounded-lg shrink-0 flex items-center justify-center overflow-hidden"
                   style={{
-                    background: place?.image
+                    background: (stop.imageUrl || place?.image)
                       ? undefined
                       : cat
                         ? `${cat.color}14`
                         : 'var(--color-bg-subtle)',
                   }}
                 >
-                  {place?.image ? (
+                  {(stop.imageUrl || place?.image) ? (
                     <img
-                      src={place.image}
+                      src={stop.imageUrl || place?.image}
                       alt={stop.placeName}
                       width={60}
                       height={60}
@@ -141,7 +141,7 @@ export default function ItineraryCard({ itinerary }: { itinerary: Itinerary }) {
           onClick={() => startNavigation(itinerary)}
           className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle transition-colors cursor-pointer border-r border-border"
         >
-          3D 경로 보기
+          경로 보기
         </button>
         <button
           onClick={() => addEvent(itinerary)}
