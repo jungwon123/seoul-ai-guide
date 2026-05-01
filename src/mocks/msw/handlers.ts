@@ -259,8 +259,82 @@ function pickIntent(query: string): 'GENERAL' | 'PLACE_SEARCH' | 'COURSE_PLAN' |
   if (/행사|축제|이벤트/.test(q)) return 'EVENT';
   if (/캘린더|일정\s*등록|등록해/.test(q)) return 'CALENDAR';
   if (/일정|코스|동선|계획/.test(q)) return 'COURSE_PLAN';
-  if (/카페|맛집|식당|쇼핑|장소|어디/.test(q)) return 'PLACE_SEARCH';
+  if (/카페|맛집|식당|쇼핑|장소|어디|핫플|추천/.test(q)) return 'PLACE_SEARCH';
   return 'GENERAL';
+}
+
+// 시연용 지역×카테고리 mock DB. 핵심: 응답이 query와 자연스럽게 매칭되어 보이도록.
+type CongestionLevel = 'low' | 'medium' | 'high';
+type DemoPlace = {
+  place_id: string;
+  name: string;
+  category: 'food' | 'shopping' | 'culture' | 'tourism';
+  address: string;
+  district: string;
+  lat: number;
+  lng: number;
+  rating: number;
+  image_url: string;
+  congestion: CongestionLevel;
+  summary?: string;
+};
+
+const PLACE_DB: Record<string, DemoPlace[]> = {
+  '홍대': [
+    { place_id: 'h1', name: '앤트러사이트 홍대', category: 'food', address: '서울 마포구 와우산로 23길 11', district: '마포구', lat: 37.5519, lng: 126.9223, rating: 4.6, image_url: 'https://picsum.photos/seed/seoul-hongdae-cafe-1/640/360', congestion: 'high', summary: '로스터리 카페. 빈티지 인테리어와 직접 로스팅한 원두로 유명.' },
+    { place_id: 'h2', name: '카페 마마스 홍대점', category: 'food', address: '서울 마포구 양화로 100', district: '마포구', lat: 37.5550, lng: 126.9230, rating: 4.4, image_url: 'https://picsum.photos/seed/seoul-hongdae-cafe-2/640/360', congestion: 'medium', summary: '브런치 + 디저트 강한 베이커리 카페.' },
+    { place_id: 'h3', name: '망원 한강공원', category: 'tourism', address: '서울 마포구 마포나루길 467', district: '마포구', lat: 37.5547, lng: 126.8978, rating: 4.5, image_url: 'https://picsum.photos/seed/seoul-hongdae-park/640/360', congestion: 'low', summary: '저녁 산책 + 야경 명소.' },
+  ],
+  '성수': [
+    { place_id: 's1', name: '대림창고', category: 'culture', address: '서울 성동구 성수이로 78', district: '성동구', lat: 37.5444, lng: 127.0556, rating: 4.7, image_url: 'https://picsum.photos/seed/seoul-seongsu-warehouse/640/360', congestion: 'high', summary: '복합문화공간 + 카페 + 갤러리.' },
+    { place_id: 's2', name: '어니언 성수', category: 'food', address: '서울 성동구 아차산로 9길 8', district: '성동구', lat: 37.5430, lng: 127.0570, rating: 4.6, image_url: 'https://picsum.photos/seed/seoul-seongsu-onion/640/360', congestion: 'high', summary: '폐공장 리모델링한 베이커리 카페.' },
+    { place_id: 's3', name: '서울숲', category: 'tourism', address: '서울 성동구 뚝섬로 273', district: '성동구', lat: 37.5443, lng: 127.0375, rating: 4.6, image_url: 'https://picsum.photos/seed/seoul-seongsu-park/640/360', congestion: 'medium', summary: '도심 속 큰 숲. 사슴 관찰장과 가족 단위 산책에 좋음.' },
+  ],
+  '종로': [
+    { place_id: 'j1', name: '광장시장', category: 'food', address: '서울 종로구 창경궁로 88', district: '종로구', lat: 37.5703, lng: 126.9990, rating: 4.5, image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360', congestion: 'high', summary: '빈대떡과 마약김밥의 성지.' },
+    { place_id: 'j2', name: '경복궁', category: 'tourism', address: '서울 종로구 사직로 161', district: '종로구', lat: 37.5796, lng: 126.9770, rating: 4.8, image_url: 'https://picsum.photos/seed/seoul-gyeongbokgung-palace/640/360', congestion: 'high', summary: '조선 왕조의 정궁. 한복 입고 입장하면 무료.' },
+    { place_id: 'j3', name: '북촌한옥마을', category: 'culture', address: '서울 종로구 계동길 37', district: '종로구', lat: 37.5826, lng: 126.9831, rating: 4.5, image_url: 'https://picsum.photos/seed/seoul-bukchon-hanok/640/360', congestion: 'medium', summary: '600년 한옥 마을. 골목골목 갤러리.' },
+  ],
+  '강남': [
+    { place_id: 'g1', name: '가로수길', category: 'shopping', address: '서울 강남구 신사동', district: '강남구', lat: 37.5223, lng: 127.0233, rating: 4.4, image_url: 'https://picsum.photos/seed/seoul-garosugil/640/360', congestion: 'high', summary: '편집샵과 카페가 늘어선 패션 거리.' },
+    { place_id: 'g2', name: '봉은사', category: 'culture', address: '서울 강남구 봉은사로 531', district: '강남구', lat: 37.5147, lng: 127.0577, rating: 4.6, image_url: 'https://picsum.photos/seed/seoul-bongeunsa/640/360', congestion: 'low', summary: '도심 속 천년 고찰. 템플스테이 가능.' },
+    { place_id: 'g3', name: 'COEX몰', category: 'shopping', address: '서울 강남구 영동대로 513', district: '강남구', lat: 37.5126, lng: 127.0588, rating: 4.3, image_url: 'https://picsum.photos/seed/seoul-coex/640/360', congestion: 'medium', summary: '스타필드 + 별마당도서관.' },
+  ],
+  '명동': [
+    { place_id: 'm1', name: '명동 쇼핑거리', category: 'shopping', address: '서울 중구 명동길', district: '중구', lat: 37.5636, lng: 126.9827, rating: 4.3, image_url: 'https://picsum.photos/seed/seoul-myeongdong-street/640/360', congestion: 'high', summary: 'K-뷰티와 쇼핑의 메카.' },
+    { place_id: 'm2', name: '명동교자', category: 'food', address: '서울 중구 명동10길 29', district: '중구', lat: 37.5625, lng: 126.9854, rating: 4.5, image_url: 'https://picsum.photos/seed/seoul-myeongdong-noodle/640/360', congestion: 'high', summary: '60년 전통 칼국수 + 만두.' },
+    { place_id: 'm3', name: 'N서울타워', category: 'tourism', address: '서울 용산구 남산공원길 105', district: '용산구', lat: 37.5512, lng: 126.9882, rating: 4.6, image_url: 'https://picsum.photos/seed/seoul-namsan-tower/640/360', congestion: 'medium', summary: '서울 야경 1순위. 케이블카 권장.' },
+  ],
+  '이태원': [
+    { place_id: 'i1', name: '이태원 경리단길', category: 'food', address: '서울 용산구 회나무로', district: '용산구', lat: 37.5400, lng: 126.9920, rating: 4.4, image_url: 'https://picsum.photos/seed/seoul-itaewon-street/640/360', congestion: 'medium', summary: '이국 음식점 거리.' },
+    { place_id: 'i2', name: '이태원 앤티크가구거리', category: 'shopping', address: '서울 용산구 이태원로', district: '용산구', lat: 37.5340, lng: 126.9947, rating: 4.2, image_url: 'https://picsum.photos/seed/seoul-itaewon-antique/640/360', congestion: 'low', summary: '빈티지 가구 + 소품샵.' },
+  ],
+};
+
+const LOCATION_PATTERNS: { keys: string[]; bucket: string }[] = [
+  { keys: ['홍대', '망원'], bucket: '홍대' },
+  { keys: ['성수', '뚝섬', '서울숲'], bucket: '성수' },
+  { keys: ['종로', '광장시장', '경복궁', '북촌', '인사동'], bucket: '종로' },
+  { keys: ['강남', '신사', '가로수길', '코엑스', 'coex', '봉은사'], bucket: '강남' },
+  { keys: ['명동', '남산', 'n서울타워'], bucket: '명동' },
+  { keys: ['이태원', '경리단', '한남'], bucket: '이태원' },
+];
+
+function pickPlacesForQuery(query: string): DemoPlace[] {
+  const q = query.toLowerCase();
+  for (const { keys, bucket } of LOCATION_PATTERNS) {
+    if (keys.some((k) => q.includes(k.toLowerCase()))) {
+      const items = PLACE_DB[bucket];
+      // 카테고리 필터 (선택적)
+      if (/카페/.test(q)) return items.filter((p) => p.category === 'food' && /카페/.test(p.name)) || items;
+      if (/맛집|식당|먹|음식/.test(q)) return items.filter((p) => p.category === 'food');
+      if (/쇼핑|사다|살\s*것/.test(q)) return items.filter((p) => p.category === 'shopping');
+      if (/문화|전시|박물관|갤러리/.test(q)) return items.filter((p) => p.category === 'culture');
+      return items;
+    }
+  }
+  // 매치 없으면 종로 디폴트 (광장/경복궁/북촌)
+  return PLACE_DB['종로'];
 }
 
 function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Array> {
@@ -298,21 +372,29 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
 
       // 4) intent별 콘텐츠 블록
       if (intent === 'PLACE_SEARCH') {
+        const matched = pickPlacesForQuery(query);
         send('places', {
           type: 'places',
-          items: [
-            { place_id: 'p1', name: '광장시장', category: 'food', address: '종로구 창경궁로 88', district: '종로구', lat: 37.5703, lng: 126.9990, rating: 4.5, image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360' },
-            { place_id: 'p2', name: '망원시장', category: 'food', address: '마포구 포은로8길', district: '마포구', lat: 37.5560, lng: 126.9056, rating: 4.3, image_url: 'https://picsum.photos/seed/seoul-mangwon-market/640/360' },
-          ],
-          total_count: 2,
+          items: matched.map((p) => ({
+            place_id: p.place_id,
+            name: p.name,
+            category: p.category,
+            address: p.address,
+            district: p.district,
+            lat: p.lat,
+            lng: p.lng,
+            rating: p.rating,
+            image_url: p.image_url,
+            summary: p.summary,
+            // congestion은 BE 스펙엔 없지만 mock 시연용 확장 필드.
+            congestion: { level: p.congestion, updatedAt: new Date().toISOString() },
+          })),
+          total_count: matched.length,
         });
         await wait(80);
         send('map_markers', {
           type: 'map_markers',
-          markers: [
-            { place_id: 'p1', lat: 37.5703, lng: 126.9990, label: '광장시장' },
-            { place_id: 'p2', lat: 37.5560, lng: 126.9056, label: '망원시장' },
-          ],
+          markers: matched.map((p) => ({ place_id: p.place_id, lat: p.lat, lng: p.lng, label: p.name })),
         });
       } else if (intent === 'COURSE_PLAN') {
         send('course', {

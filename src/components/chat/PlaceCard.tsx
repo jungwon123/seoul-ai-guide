@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { MapPin, Star, Bookmark } from 'lucide-react';
+import { MapPin, Star, Bookmark, Users } from 'lucide-react';
 import type { Place } from '@/types';
-import { CATEGORY_CONFIG } from '@/lib/utils';
+import { CATEGORY_CONFIG, CONGESTION_CONFIG } from '@/lib/utils';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import BookingForm from '@/components/booking/BookingForm';
@@ -84,6 +84,17 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
             <MapPin size={11} strokeWidth={1.5} aria-hidden="true" />
             <span className="truncate">{place.address}</span>
           </div>
+          {place.congestion && (
+            <div className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] font-medium tabular-nums"
+              style={{
+                backgroundColor: CONGESTION_CONFIG[place.congestion.level].bg,
+                color: CONGESTION_CONFIG[place.congestion.level].color,
+              }}
+            >
+              <Users size={10} strokeWidth={2} aria-hidden="true" />
+              <span>지금 {CONGESTION_CONFIG[place.congestion.level].label}</span>
+            </div>
+          )}
           {!compact && (
             <p className="text-[13px] text-text-primary mt-2 leading-[1.6] line-clamp-2">
               {place.summary}
