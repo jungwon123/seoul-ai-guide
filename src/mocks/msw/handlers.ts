@@ -282,7 +282,7 @@ type DemoPlace = {
 const PLACE_DB: Record<string, DemoPlace[]> = {
   '홍대': [
     { place_id: 'h1', name: '앤트러사이트 홍대', category: 'food', address: '서울 마포구 와우산로 23길 11', district: '마포구', lat: 37.5519, lng: 126.9223, rating: 4.6, image_url: 'https://picsum.photos/seed/seoul-hongdae-cafe-1/640/360', congestion: 'high', summary: '로스터리 카페. 빈티지 인테리어와 직접 로스팅한 원두로 유명.' },
-    { place_id: 'h2', name: '카페 마마스 홍대점', category: 'food', address: '서울 마포구 양화로 100', district: '마포구', lat: 37.5550, lng: 126.9230, rating: 4.4, image_url: 'https://picsum.photos/seed/seoul-hongdae-cafe-2/640/360', congestion: 'medium', summary: '브런치 + 디저트 강한 베이커리 카페.' },
+    { place_id: 'h2', name: '카페 마마스 홍대점', category: 'food', address: '서울 마포구 양화로 100', district: '마포구', lat: 37.5550, lng: 126.9230, rating: 4.4, image_url: '/places/cafe-mamas.png', congestion: 'medium', summary: '브런치 + 디저트 강한 베이커리 카페.' },
     { place_id: 'h3', name: '망원 한강공원', category: 'tourism', address: '서울 마포구 마포나루길 467', district: '마포구', lat: 37.5547, lng: 126.8978, rating: 4.5, image_url: 'https://picsum.photos/seed/seoul-hongdae-park/640/360', congestion: 'low', summary: '저녁 산책 + 야경 명소.' },
   ],
   '성수': [
