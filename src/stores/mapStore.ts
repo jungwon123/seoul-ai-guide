@@ -36,9 +36,27 @@ interface MapStore {
 const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 };
 
 function getPlacesForItinerary(itinerary: Itinerary): Place[] {
+  // 1순위: places.json 매칭 (레거시 mock 일정).
+  // 2순위: SSE-driven 일정 — stop 자체 필드(lat/lng/imageUrl 등)로 Place 합성.
   return itinerary.stops
-    .map((stop) => allPlaces.find((p) => p.id === stop.placeId))
-    .filter((p): p is Place => p !== undefined);
+    .map((stop): Place | null => {
+      const matched = allPlaces.find((p) => p.id === stop.placeId);
+      if (matched) return matched;
+      if (stop.lat == null || stop.lng == null) return null;
+      return {
+        id: stop.placeId,
+        name: stop.placeName,
+        category: stop.category ?? 'tourism',
+        address: stop.address ?? '',
+        lat: stop.lat,
+        lng: stop.lng,
+        hours: '',
+        rating: 0,
+        summary: '',
+        image: stop.imageUrl,
+      };
+    })
+    .filter((p): p is Place => p !== null);
 }
 
 export const useMapStore = create<MapStore>((set, get) => ({

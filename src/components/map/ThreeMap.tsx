@@ -135,10 +135,12 @@ export default function ThreeMap({
       return;
     }
 
-    // Build stop coords from markers
+    // Build stop coords from markers, fallback to stop's own lat/lng (SSE-driven).
     const stopCoords = navigation.itinerary.stops.map((stop) => {
       const place = markers.find((m) => m.id === stop.placeId);
-      return place ? { lat: place.lat, lng: place.lng } : null;
+      if (place) return { lat: place.lat, lng: place.lng };
+      if (stop.lat != null && stop.lng != null) return { lat: stop.lat, lng: stop.lng };
+      return null;
     }).filter((c): c is { lat: number; lng: number } => c !== null);
 
     if (stopCoords.length < 2) return;
