@@ -50,27 +50,8 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
         <div className="group/bubble relative flex gap-2.5 pr-4">
           <AgentMark agent={agent} size={28} className="mt-0.5" />
 
-          {/* Bookmark toggle — hover reveal (always visible when bookmarked) */}
-          <button
-            type="button"
-            onClick={handleBookmark}
-            className={`absolute top-0 right-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
-              isMessageBookmarked
-                ? 'opacity-100 bg-amber-50 text-amber-600'
-                : 'opacity-0 group-hover/bubble:opacity-100 bg-bg-surface border border-border text-text-muted hover:text-text-primary hover:border-border-strong'
-            }`}
-            aria-label={isMessageBookmarked ? '대화 북마크 해제' : '대화 북마크'}
-            aria-pressed={isMessageBookmarked}
-          >
-            <Bookmark
-              size={13}
-              strokeWidth={isMessageBookmarked ? 0 : 1.8}
-              fill={isMessageBookmarked ? '#F59E0B' : 'none'}
-            />
-          </button>
-
           <div className="flex-1 min-w-0 space-y-2">
-            <div className="text-[14px] leading-[1.7] text-text-primary pr-8">
+            <div className="text-[14px] leading-[1.7] text-text-primary">
               {message.text}
             </div>
 
@@ -89,12 +70,33 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
               </div>
             )}
 
-            {message.threadId && message.messageId != null && String(message.messageId).length > 0 && (
-              <div className="flex items-center gap-1 pt-1">
-                <FeedbackButton threadId={message.threadId} messageId={message.messageId} />
-                <ShareButton threadId={message.threadId} />
-              </div>
-            )}
+            {/* 어시스턴트 메시지 액션 행 — 항상 노출 (호버/터치 모두 접근 가능) */}
+            <div className="flex items-center gap-1 pt-1">
+              <button
+                type="button"
+                onClick={handleBookmark}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded transition-colors cursor-pointer text-xs ${
+                  isMessageBookmarked
+                    ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                    : 'text-text-muted hover:text-text-primary hover:bg-bg-overlay'
+                }`}
+                aria-label={isMessageBookmarked ? '대화 북마크 해제' : '대화 북마크'}
+                aria-pressed={isMessageBookmarked}
+              >
+                <Bookmark
+                  size={14}
+                  strokeWidth={isMessageBookmarked ? 0 : 1.8}
+                  fill={isMessageBookmarked ? '#F59E0B' : 'none'}
+                />
+                <span>{isMessageBookmarked ? '저장됨' : '저장'}</span>
+              </button>
+              {message.threadId && message.messageId != null && String(message.messageId).length > 0 && (
+                <>
+                  <FeedbackButton threadId={message.threadId} messageId={message.messageId} />
+                  <ShareButton threadId={message.threadId} />
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
