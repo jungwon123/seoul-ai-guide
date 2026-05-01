@@ -252,9 +252,12 @@ function sseFrame(event: string, data: unknown): string {
 
 function pickIntent(query: string): 'GENERAL' | 'PLACE_SEARCH' | 'COURSE_PLAN' | 'CALENDAR' | 'EVENT' | 'ANALYSIS' | 'DETAIL_INQUIRY' {
   const q = query.toLowerCase();
-  // DETAIL_INQUIRY: "거기/그 장소/여기 영업시간/주소/전화" 등 단건 상세 질문
-  if (/(거기|여기|그\s*장소|그곳).*?(어때|영업|주소|전화|시간|얼마|메뉴|평점)/.test(q)) return 'DETAIL_INQUIRY';
-  if (/영업시간|운영시간|상세|자세히/.test(q) && q.length < 40) return 'DETAIL_INQUIRY';
+  // DETAIL_INQUIRY 우선 — 지시어("거기/여기/그/이/저") + 후속 키워드.
+  // 또는 짧은 질문에 영업/주소/전화/메뉴/평점 등 단일 정보 키워드.
+  const refWord = /(거기|여기|그\s*(곳|장소|가게|카페|시장|식당|곳에서)|그곳|이\s*(곳|장소|가게)|이곳|저\s*(곳|장소))/;
+  const inquiryWord = /(어때|괜찮|영업|운영|문\s*여|문\s*닫|주소|전화|위치|시간|얼마|가격|메뉴|뭐\s*팔|평점|리뷰|어떻게\s*가|찾아가|상세|자세히|소개|어떤\s*곳)/;
+  if (refWord.test(q) && inquiryWord.test(q)) return 'DETAIL_INQUIRY';
+  if (q.length < 40 && inquiryWord.test(q) && !/카페|맛집|식당|쇼핑|어디.*?있/.test(q)) return 'DETAIL_INQUIRY';
   if (/비교|분석|차트/.test(q)) return 'ANALYSIS';
   if (/행사|축제|이벤트/.test(q)) return 'EVENT';
   if (/캘린더|일정\s*등록|등록해/.test(q)) return 'CALENDAR';
@@ -262,6 +265,9 @@ function pickIntent(query: string): 'GENERAL' | 'PLACE_SEARCH' | 'COURSE_PLAN' |
   if (/카페|맛집|식당|쇼핑|장소|어디|핫플|추천/.test(q)) return 'PLACE_SEARCH';
   return 'GENERAL';
 }
+
+// 스레드별 마지막 PLACE_SEARCH 결과 — DETAIL_INQUIRY가 컨텍스트로 사용.
+const lastPlacesByThread = new Map<string, DemoPlace[]>();
 
 // 시연용 지역×카테고리 mock DB. 핵심: 응답이 query와 자연스럽게 매칭되어 보이도록.
 type CongestionLevel = 'low' | 'medium' | 'high';
@@ -354,7 +360,12 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
       send('status', { type: 'status', message: '응답 준비 중...', node: 'router' });
       await wait(120);
 
-      // 3) text_stream — 토큰 단위 분할
+      // 3) text_stream — 토큰 단위 분할.
+      // DETAIL_INQUIRY는 직전 PLACE_SEARCH 컨텍스트 우선 사용.
+      const detailCtx = intent === 'DETAIL_INQUIRY' ? lastPlacesByThread.get(threadId)?.[0] : undefined;
+      const detailReply = detailCtx
+        ? `${detailCtx.name}은 ${detailCtx.address}에 위치한 ${detailCtx.summary ?? ''} 평점 ${detailCtx.rating}점, 지금 ${detailCtx.congestion === 'high' ? '혼잡' : detailCtx.congestion === 'medium' ? '보통' : '여유'}한 편이에요.`
+        : '광장시장은 종로구 창경궁로에 위치한 100년 전통 시장입니다. 빈대떡과 마약김밥이 유명하고 평점은 4.5예요.';
       const replyMap: Record<typeof intent, string> = {
         GENERAL: '안녕하세요! 무엇을 도와드릴까요?',
         PLACE_SEARCH: '근처에서 추천드릴 곳을 찾아봤어요.',
@@ -362,7 +373,7 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
         CALENDAR: 'Google Calendar에 일정을 등록했어요.',
         EVENT: '이번 달 서울 행사 3건을 찾았어요.',
         ANALYSIS: '두 곳을 6지표로 비교했어요. 가성비 차이가 큽니다.',
-        DETAIL_INQUIRY: '광장시장은 종로구 창경궁로에 위치한 100년 전통 시장입니다. 빈대떡과 마약김밥이 유명하고 평점은 4.5예요.',
+        DETAIL_INQUIRY: detailReply,
       };
       const reply = replyMap[intent];
       for (const ch of reply) {
@@ -373,6 +384,8 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
       // 4) intent별 콘텐츠 블록
       if (intent === 'PLACE_SEARCH') {
         const matched = pickPlacesForQuery(query);
+        // 후속 DETAIL_INQUIRY가 참조할 수 있게 컨텍스트 저장.
+        lastPlacesByThread.set(threadId, matched);
         send('places', {
           type: 'places',
           items: matched.map((p) => ({
@@ -443,18 +456,21 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
           items: [{ source_type: 'official', snippet: '문화체육관광부 후원 공식 행사', url: 'https://example.com' }],
         });
       } else if (intent === 'DETAIL_INQUIRY') {
+        const ctx = detailCtx ?? PLACE_DB['종로'][0];
         send('place', {
           type: 'place',
-          place_id: 'p1',
-          name: '광장시장',
-          category: 'food',
-          address: '서울특별시 종로구 창경궁로 88',
-          district: '종로구',
-          lat: 37.5703,
-          lng: 126.9990,
-          rating: 4.5,
-          image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360',
-          summary: '100년 역사의 전통시장. 빈대떡, 마약김밥, 육회 등 길거리 음식의 성지.',
+          place_id: ctx.place_id,
+          name: ctx.name,
+          category: ctx.category,
+          address: ctx.address,
+          district: ctx.district,
+          lat: ctx.lat,
+          lng: ctx.lng,
+          rating: ctx.rating,
+          image_url: ctx.image_url,
+          summary: ctx.summary ?? '',
+          // mock 확장 필드
+          congestion: { level: ctx.congestion, updatedAt: new Date().toISOString() },
         });
       } else if (intent === 'ANALYSIS') {
         send('chart', {
