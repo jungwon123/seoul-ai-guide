@@ -363,8 +363,12 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
       // 3) text_stream — 토큰 단위 분할.
       // DETAIL_INQUIRY는 직전 PLACE_SEARCH 컨텍스트 우선 사용.
       const detailCtx = intent === 'DETAIL_INQUIRY' ? lastPlacesByThread.get(threadId)?.[0] : undefined;
+      const congestionLabel = detailCtx
+        ? detailCtx.congestion === 'high' ? '혼잡' : detailCtx.congestion === 'medium' ? '보통' : '여유'
+        : '';
+      // 카드는 띄우지 않고 텍스트 안에 핵심 정보를 응축. 영업 시간은 mock 임의값.
       const detailReply = detailCtx
-        ? `${detailCtx.name}은 ${detailCtx.address}에 위치한 ${detailCtx.summary ?? ''} 평점 ${detailCtx.rating}점, 지금 ${detailCtx.congestion === 'high' ? '혼잡' : detailCtx.congestion === 'medium' ? '보통' : '여유'}한 편이에요.`
+        ? `${detailCtx.name}은(는) ${detailCtx.address}에 있어요. ${detailCtx.summary ? detailCtx.summary + ' ' : ''}평점 ${detailCtx.rating}점, 영업시간은 보통 10:00~22:00이에요. 지금은 ${congestionLabel}한 편이라 ${detailCtx.congestion === 'high' ? '대기 줄을 각오하시는 게 좋아요' : detailCtx.congestion === 'medium' ? '적당한 시간이에요' : '한산해서 여유롭게 다녀오기 좋아요'}.`
         : '광장시장은 종로구 창경궁로에 위치한 100년 전통 시장입니다. 빈대떡과 마약김밥이 유명하고 평점은 4.5예요.';
       const replyMap: Record<typeof intent, string> = {
         GENERAL: '안녕하세요! 무엇을 도와드릴까요?',
@@ -495,22 +499,25 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
           items: [{ source_type: 'official', snippet: '문화체육관광부 후원 공식 행사', url: 'https://example.com' }],
         });
       } else if (intent === 'DETAIL_INQUIRY') {
-        const ctx = detailCtx ?? PLACE_DB['종로'][0];
-        send('place', {
-          type: 'place',
-          place_id: ctx.place_id,
-          name: ctx.name,
-          category: ctx.category,
-          address: ctx.address,
-          district: ctx.district,
-          lat: ctx.lat,
-          lng: ctx.lng,
-          rating: ctx.rating,
-          image_url: ctx.image_url,
-          summary: ctx.summary ?? '',
-          // mock 확장 필드
-          congestion: { level: ctx.congestion, updatedAt: new Date().toISOString() },
-        });
+        // 카드 중복 방지 — 직전에 같은 장소 카드를 이미 보여줬으므로 텍스트만 응답.
+        // 컨텍스트 없는 콜드 스타트(직전 검색 없이 바로 후속 질문)일 때만 단건 카드 표시.
+        if (!detailCtx) {
+          const ctx = PLACE_DB['종로'][0];
+          send('place', {
+            type: 'place',
+            place_id: ctx.place_id,
+            name: ctx.name,
+            category: ctx.category,
+            address: ctx.address,
+            district: ctx.district,
+            lat: ctx.lat,
+            lng: ctx.lng,
+            rating: ctx.rating,
+            image_url: ctx.image_url,
+            summary: ctx.summary ?? '',
+            congestion: { level: ctx.congestion, updatedAt: new Date().toISOString() },
+          });
+        }
       } else if (intent === 'ANALYSIS') {
         send('chart', {
           type: 'chart',
