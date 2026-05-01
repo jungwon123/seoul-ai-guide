@@ -1,7 +1,54 @@
 import { create } from 'zustand';
-import type { AgentType, Message } from '@/types';
-import { streamResponse, getWelcomeMessage } from '@/mocks/agent-responses';
+import type { AgentType, Message, Place, Itinerary, PlaceCategory, TransportMode } from '@/types';
+import type { Block, PlacesBlock, CourseBlock } from '@/types/api';
+import { getWelcomeMessage } from '@/mocks/agent-responses';
+import { openChatStream } from '@/lib/sse';
 import { useMapStore } from './mapStore';
+
+// SSE 블록 → 레거시 Message 타입 어댑터.
+function placesBlockToPlaces(block: PlacesBlock): Place[] {
+  const allowedCats: PlaceCategory[] = ['tourism', 'shopping', 'culture', 'food'];
+  return block.items.map((it) => ({
+    id: it.place_id,
+    name: it.name,
+    category: (allowedCats.includes(it.category as PlaceCategory) ? it.category : 'tourism') as PlaceCategory,
+    address: it.address ?? '',
+    lat: it.lat ?? 0,
+    lng: it.lng ?? 0,
+    hours: '',
+    rating: it.rating ?? 0,
+    summary: it.summary ?? '',
+    image: (it as { image_url?: string }).image_url,
+  }));
+}
+
+function courseBlockToItinerary(block: CourseBlock): Itinerary {
+  // BE의 CourseBlock은 도착 시간/이동 수단 정보가 없으므로 합리적 기본값으로 채움.
+  // duration_minutes 누적으로 도착시간 계산.
+  let cursor = 10 * 60; // 10:00 from minutes-of-day
+  const stops = block.stops.map((s, i) => {
+    const hh = String(Math.floor(cursor / 60)).padStart(2, '0');
+    const mm = String(cursor % 60).padStart(2, '0');
+    const arrivalTime = `${hh}:${mm}`;
+    const duration = s.duration_minutes ?? 60;
+    cursor += duration + 15; // 다음 정거장까지 도보 15분 가정
+    return {
+      order: s.order ?? i + 1,
+      placeId: s.place_id,
+      placeName: s.name,
+      arrivalTime,
+      duration,
+      transportToNext: 'walk' as TransportMode,
+      travelTimeToNext: i < block.stops.length - 1 ? 15 : 0,
+    };
+  });
+  return {
+    id: `itin-${Date.now()}`,
+    title: block.title ?? '추천 코스',
+    date: new Date().toISOString().slice(0, 10),
+    stops,
+  };
+}
 
 export interface ChatSession {
   id: string;
@@ -73,79 +120,99 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const updatedMessages = [...messages, userMsg];
     set({ messages: updatedMessages, isLoading: true, streamingText: '' });
 
-    try {
-      const stream = streamResponse(text, text);
-      let finalData: {
-        places?: Message['places'];
-        itinerary?: Message['itinerary'];
-        booking?: Message['booking'];
-        blocks?: Message['blocks'];
-      } = {};
+    // SSE 누적 버퍼 — done 시 한 번에 Message 빌드.
+    let acc = '';
+    let places: Place[] | undefined;
+    let itinerary: Itinerary | undefined;
+    const otherBlocks: Block[] = [];
 
-      for await (const chunk of stream) {
-        if (chunk.done) {
-          finalData = {
-            places: chunk.places,
-            itinerary: chunk.itinerary,
-            booking: chunk.booking,
-            blocks: chunk.blocks,
-          };
-        }
-        set({ streamingText: chunk.text });
-      }
-
-      const agentMsg: Message = {
-        id: `msg-${Date.now()}-agent`,
-        role: 'agent',
-        agent: selectedAgent,
-        text: get().streamingText,
-        timestamp: new Date().toISOString(),
-        ...finalData,
-      };
-
-      // Push recommendation places to the map (replaces previous recommendations)
-      if (finalData.places && finalData.places.length > 0) {
-        useMapStore.getState().setMarkers(finalData.places);
-      }
-
-      const allMessages = [...get().messages, agentMsg];
-      const now = new Date().toISOString();
-
-      // Save/update session in history
-      const existingIdx = sessions.findIndex((s) => s.id === sessionId);
-      const session: ChatSession = {
-        id: sessionId,
-        title: generateSessionTitle(allMessages),
-        agent: selectedAgent,
-        messages: allMessages,
-        createdAt: existingIdx >= 0 ? sessions[existingIdx].createdAt : now,
-        updatedAt: now,
-      };
-
-      const updatedSessions = existingIdx >= 0
-        ? sessions.map((s) => (s.id === sessionId ? session : s))
-        : [session, ...sessions];
-
-      set({
-        messages: allMessages,
-        isLoading: false,
-        streamingText: '',
-        sessions: updatedSessions,
+    await new Promise<void>((resolve) => {
+      const conn = openChatStream(sessionId, text, {
+        text_stream: (data) => {
+          if (data.type === 'text_stream') {
+            acc += data.delta;
+            set({ streamingText: acc });
+          }
+        },
+        places: (data) => {
+          if (data.type === 'places') {
+            places = placesBlockToPlaces(data);
+          }
+        },
+        course: (data) => {
+          if (data.type === 'course') {
+            itinerary = courseBlockToItinerary(data);
+          }
+        },
+        // 그 외 블록은 그대로 message.blocks에 보존 → BlockRenderer가 렌더.
+        chart: (data) => otherBlocks.push(data),
+        events: (data) => otherBlocks.push(data),
+        calendar: (data) => otherBlocks.push(data),
+        references: (data) => otherBlocks.push(data),
+        analysis_sources: (data) => otherBlocks.push(data),
+        disambiguation: (data) => otherBlocks.push(data),
+        map_markers: (data) => otherBlocks.push(data),
+        map_route: (data) => otherBlocks.push(data),
+        intent: () => {},
+        status: () => {},
+        done: () => {
+          conn.close();
+          resolve();
+        },
+        error: () => {
+          conn.close();
+          resolve();
+        },
+        onError: (err) => {
+          if (!err.recoverable) {
+            conn.close();
+            resolve();
+          }
+        },
       });
-    } catch {
-      const errorMsg: Message = {
-        id: `msg-${Date.now()}-error`,
-        role: 'agent',
-        agent: selectedAgent,
-        text: '죄송합니다. 응답을 생성하는 중에 문제가 발생했습니다. 다시 시도해주세요.',
-        timestamp: new Date().toISOString(),
-      };
-      set((state) => ({
-        messages: [...state.messages, errorMsg],
-        isLoading: false,
-        streamingText: '',
-      }));
+    });
+
+    const agentId = `msg-${Date.now()}-agent`;
+    const agentMsg: Message = {
+      id: agentId,
+      role: 'agent',
+      agent: selectedAgent,
+      text: acc,
+      timestamp: new Date().toISOString(),
+      places,
+      itinerary,
+      blocks: otherBlocks.length > 0 ? otherBlocks : undefined,
+      threadId: sessionId,
+      messageId: agentId,
+    };
+
+    if (places && places.length > 0) {
+      useMapStore.getState().setMarkers(places);
     }
+
+    const allMessages = [...get().messages, agentMsg];
+    const now = new Date().toISOString();
+
+    const existingIdx = sessions.findIndex((s) => s.id === sessionId);
+    const session: ChatSession = {
+      id: sessionId,
+      title: generateSessionTitle(allMessages),
+      agent: selectedAgent,
+      messages: allMessages,
+      createdAt: existingIdx >= 0 ? sessions[existingIdx].createdAt : now,
+      updatedAt: now,
+    };
+
+    const updatedSessions = existingIdx >= 0
+      ? sessions.map((s) => (s.id === sessionId ? session : s))
+      : [session, ...sessions];
+
+    set({
+      messages: allMessages,
+      isLoading: false,
+      streamingText: '',
+      sessions: updatedSessions,
+    });
   },
 
   setAgent: (agent: AgentType) => {
