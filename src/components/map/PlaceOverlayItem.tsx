@@ -25,8 +25,8 @@ export default memo(function PlaceOverlayItem({ place, isBookmark, isSelected, o
 
   const handleBookmark = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleBookmark(place.id);
-  }, [place.id, toggleBookmark]);
+    toggleBookmark(place);
+  }, [place, toggleBookmark]);
 
   return (
     <div

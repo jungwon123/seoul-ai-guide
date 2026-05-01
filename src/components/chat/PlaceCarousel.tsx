@@ -25,8 +25,8 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
 
   const handleBookmark = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
-    toggleBookmark(place.id);
-  }, [place.id, toggleBookmark]);
+    toggleBookmark(place);
+  }, [place, toggleBookmark]);
 
   const widthClass = variant === 'single' ? 'w-full max-w-[350px]' : 'flex-none w-[280px]';
 

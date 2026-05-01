@@ -5,6 +5,7 @@ import placesData from '@/mocks/places.json';
 const allPlaces = placesData as Place[];
 
 const PLACE_STORAGE_KEY = 'seoul-ai-bookmarks';
+const PLACE_SNAPSHOT_STORAGE_KEY = 'seoul-ai-bookmark-snapshots';
 const MSG_STORAGE_KEY = 'seoul-ai-message-bookmarks';
 const DEFAULT_PLACE_IDS = ['place-001', 'place-002', 'place-003', 'place-004'];
 
@@ -17,6 +18,24 @@ function loadPlaceIds(): string[] {
   } catch {
     return DEFAULT_PLACE_IDS;
   }
+}
+
+function loadPlaceSnapshots(): Record<string, Place> {
+  try {
+    const raw = localStorage.getItem(PLACE_SNAPSHOT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object') return parsed as Record<string, Place>;
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+function savePlaceSnapshots(snapshots: Record<string, Place>) {
+  try {
+    localStorage.setItem(PLACE_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshots));
+  } catch { /* ignore */ }
 }
 
 function loadMessageItems(): MessageBookmarkItem[] {
@@ -49,9 +68,12 @@ interface ToggleMessageInput {
 }
 
 interface BookmarkStore {
-  // Place bookmarks (existing API, preserved)
+  // Place bookmarks
   bookmarkedIds: string[];
-  toggle: (id: string) => void;
+  // SSE-driven 장소(places.json에 없는)도 카드에 노출되도록 스냅샷 보관.
+  placeSnapshots: Record<string, Place>;
+  // toggle에 Place를 넘기면 스냅샷 같이 저장 (권장). string 단독 호출은 레거시 호환.
+  toggle: (input: string | Place) => void;
   add: (id: string) => void;
   remove: (id: string) => void;
   isBookmarked: (id: string) => boolean;
@@ -66,15 +88,26 @@ interface BookmarkStore {
 
 export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
   bookmarkedIds: typeof window !== 'undefined' ? loadPlaceIds() : DEFAULT_PLACE_IDS,
+  placeSnapshots: typeof window !== 'undefined' ? loadPlaceSnapshots() : {},
   messageItems: typeof window !== 'undefined' ? loadMessageItems() : [],
 
-  toggle: (id) => {
-    const { bookmarkedIds } = get();
-    const next = bookmarkedIds.includes(id)
-      ? bookmarkedIds.filter((x) => x !== id)
-      : [...bookmarkedIds, id];
-    savePlaceIds(next);
-    set({ bookmarkedIds: next });
+  toggle: (input) => {
+    const place = typeof input === 'string' ? null : input;
+    const id = place ? place.id : input as string;
+    const { bookmarkedIds, placeSnapshots } = get();
+    const isAdded = !bookmarkedIds.includes(id);
+    const nextIds = isAdded
+      ? [...bookmarkedIds, id]
+      : bookmarkedIds.filter((x) => x !== id);
+    const nextSnapshots = { ...placeSnapshots };
+    if (isAdded && place) {
+      nextSnapshots[id] = place;
+    } else if (!isAdded) {
+      delete nextSnapshots[id];
+    }
+    savePlaceIds(nextIds);
+    savePlaceSnapshots(nextSnapshots);
+    set({ bookmarkedIds: nextIds, placeSnapshots: nextSnapshots });
   },
 
   add: (id) => {
@@ -86,17 +119,23 @@ export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
   },
 
   remove: (id) => {
-    const next = get().bookmarkedIds.filter((x) => x !== id);
+    const { bookmarkedIds, placeSnapshots } = get();
+    const next = bookmarkedIds.filter((x) => x !== id);
+    const nextSnapshots = { ...placeSnapshots };
+    delete nextSnapshots[id];
     savePlaceIds(next);
-    set({ bookmarkedIds: next });
+    savePlaceSnapshots(nextSnapshots);
+    set({ bookmarkedIds: next, placeSnapshots: nextSnapshots });
   },
 
   isBookmarked: (id) => get().bookmarkedIds.includes(id),
 
-  getBookmarkedPlaces: () =>
-    get()
-      .bookmarkedIds.map((id) => allPlaces.find((p) => p.id === id))
-      .filter((p): p is Place => p !== undefined),
+  getBookmarkedPlaces: () => {
+    const { bookmarkedIds, placeSnapshots } = get();
+    return bookmarkedIds
+      .map((id) => placeSnapshots[id] ?? allPlaces.find((p) => p.id === id))
+      .filter((p): p is Place => p !== undefined);
+  },
 
   toggleMessage: ({ messageId, conversationId, snapshot }) => {
     const { messageItems } = get();
