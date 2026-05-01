@@ -30,8 +30,19 @@ const NAV_ITEMS: { key: Exclude<Overlay, null>; label: string; icon: typeof MapP
 function NavButtons({
   overlay, onSelect, bookmarkCount,
 }: { overlay: Overlay; onSelect: (key: Overlay) => void; bookmarkCount: number }) {
+  // 슬라이딩 인디케이터 — Linear/Vercel 스타일.
+  // 버튼 36px(w-9) + gap 2px(gap-0.5) → 인덱스당 38px translateX.
+  const activeIndex = overlay ? NAV_ITEMS.findIndex((n) => n.key === overlay) : -1;
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="relative flex items-center gap-0.5">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 w-9 h-9 rounded-xl bg-brand-subtle transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+        style={{
+          transform: `translateX(${Math.max(activeIndex, 0) * 38}px)`,
+          opacity: activeIndex >= 0 ? 1 : 0,
+        }}
+      />
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const isActive = overlay === item.key;
@@ -41,18 +52,19 @@ function NavButtons({
             key={item.key}
             onClick={() => onSelect(isActive ? null : item.key)}
             className={cn(
-              'relative w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer',
+              'relative z-10 w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-200 cursor-pointer active:scale-[0.92] motion-safe:transition-transform',
               isActive
-                ? 'bg-brand-subtle text-brand'
+                ? 'text-brand'
                 : 'text-text-muted hover:text-text-secondary hover:bg-bg-subtle',
             )}
             aria-label={item.label}
+            aria-pressed={isActive}
           >
             <Icon size={17} strokeWidth={1.6} />
             {badge > 0 && (
               <span
                 className={cn(
-                  'absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center text-[9.5px] font-semibold tabular-nums',
+                  'absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full flex items-center justify-center text-[9.5px] font-semibold tabular-nums transition-colors',
                   isActive ? 'bg-brand text-white' : 'bg-text-primary text-bg-surface',
                 )}
               >
@@ -86,6 +98,7 @@ function OverlayFallback() {
 
 export default function App() {
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const [overlayClosing, setOverlayClosing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const storedOnboarded = useLocalStorage('seoul-ai-guide-onboarded');
   const [onboardedOverride, setOnboardedOverride] = useState(false);
@@ -111,11 +124,31 @@ export default function App() {
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
-  const closeOverlay = useCallback(() => setOverlay(null), []);
-  const goHome = useCallback(() => {
-    setOverlay(null);
-    setSidebarOpen(false);
+  // 오버레이 닫기 — 200ms exit 애니메이션 후 unmount.
+  const closeOverlay = useCallback(() => {
+    setOverlayClosing(true);
+    window.setTimeout(() => {
+      setOverlay(null);
+      setOverlayClosing(false);
+    }, 200);
   }, []);
+  const goHome = useCallback(() => {
+    closeOverlay();
+    setSidebarOpen(false);
+  }, [closeOverlay]);
+
+  // NavButtons에서 다른 overlay로 이동할 때는 즉시 교체 (애니메이션 없이).
+  const selectOverlay = useCallback(
+    (key: Overlay) => {
+      if (key === null) {
+        closeOverlay();
+      } else {
+        setOverlayClosing(false);
+        setOverlay(key);
+      }
+    },
+    [closeOverlay],
+  );
 
   if (!onboarded) {
     return (
@@ -130,7 +163,7 @@ export default function App() {
       <div className="h-full flex flex-col bg-bg-base">
         <header className="flex items-center justify-between px-3 h-[52px] shrink-0 border-b border-border bg-bg-surface/90 backdrop-blur-md z-20">
           <ChatHeader onOpenSidebar={openSidebar} onGoHome={goHome} />
-          <NavButtons overlay={overlay} onSelect={setOverlay} bookmarkCount={totalBookmarks} />
+          <NavButtons overlay={overlay} onSelect={selectOverlay} bookmarkCount={totalBookmarks} />
         </header>
 
         <ChatMessages />
@@ -139,7 +172,14 @@ export default function App() {
         <ChatSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
         {overlay && (
-          <div className="fixed inset-0 z-30 bg-bg-base flex flex-col" style={{ animation: 'overlayIn 0.25s cubic-bezier(0.32, 0.72, 0, 1)' }}>
+          <div
+            className="fixed inset-0 z-30 bg-bg-base flex flex-col"
+            style={{
+              animation: overlayClosing
+                ? 'overlayOut 0.2s cubic-bezier(0.32, 0.72, 0, 1) forwards'
+                : 'overlayIn 0.25s cubic-bezier(0.32, 0.72, 0, 1)',
+            }}
+          >
             <header className="flex items-center justify-between px-3 h-[52px] shrink-0 border-b border-border bg-bg-surface">
               <button
                 onClick={closeOverlay}
