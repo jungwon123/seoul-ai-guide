@@ -410,24 +410,63 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
           markers: matched.map((p) => ({ place_id: p.place_id, lat: p.lat, lng: p.lng, label: p.name })),
         });
       } else if (intent === 'COURSE_PLAN') {
-        send('course', {
-          type: 'course',
-          title: '종로 반나절 코스',
-          stops: [
-            { order: 1, place_id: 'p1', name: '광장시장', lat: 37.5703, lng: 126.9990, duration_minutes: 60, memo: '빈대떡', image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360' },
-            { order: 2, place_id: 'p3', name: '경복궁', lat: 37.5796, lng: 126.9770, duration_minutes: 90, memo: '한복 체험', image_url: 'https://picsum.photos/seed/seoul-gyeongbokgung-palace/640/360' },
-            { order: 3, place_id: 'p4', name: '북촌한옥마을', lat: 37.5826, lng: 126.9836, duration_minutes: 60, memo: '산책', image_url: 'https://picsum.photos/seed/seoul-bukchon-hanok/640/360' },
-          ],
-          total_duration_minutes: 210,
-        });
-        await wait(80);
+        // 5개 코스 추천 — 다양한 테마.
+        const courses = [
+          {
+            title: '종로 반나절 문화 코스',
+            stops: [
+              { order: 1, place_id: 'j1', name: '광장시장', lat: 37.5703, lng: 126.9990, duration_minutes: 60, memo: '빈대떡 + 마약김밥', image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360' },
+              { order: 2, place_id: 'j2', name: '경복궁', lat: 37.5796, lng: 126.9770, duration_minutes: 90, memo: '한복 체험 + 입장 무료', image_url: 'https://picsum.photos/seed/seoul-gyeongbokgung-palace/640/360' },
+              { order: 3, place_id: 'j3', name: '북촌한옥마을', lat: 37.5826, lng: 126.9836, duration_minutes: 60, memo: '한옥 골목 산책', image_url: 'https://picsum.photos/seed/seoul-bukchon-hanok/640/360' },
+            ],
+            total_duration_minutes: 210,
+          },
+          {
+            title: '성수 카페 투어',
+            stops: [
+              { order: 1, place_id: 's2', name: '어니언 성수', lat: 37.5430, lng: 127.0570, duration_minutes: 60, memo: '폐공장 베이커리 카페', image_url: 'https://picsum.photos/seed/seoul-seongsu-onion/640/360' },
+              { order: 2, place_id: 's1', name: '대림창고', lat: 37.5444, lng: 127.0556, duration_minutes: 90, memo: '복합문화공간 + 갤러리', image_url: 'https://picsum.photos/seed/seoul-seongsu-warehouse/640/360' },
+              { order: 3, place_id: 's3', name: '서울숲', lat: 37.5443, lng: 127.0375, duration_minutes: 90, memo: '도심 속 산책', image_url: 'https://picsum.photos/seed/seoul-seongsu-park/640/360' },
+            ],
+            total_duration_minutes: 240,
+          },
+          {
+            title: '강남 쇼핑 + 야경',
+            stops: [
+              { order: 1, place_id: 'g1', name: '가로수길', lat: 37.5223, lng: 127.0233, duration_minutes: 90, memo: '편집샵 + 디저트', image_url: 'https://picsum.photos/seed/seoul-garosugil/640/360' },
+              { order: 2, place_id: 'g3', name: 'COEX몰', lat: 37.5126, lng: 127.0588, duration_minutes: 60, memo: '별마당도서관', image_url: 'https://picsum.photos/seed/seoul-coex/640/360' },
+              { order: 3, place_id: 'g2', name: '봉은사', lat: 37.5147, lng: 127.0577, duration_minutes: 60, memo: '도심 속 천년 고찰', image_url: 'https://picsum.photos/seed/seoul-bongeunsa/640/360' },
+            ],
+            total_duration_minutes: 210,
+          },
+          {
+            title: '홍대 감성 코스',
+            stops: [
+              { order: 1, place_id: 'h1', name: '앤트러사이트 홍대', lat: 37.5519, lng: 126.9223, duration_minutes: 60, memo: '로스터리 + 빈티지', image_url: 'https://picsum.photos/seed/seoul-hongdae-cafe-1/640/360' },
+              { order: 2, place_id: 'h2', name: '카페 마마스 홍대점', lat: 37.5550, lng: 126.9230, duration_minutes: 60, memo: '브런치 + 디저트', image_url: '/places/cafe-mamas.png' },
+              { order: 3, place_id: 'h3', name: '망원 한강공원', lat: 37.5547, lng: 126.8978, duration_minutes: 90, memo: '저녁 산책 + 야경', image_url: 'https://picsum.photos/seed/seoul-hongdae-park/640/360' },
+            ],
+            total_duration_minutes: 210,
+          },
+          {
+            title: '명동 + 남산 야경 코스',
+            stops: [
+              { order: 1, place_id: 'm1', name: '명동 쇼핑거리', lat: 37.5636, lng: 126.9827, duration_minutes: 90, memo: 'K-뷰티 + 쇼핑', image_url: 'https://picsum.photos/seed/seoul-myeongdong-street/640/360' },
+              { order: 2, place_id: 'm2', name: '명동교자', lat: 37.5625, lng: 126.9854, duration_minutes: 45, memo: '60년 칼국수', image_url: 'https://picsum.photos/seed/seoul-myeongdong-noodle/640/360' },
+              { order: 3, place_id: 'm3', name: 'N서울타워', lat: 37.5512, lng: 126.9882, duration_minutes: 90, memo: '서울 야경 1순위', image_url: 'https://picsum.photos/seed/seoul-namsan-tower/640/360' },
+            ],
+            total_duration_minutes: 225,
+          },
+        ];
+        for (const c of courses) {
+          send('course', { type: 'course', ...c });
+          await wait(40);
+        }
+        // 첫 코스의 마지막 지점까지의 폴리라인 — map_route는 단일.
+        const firstStops = courses[0].stops;
         send('map_route', {
           type: 'map_route',
-          waypoints: [
-            { lat: 37.5703, lng: 126.9990 },
-            { lat: 37.5796, lng: 126.9770 },
-            { lat: 37.5826, lng: 126.9836 },
-          ],
+          waypoints: firstStops.map((s) => ({ lat: s.lat, lng: s.lng })),
           distance_meters: 3200,
           duration_seconds: 1500,
         });
