@@ -35,6 +35,18 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
         className="group bg-bg-surface border border-border rounded-2xl overflow-hidden transition-[border-color,box-shadow,transform] duration-200 hover:shadow-md hover:border-border-strong hover:-translate-y-[1px]"
       >
         <div className="relative aspect-video bg-bg-subtle overflow-hidden">
+          {place.image && (
+            <img
+              src={place.image}
+              alt={place.name}
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                // 이미지 로드 실패 시 카테고리 색 placeholder로 대체
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          )}
           <span
             className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-[11px] font-medium"
             style={{ backgroundColor: `${cat.color}14`, color: cat.color }}

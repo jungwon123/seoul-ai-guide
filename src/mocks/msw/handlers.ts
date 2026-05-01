@@ -289,8 +289,8 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
         send('places', {
           type: 'places',
           items: [
-            { place_id: 'p1', name: '광장시장', category: 'food', address: '종로구 창경궁로 88', district: '종로구', lat: 37.5703, lng: 126.9990, rating: 4.5 },
-            { place_id: 'p2', name: '망원시장', category: 'food', address: '마포구 포은로8길', district: '마포구', lat: 37.5560, lng: 126.9056, rating: 4.3 },
+            { place_id: 'p1', name: '광장시장', category: 'food', address: '종로구 창경궁로 88', district: '종로구', lat: 37.5703, lng: 126.9990, rating: 4.5, image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360' },
+            { place_id: 'p2', name: '망원시장', category: 'food', address: '마포구 포은로8길', district: '마포구', lat: 37.5560, lng: 126.9056, rating: 4.3, image_url: 'https://picsum.photos/seed/seoul-mangwon-market/640/360' },
           ],
           total_count: 2,
         });
@@ -307,9 +307,9 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
           type: 'course',
           title: '종로 반나절 코스',
           stops: [
-            { order: 1, place_id: 'p1', name: '광장시장', lat: 37.5703, lng: 126.9990, duration_minutes: 60, memo: '빈대떡' },
-            { order: 2, place_id: 'p3', name: '경복궁', lat: 37.5796, lng: 126.9770, duration_minutes: 90, memo: '한복 체험' },
-            { order: 3, place_id: 'p4', name: '북촌한옥마을', lat: 37.5826, lng: 126.9836, duration_minutes: 60, memo: '산책' },
+            { order: 1, place_id: 'p1', name: '광장시장', lat: 37.5703, lng: 126.9990, duration_minutes: 60, memo: '빈대떡', image_url: 'https://picsum.photos/seed/seoul-gwangjang-market/640/360' },
+            { order: 2, place_id: 'p3', name: '경복궁', lat: 37.5796, lng: 126.9770, duration_minutes: 90, memo: '한복 체험', image_url: 'https://picsum.photos/seed/seoul-gyeongbokgung-palace/640/360' },
+            { order: 3, place_id: 'p4', name: '북촌한옥마을', lat: 37.5826, lng: 126.9836, duration_minutes: 60, memo: '산책', image_url: 'https://picsum.photos/seed/seoul-bukchon-hanok/640/360' },
           ],
           total_duration_minutes: 210,
         });
@@ -337,9 +337,9 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
         send('events', {
           type: 'events',
           items: [
-            { event_id: 'e1', title: '서울빛초롱축제', district: '중구', place_name: '청계천', start_date: '2026-05-10', end_date: '2026-05-25', category: 'festival' },
-            { event_id: 'e2', title: '한강 야시장', district: '용산구', place_name: '여의도 한강공원', start_date: '2026-05-04', end_date: '2026-05-04', category: 'market' },
-            { event_id: 'e3', title: '서울국제도서전', district: '강남구', place_name: 'COEX', start_date: '2026-05-15', end_date: '2026-05-19', category: 'fair' },
+            { event_id: 'e1', title: '서울빛초롱축제', district: '중구', place_name: '청계천', start_date: '2026-05-10', end_date: '2026-05-25', category: 'festival', image_url: 'https://picsum.photos/seed/seoul-lantern-festival/320/240' },
+            { event_id: 'e2', title: '한강 야시장', district: '용산구', place_name: '여의도 한강공원', start_date: '2026-05-04', end_date: '2026-05-04', category: 'market', image_url: 'https://picsum.photos/seed/seoul-han-market/320/240' },
+            { event_id: 'e3', title: '서울국제도서전', district: '강남구', place_name: 'COEX', start_date: '2026-05-15', end_date: '2026-05-19', category: 'fair', image_url: 'https://picsum.photos/seed/seoul-bookfair/320/240' },
           ],
           total_count: 3,
         });
