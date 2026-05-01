@@ -9,7 +9,7 @@
     "hours": "09:00 - 18:00 (화요일 휴무)",
     "rating": 4.8,
     "summary": "조선 왕조의 정궁으로, 근정전과 경회루 등 웅장한 건축미를 감상할 수 있는 서울 대표 관광지입니다.",
-    "image": "/places/gyeongbokgung.jpg",
+    "image": "https://picsum.photos/seed/seoul-gyeongbokgung-palace/640/360",
     "congestion": {
       "level": "high",
       "updatedAt": "2026-04-14T10:00:00Z"
@@ -25,7 +25,7 @@
     "hours": "상시 개방",
     "rating": 4.5,
     "summary": "600년 역사의 한옥이 밀집한 마을로, 전통 건축과 현대 갤러리가 공존하는 문화 명소입니다.",
-    "image": "/places/bukchon.jpg",
+    "image": "https://picsum.photos/seed/seoul-bukchon-hanok/640/360",
     "congestion": {
       "level": "high",
       "updatedAt": "2026-04-14T10:00:00Z"
@@ -41,7 +41,7 @@
     "hours": "09:00 - 22:00",
     "rating": 4.6,
     "summary": "100년 역사의 전통시장. 빈대떡, 마약김밥, 육회 등 한국 길거리 음식의 성지입니다.",
-    "image": "/places/gwangjang.jpg",
+    "image": "https://picsum.photos/seed/seoul-gwangjang-market/640/360",
     "congestion": {
       "level": "medium",
       "updatedAt": "2026-04-14T10:00:00Z"
@@ -57,7 +57,7 @@
     "hours": "10:00 - 22:00",
     "rating": 4.3,
     "summary": "K-뷰티, 패션, 액세서리 브랜드가 밀집한 서울 최대 쇼핑 거리입니다.",
-    "image": "/places/myeongdong.jpg",
+    "image": "https://picsum.photos/seed/seoul-myeongdong-street/640/360",
     "congestion": {
       "level": "medium",
       "updatedAt": "2026-04-14T10:00:00Z"
@@ -73,7 +73,7 @@
     "hours": "10:00 - 23:00",
     "rating": 4.7,
     "summary": "서울의 상징적인 타워로, 360도 파노라마 야경을 감상할 수 있는 전망대입니다.",
-    "image": "/places/namsan.jpg",
+    "image": "https://picsum.photos/seed/seoul-namsan-tower/640/360",
     "congestion": {
       "level": "low",
       "updatedAt": "2026-04-14T10:00:00Z"
@@ -89,7 +89,7 @@
     "hours": "10:30 - 20:30",
     "rating": 4.4,
     "summary": "전통 공예, 아트샵, 갤러리가 모인 나선형 복합문화공간입니다.",
-    "image": "/places/insadong.jpg",
+    "image": "https://picsum.photos/seed/seoul-insadong-alley/640/360",
     "congestion": {
       "level": "low",
       "updatedAt": "2026-04-14T10:00:00Z"
@@ -105,7 +105,7 @@
     "hours": "11:00 - 21:00",
     "rating": 4.5,
     "summary": "을지로 골목의 오래된 맛집들을 탐방하는 힙레트로 코스입니다.",
-    "image": "/places/euljiro.jpg",
+    "image": "https://picsum.photos/seed/seoul-euljiro-night/640/360",
     "congestion": {
       "level": "high",
       "updatedAt": "2026-04-14T10:00:00Z"
@@ -121,7 +121,7 @@
     "hours": "11:00 - 22:00",
     "rating": 4.6,
     "summary": "리노베이션 공장 카페, 팝업스토어, 디자이너 브랜드가 밀집한 힙 플레이스입니다.",
-    "image": "/places/seongsu.jpg",
+    "image": "https://picsum.photos/seed/seoul-seongsu-cafe/640/360",
     "congestion": {
       "level": "medium",
       "updatedAt": "2026-04-14T10:00:00Z"
