@@ -80,6 +80,10 @@ export interface Message {
   places?: Place[];
   itinerary?: Itinerary;
   booking?: Booking;
+  // SSE 통합용 (apiChatStore에서 어댑터로 채움). 레거시 mock 메시지에선 undefined.
+  threadId?: string;
+  messageId?: string | number;
+  blocks?: import('./api').Block[];
 }
 
 // === Agent Response ===

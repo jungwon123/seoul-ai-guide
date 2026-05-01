@@ -7,6 +7,9 @@ import AgentMark from '../agent/AgentMark';
 import PlaceCarousel from './PlaceCarousel';
 import ItineraryCard from './ItineraryCard';
 import BookingCard from './BookingCard';
+import FeedbackButton from './FeedbackButton';
+import ShareButton from './ShareButton';
+import { BlockRenderer } from './blocks';
 
 export default memo(function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
@@ -77,6 +80,21 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
 
             {message.itinerary && <ItineraryCard itinerary={message.itinerary} />}
             {message.booking && <BookingCard booking={message.booking} />}
+
+            {message.blocks && message.blocks.length > 0 && (
+              <div className="space-y-2">
+                {message.blocks.map((block, i) => (
+                  <BlockRenderer key={`${block.type}-${i}`} block={block} />
+                ))}
+              </div>
+            )}
+
+            {message.threadId && message.messageId != null && String(message.messageId).length > 0 && (
+              <div className="flex items-center gap-1 pt-1">
+                <FeedbackButton threadId={message.threadId} messageId={message.messageId} />
+                <ShareButton threadId={message.threadId} />
+              </div>
+            )}
           </div>
         </div>
       )}
