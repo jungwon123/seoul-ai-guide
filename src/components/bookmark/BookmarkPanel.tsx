@@ -134,7 +134,7 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
           <article
             key={place.id}
             className="group flex items-center gap-3 p-2 bg-bg-surface border border-border rounded-2xl transition-all duration-200 hover:border-border-strong hover:shadow-sm cursor-pointer"
-            onClick={() => { selectPlace(place); onClose?.(); }}
+            onClick={() => { selectPlace(place); }}
           >
             <div
               className="relative w-[68px] h-[68px] rounded-xl bg-bg-subtle shrink-0 overflow-hidden flex items-center justify-center"
