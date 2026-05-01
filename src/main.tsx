@@ -7,6 +7,18 @@ import { useAuthStore } from '@/stores/authStore';
 import RequireAuth from '@/components/auth/RequireAuth';
 import Toaster from '@/components/ui/Toaster';
 
+// MSW — dev 환경에서 BE 미배포 상태 검수용.
+// VITE_DISABLE_MSW=true 로 끌 수 있음 (실서버 붙일 때).
+async function startMockServiceWorker(): Promise<void> {
+  if (!import.meta.env.DEV) return;
+  if (import.meta.env.VITE_DISABLE_MSW === 'true') return;
+  const { worker } = await import('@/mocks/msw/browser');
+  await worker.start({
+    onUnhandledRequest: 'bypass',
+    serviceWorker: { url: '/mockServiceWorker.js' },
+  });
+}
+
 const LoginPage = lazy(() => import('@/components/auth/LoginPage'));
 const SignupPage = lazy(() => import('@/components/auth/SignupPage'));
 const SettingsPage = lazy(() => import('@/components/settings/SettingsPage'));
@@ -50,8 +62,10 @@ function Bootstrap() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Bootstrap />
-  </StrictMode>,
-);
+startMockServiceWorker().finally(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <Bootstrap />
+    </StrictMode>,
+  );
+});
