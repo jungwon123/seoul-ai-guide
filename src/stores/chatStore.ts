@@ -137,6 +137,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     let acc = '';
     let places: Place[] | undefined;
     let itinerary: Itinerary | undefined;
+    const itineraries: Itinerary[] = [];
     const otherBlocks: Block[] = [];
 
     await new Promise<void>((resolve) => {
@@ -160,7 +161,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         },
         course: (data) => {
           if (data.type === 'course') {
-            itinerary = courseBlockToItinerary(data);
+            const it = courseBlockToItinerary(data);
+            itineraries.push(it);
+            // 단수 필드는 첫 번째 코스로 유지 (기존 코드 호환).
+            if (!itinerary) itinerary = it;
           }
         },
         // 그 외 블록은 그대로 message.blocks에 보존 → BlockRenderer가 렌더.
@@ -200,6 +204,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       timestamp: new Date().toISOString(),
       places,
       itinerary,
+      itineraries: itineraries.length > 1 ? itineraries : undefined,
       blocks: otherBlocks.length > 0 ? otherBlocks : undefined,
       threadId: sessionId,
       messageId: agentId,

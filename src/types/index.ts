@@ -81,6 +81,7 @@ export interface Message {
   timestamp: string;
   places?: Place[];
   itinerary?: Itinerary;
+  itineraries?: Itinerary[]; // 복수 코스 추천. 있으면 itinerary 대신 이걸 렌더.
   booking?: Booking;
   // SSE 통합용 (apiChatStore에서 어댑터로 채움). 레거시 mock 메시지에선 undefined.
   threadId?: string;

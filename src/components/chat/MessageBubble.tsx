@@ -59,7 +59,15 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
               <PlaceCarousel places={message.places} />
             )}
 
-            {message.itinerary && <ItineraryCard itinerary={message.itinerary} />}
+            {message.itineraries && message.itineraries.length > 1 ? (
+              <div className="space-y-3">
+                {message.itineraries.map((it) => (
+                  <ItineraryCard key={it.id} itinerary={it} />
+                ))}
+              </div>
+            ) : (
+              message.itinerary && <ItineraryCard itinerary={message.itinerary} />
+            )}
             {message.booking && <BookingCard booking={message.booking} />}
 
             {message.blocks && message.blocks.length > 0 && (
