@@ -86,8 +86,17 @@ interface BookmarkStore {
   isMessageBookmarked: (messageId: string) => boolean;
 }
 
+// 초기 ID 중 places.json에도 없고 snapshots에도 없으면 stale → 제거.
+// (이전 버전에서 SSE 장소 ID만 저장된 경우 해당)
+function purgeStaleIds(ids: string[], snapshots: Record<string, Place>): string[] {
+  return ids.filter((id) => snapshots[id] || allPlaces.some((p) => p.id === id));
+}
+
 export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
-  bookmarkedIds: typeof window !== 'undefined' ? loadPlaceIds() : DEFAULT_PLACE_IDS,
+  bookmarkedIds:
+    typeof window !== 'undefined'
+      ? purgeStaleIds(loadPlaceIds(), loadPlaceSnapshots())
+      : DEFAULT_PLACE_IDS,
   placeSnapshots: typeof window !== 'undefined' ? loadPlaceSnapshots() : {},
   messageItems: typeof window !== 'undefined' ? loadMessageItems() : [],
 
