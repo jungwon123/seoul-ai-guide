@@ -5,7 +5,7 @@
 
 ---
 
-## BE 구현 현황 (agt-backend `dev` 기준, 2026-05-01 sync)
+## BE 구현 현황 (agt-backend `dev` 기준, 2026-05-01 sync · 2회차 업데이트)
 
 | 엔드포인트 | 상태 | 비고 |
 |---|---|---|
@@ -26,11 +26,12 @@
 | `DELETE /api/v1/chats/{id}/share` | ✅ | revoke |
 | `GET /shared/{token}` | ✅ | 인증 불필요 |
 | `GET /api/v1/chat/stream` | 🟡 | 라우트 존재, 본체는 stub (현재 `done`만 즉시 전송, JWT 미검증, LangGraph 미연결) |
-| `POST /api/v1/users/me/bookmarks` | ❌ | 북마크 모듈 BE에 없음 |
-| `GET /api/v1/users/me/bookmarks` | ❌ | 동일 |
-| `DELETE /api/v1/users/me/bookmarks/{id}` | ❌ | 동일 |
+| `POST /api/v1/users/me/bookmarks` | ✅ | BIGSERIAL bookmark_id, message_id int |
+| `GET /api/v1/users/me/bookmarks` | ✅ | filter: thread_id/pin_type, cursor 페이지네이션 |
+| `DELETE /api/v1/users/me/bookmarks/{id}` | ✅ | 소프트 삭제 (is_deleted=true) |
 | `POST /api/v1/feedback` | ❌ | feedback 모듈 BE에 없음 |
-| (그 외 SSE intent별 응답 패턴들) | 🟡 | sse.py가 stub 단계라 모든 intent가 즉시 done |
+| SSE intent: DETAIL_INQUIRY | ✅ | 단건 장소 상세 조회 (text_stream + place 단일) |
+| (그 외 SSE intent별 응답 패턴들) | 🟡 | sse.py가 stub 단계라 BE 직접 호출 시 즉시 done |
 
 **범례**: ✅ 사용 가능 / 🟡 라우트만 / ❌ BE 자체 없음
 

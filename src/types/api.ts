@@ -23,10 +23,11 @@ export type TokenResponse = {
 export type PinType = 'place' | 'event' | 'course' | 'analysis' | 'general';
 
 export type BookmarkItem = {
-  bookmark_id: string;
+  // BE는 BIGSERIAL int로 직렬화. 직렬화 가이드는 string이지만 양쪽 수용.
+  bookmark_id: string | number;
   thread_id: string;
-  thread_title: string | null;
-  message_id: string;
+  thread_title?: string | null; // BE 응답에 미포함, 클라이언트가 채울 수 있음
+  message_id: string | number;
   pin_type: PinType;
   preview_text: string | null;
   created_at: string;
@@ -45,7 +46,9 @@ export type BookmarkCreateRequest = {
 };
 
 export type BookmarkCreateResponse = {
-  bookmark_id: string;
+  bookmark_id: string | number;
+  thread_id?: string;
+  message_id?: string | number;
   pin_type: PinType;
   preview_text: string | null;
   created_at: string;

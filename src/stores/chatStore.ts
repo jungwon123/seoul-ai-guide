@@ -1,25 +1,30 @@
 import { create } from 'zustand';
 import type { AgentType, Message, Place, Itinerary, PlaceCategory, TransportMode } from '@/types';
-import type { Block, PlacesBlock, CourseBlock } from '@/types/api';
+import type { Block, PlaceBlockData, PlacesBlock, CourseBlock } from '@/types/api';
 import { getWelcomeMessage } from '@/mocks/agent-responses';
 import { openChatStream } from '@/lib/sse';
 import { useMapStore } from './mapStore';
 
 // SSE 블록 → 레거시 Message 타입 어댑터.
-function placesBlockToPlaces(block: PlacesBlock): Place[] {
-  const allowedCats: PlaceCategory[] = ['tourism', 'shopping', 'culture', 'food'];
-  return block.items.map((it) => ({
+const ALLOWED_CATS: PlaceCategory[] = ['tourism', 'shopping', 'culture', 'food'];
+
+function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
+  return {
     id: it.place_id,
     name: it.name,
-    category: (allowedCats.includes(it.category as PlaceCategory) ? it.category : 'tourism') as PlaceCategory,
+    category: (ALLOWED_CATS.includes(it.category as PlaceCategory) ? it.category : 'tourism') as PlaceCategory,
     address: it.address ?? '',
     lat: it.lat ?? 0,
     lng: it.lng ?? 0,
     hours: '',
     rating: it.rating ?? 0,
     summary: it.summary ?? '',
-    image: (it as { image_url?: string }).image_url,
-  }));
+    image: it.image_url,
+  };
+}
+
+function placesBlockToPlaces(block: PlacesBlock): Place[] {
+  return block.items.map((it) => singlePlaceBlockToPlace({ ...it, type: 'place' }));
 }
 
 function courseBlockToItinerary(block: CourseBlock): Itinerary {
@@ -137,6 +142,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         places: (data) => {
           if (data.type === 'places') {
             places = placesBlockToPlaces(data);
+          }
+        },
+        place: (data) => {
+          // DETAIL_INQUIRY 단건 응답 — places 배열에 1건만 채움.
+          if (data.type === 'place') {
+            places = [singlePlaceBlockToPlace(data)];
           }
         },
         course: (data) => {
