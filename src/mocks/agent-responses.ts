@@ -1,4 +1,5 @@
 import type { Message, Place, Itinerary, Booking } from '@/types';
+import type { Block } from '@/types/api';
 import placesData from './places.json';
 import itineraryData from './itinerary.json';
 
@@ -39,7 +40,14 @@ function matchPlaces(query: string): Place[] {
 export async function* streamResponse(
   text: string,
   query: string,
-): AsyncGenerator<{ text: string; done: boolean; places?: Place[]; itinerary?: Itinerary; booking?: Booking }> {
+): AsyncGenerator<{
+  text: string;
+  done: boolean;
+  places?: Place[];
+  itinerary?: Itinerary;
+  booking?: Booking;
+  blocks?: Block[];
+}> {
   // Simulate initial latency
   await new Promise((r) => setTimeout(r, 300 + Math.random() * 400));
 
@@ -48,8 +56,62 @@ export async function* streamResponse(
   let resultPlaces: Place[] | undefined;
   let resultItinerary: Itinerary | undefined;
   let resultBooking: Booking | undefined;
+  let resultBlocks: Block[] | undefined;
 
-  if (lower.includes('일정') || lower.includes('코스') || lower.includes('동선') || lower.includes('계획')) {
+  if (lower.includes('비교') || lower.includes('분석') || lower.includes('차트')) {
+    fullText = '두 곳을 6개 지표로 비교해봤어요. 만족도와 분위기는 비슷하지만 가성비는 차이가 큽니다.';
+    resultBlocks = [
+      {
+        type: 'chart',
+        chart_type: 'radar',
+        datasets: [
+          { label: '광장시장', score_satisfaction: 4.6, accessibility: 4.2, cleanliness: 3.5, value: 4.8, atmosphere: 4.7, expertise: 4.3 },
+          { label: '망원시장', score_satisfaction: 4.4, accessibility: 4.0, cleanliness: 3.8, value: 4.5, atmosphere: 4.5, expertise: 4.0 },
+        ],
+      },
+      {
+        type: 'analysis_sources',
+        review_count: 1240,
+        blog_count: 87,
+        official_count: 5,
+        sources: [
+          { source_type: 'review', snippet: '전 정말 맛있고 사장님 친절해요', url: 'https://example.com/r/1' },
+          { source_type: 'blog', snippet: '꼭 가봐야 할 서울 시장', url: 'https://example.com/b/2' },
+        ],
+      },
+    ];
+  } else if (lower.includes('행사') || lower.includes('축제') || lower.includes('이벤트')) {
+    fullText = '이번 달 서울에서 열리는 주요 행사 3건을 찾았어요.';
+    resultBlocks = [
+      {
+        type: 'events',
+        items: [
+          { event_id: 'ev-1', title: '서울빛초롱축제', district: '중구', place_name: '청계천', start_date: '2026-05-10', end_date: '2026-05-25', category: 'festival' },
+          { event_id: 'ev-2', title: '한강 야시장', district: '용산구', place_name: '여의도 한강공원', start_date: '2026-05-04', end_date: '2026-05-04', category: 'market' },
+          { event_id: 'ev-3', title: '서울국제도서전', district: '강남구', place_name: 'COEX', start_date: '2026-05-15', end_date: '2026-05-19', category: 'fair' },
+        ],
+        total_count: 3,
+      },
+      {
+        type: 'references',
+        items: [
+          { source_type: 'official', snippet: '문화체육관광부 후원 공식 행사', url: 'https://example.com/official' },
+        ],
+      },
+    ];
+  } else if (lower.includes('캘린더') || lower.includes('일정 등록') || lower.includes('등록해')) {
+    fullText = 'Google Calendar에 일정을 등록했어요.';
+    resultBlocks = [
+      {
+        type: 'calendar',
+        title: '광장시장 방문',
+        start_time: '2026-05-10T14:00:00+09:00',
+        end_time: '2026-05-10T16:00:00+09:00',
+        location: '서울특별시 종로구 창경궁로 88',
+        calendar_link: 'https://calendar.google.com',
+      },
+    ];
+  } else if (lower.includes('일정') || lower.includes('코스') || lower.includes('동선') || lower.includes('계획')) {
     const itin = itineraries[0];
     const stopNames = itin.stops.map((s) => s.placeName).join(' → ');
     fullText = `반나절 코스를 만들었어요! ${stopNames} 순서로 방문하시면 됩니다. 이동 시간까지 고려한 최적 동선이에요.`;
@@ -90,6 +152,7 @@ export async function* streamResponse(
     places: resultPlaces,
     itinerary: resultItinerary,
     booking: resultBooking,
+    blocks: resultBlocks,
   };
 }
 

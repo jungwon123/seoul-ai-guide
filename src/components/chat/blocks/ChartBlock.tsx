@@ -35,7 +35,7 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
               .map((a) => `${cx + Math.cos(a) * radius * r},${cy + Math.sin(a) * radius * r}`)
               .join(' ')}
             fill="none"
-            stroke="#D4CCB8"
+            stroke="var(--border)"
             strokeWidth={1}
           />
         ))}
@@ -46,8 +46,8 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
           const ly = cy + Math.sin(a) * (radius + 18);
           return (
             <g key={m.key}>
-              <line x1={cx} y1={cy} x2={cx + Math.cos(a) * radius} y2={cy + Math.sin(a) * radius} stroke="#D4CCB8" />
-              <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize={11} fill="#3A3A3A">
+              <line x1={cx} y1={cy} x2={cx + Math.cos(a) * radius} y2={cy + Math.sin(a) * radius} stroke="var(--border)" />
+              <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize={11} fill="var(--text-primary)">
                 {m.label}
               </text>
             </g>

@@ -1,6 +1,8 @@
 import { memo } from 'react';
-import { X, Plus, MessageCircle, Trash2 } from 'lucide-react';
+import { X, Plus, MessageCircle, Trash2, Settings, LogOut, User } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useChatStore, type ChatSession } from '@/stores/chatStore';
+import { useAuthStore } from '@/stores/authStore';
 import { AGENT_COLORS, cn } from '@/lib/utils';
 
 interface ChatSidebarProps {
@@ -24,11 +26,14 @@ function formatDate(dateStr: string): string {
 }
 
 export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
+  const navigate = useNavigate();
   const sessions = useChatStore((s) => s.sessions);
   const sessionId = useChatStore((s) => s.sessionId);
   const newChat = useChatStore((s) => s.newChat);
   const loadSession = useChatStore((s) => s.loadSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   const handleNewChat = () => {
     newChat();
@@ -39,6 +44,15 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
     loadSession(id);
     onClose();
   };
+
+  const handleLogout = () => {
+    logout();
+    onClose();
+    navigate('/login', { replace: true });
+  };
+
+  const displayName = user?.nickname?.trim() || user?.email || '게스트';
+  const subText = user?.nickname && user?.email ? user.email : null;
 
   return (
     <>
@@ -73,7 +87,7 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 min-h-0">
           {sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <MessageCircle size={28} strokeWidth={1} className="text-text-muted mb-3" />
@@ -121,6 +135,42 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
               );
             })
           )}
+        </div>
+
+        {/* 하단: 사용자 정보 + 설정 + 로그아웃 */}
+        <div className="border-t border-border px-3 py-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 px-2 py-1.5">
+            <div className="w-7 h-7 rounded-lg bg-bg-subtle border border-border flex items-center justify-center shrink-0">
+              <User size={14} strokeWidth={1.8} className="text-text-secondary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-text-primary truncate leading-tight">
+                {displayName}
+              </p>
+              {subText && (
+                <p className="text-[11px] text-text-muted truncate mt-0.5">{subText}</p>
+              )}
+            </div>
+            <Link
+              to="/settings"
+              onClick={onClose}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
+              aria-label="설정"
+              title="설정"
+            >
+              <Settings size={14} strokeWidth={1.8} />
+            </Link>
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
+                aria-label="로그아웃"
+                title="로그아웃"
+              >
+                <LogOut size={14} strokeWidth={1.8} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </>

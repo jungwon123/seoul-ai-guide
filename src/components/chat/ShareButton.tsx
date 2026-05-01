@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Share2, Check } from 'lucide-react';
 import { chatsApi } from '@/lib/api';
+import { toast } from '@/stores/toastStore';
 
 type Props = {
   threadId: string;
@@ -31,7 +32,6 @@ export default function ShareButton({ threadId }: Props) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   const onClick = async () => {
     if (busy) return;
@@ -43,20 +43,21 @@ export default function ShareButton({ threadId }: Props) {
         ? res.share_url
         : `${window.location.origin}${res.share_url}`;
       const ok = await copyOrPrompt(url);
-      setShareUrl(url);
       if (ok) {
         setCopied(true);
+        toast.success('공유 링크를 복사했어요');
         setTimeout(() => setCopied(false), 2200);
+      } else {
+        toast.info('클립보드 권한이 없어 prompt로 표시했어요');
       }
     } catch (e) {
-      setError((e as Error).message || '공유 실패');
+      const msg = (e as Error).message || '공유 실패';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
   };
-
-  // shareUrl 노출 처리는 부모에서 별도 — 여기선 가능한 범위 내 silent ok.
-  void shareUrl;
 
   return (
     <button
