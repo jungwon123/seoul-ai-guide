@@ -27,6 +27,23 @@ export default defineConfig({
     ],
   },
   server: {
+    // BE 연동 — same-origin proxy로 CORS 우회. VITE_API_BASE를 비워두면
+    // FE는 localhost:포트/api/v1/... 를 호출하고, vite가 dev BE로 전달한다.
+    // VITE_DEV_BE 환경변수로 타겟 변경 가능. 기본은 GCE localbiz-api.
+    proxy: {
+      '/api': {
+        target: process.env.VITE_DEV_BE || 'http://34.22.91.75:8000',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: process.env.VITE_DEV_BE || 'http://34.22.91.75:8000',
+        changeOrigin: true,
+      },
+      '/shared': {
+        target: process.env.VITE_DEV_BE || 'http://34.22.91.75:8000',
+        changeOrigin: true,
+      },
+    },
     warmup: {
       clientFiles: [
         './src/App.tsx',
