@@ -5,9 +5,9 @@
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "http://34.22.91.75:8000/api/:path*" },
-    { "source": "/health", "destination": "http://34.22.91.75:8000/health" },
-    { "source": "/shared/:path*", "destination": "http://34.22.91.75:8000/shared/:path*" },
+    { "source": "/api/:path*", "destination": "https://34.22.91.75.nip.io/api/:path*" },
+    { "source": "/health", "destination": "https://34.22.91.75.nip.io/health" },
+    { "source": "/shared/:path*", "destination": "https://34.22.91.75.nip.io/shared/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
