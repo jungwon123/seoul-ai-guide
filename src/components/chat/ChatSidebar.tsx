@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { X, Plus, MessageCircle, Trash2, Settings, LogOut, User } from 'lucide-react';
+import { X, Plus, MessageCircle, Trash2, Settings, LogOut, User, RefreshCw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useChatStore, type ChatSession } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -32,6 +32,9 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
   const newChat = useChatStore((s) => s.newChat);
   const loadSession = useChatStore((s) => s.loadSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
+  const chatsLoading = useChatStore((s) => s.chatsLoading);
+  const chatsError = useChatStore((s) => s.chatsError);
+  const loadFromServer = useChatStore((s) => s.loadFromServer);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
@@ -89,10 +92,36 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
 
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 min-h-0">
           {sessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <MessageCircle size={28} strokeWidth={1} className="text-text-muted mb-3" />
-              <p className="text-[13px] text-text-muted">아직 대화 내역이 없어요</p>
-            </div>
+            chatsLoading ? (
+              // Loading — sessions가 비어있고 BE에서 받아오는 중
+              <div className="py-3 space-y-1.5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-start gap-2.5 px-3 py-2.5">
+                    <div className="w-[6px] h-[6px] rounded-full mt-[7px] shrink-0 bg-bg-subtle animate-pulse" />
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="h-3 rounded bg-bg-subtle animate-pulse" style={{ width: `${70 - i * 10}%` }} />
+                      <div className="h-2.5 rounded bg-bg-subtle/70 animate-pulse w-1/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : chatsError ? (
+              // Error — BE 호출 실패 시 사용자에게 사유 + 재시도 노출
+              <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                <p className="text-[13px] text-text-secondary mb-3">{chatsError}</p>
+                <button
+                  onClick={() => loadFromServer()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
+                >
+                  <RefreshCw size={12} /> 다시 시도
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <MessageCircle size={28} strokeWidth={1} className="text-text-muted mb-3" />
+                <p className="text-[13px] text-text-muted">아직 대화 내역이 없어요</p>
+              </div>
+            )
           ) : (
             sessions.map((session: ChatSession) => {
               const isActive = session.id === sessionId;

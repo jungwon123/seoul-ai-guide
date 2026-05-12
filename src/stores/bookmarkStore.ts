@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Place, MessageBookmarkItem, MessageSnapshot } from '@/types';
 import type { BookmarkItem, PinType } from '@/types/api';
 import { bookmarksApi } from '@/lib/api';
+import { friendlyApiError } from '@/lib/auth-errors';
 import placesData from '@/mocks/places.json';
 
 const allPlaces = placesData as Place[];
@@ -109,10 +110,13 @@ interface BookmarkStore {
 
   // Message bookmarks (BE 동기화)
   messageItems: MessageBookmarkItem[];
+  // loadFromServer 4상태 UI용 — messageItems가 비어있을 때만 의미.
+  messageBookmarksLoading: boolean;
+  messageBookmarksError: string | null;
   toggleMessage: (input: ToggleMessageInput) => Promise<void>;
   removeMessage: (messageId: string) => Promise<void>;
   isMessageBookmarked: (messageId: string) => boolean;
-  // BE에서 메시지 북마크 목록 동기화. 비로그인/실패 시 silent.
+  // BE에서 메시지 북마크 목록 동기화. 비로그인/실패 시 messageBookmarksError에 메시지.
   loadFromServer: () => Promise<void>;
 }
 
@@ -129,6 +133,8 @@ export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
       : DEFAULT_PLACE_IDS,
   placeSnapshots: typeof window !== 'undefined' ? loadPlaceSnapshots() : {},
   messageItems: typeof window !== 'undefined' ? loadMessageItems() : [],
+  messageBookmarksLoading: false,
+  messageBookmarksError: null,
 
   toggle: (input) => {
     const place = typeof input === 'string' ? null : input;
@@ -243,13 +249,18 @@ export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
     get().messageItems.some((m) => m.messageId === messageId),
 
   loadFromServer: async () => {
+    set({ messageBookmarksLoading: true, messageBookmarksError: null });
     try {
       const res = await bookmarksApi.list({ limit: 100 });
       const items = res.items.map(bookmarkItemToMessage);
       saveMessageItems(items);
-      set({ messageItems: items });
-    } catch {
-      // 비로그인 / 네트워크 실패 — 로컬 유지.
+      set({ messageItems: items, messageBookmarksLoading: false });
+    } catch (e) {
+      // 비로그인 / 네트워크 실패 — 로컬 유지하되 오류 메시지는 노출.
+      set({
+        messageBookmarksLoading: false,
+        messageBookmarksError: friendlyApiError(e, '북마크를 불러올 수 없습니다'),
+      });
     }
   },
 }));
