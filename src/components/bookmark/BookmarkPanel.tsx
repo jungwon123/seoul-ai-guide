@@ -193,11 +193,43 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
 
 function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; onClose?: () => void }) {
   const removeMessage = useBookmarkStore((s) => s.removeMessage);
+  const loading = useBookmarkStore((s) => s.messageBookmarksLoading);
+  const error = useBookmarkStore((s) => s.messageBookmarksError);
+  const loadFromServer = useBookmarkStore((s) => s.loadFromServer);
   const loadSession = useChatStore((s) => s.loadSession);
 
   const grouped = useMemo(() => items, [items]);
 
   if (grouped.length === 0) {
+    if (loading) {
+      return (
+        <div className="px-4 pt-2 space-y-2.5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="bg-bg-surface border border-border rounded-2xl p-3.5 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-[18px] h-[18px] rounded-md bg-bg-subtle animate-pulse" />
+                <div className="h-3 w-16 rounded bg-bg-subtle animate-pulse" />
+              </div>
+              <div className="h-3 rounded bg-bg-subtle animate-pulse" style={{ width: `${80 - i * 10}%` }} />
+              <div className="h-3 rounded bg-bg-subtle/70 animate-pulse w-2/3" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+          <p className="text-[13px] text-text-secondary mb-3">{error}</p>
+          <button
+            onClick={() => loadFromServer()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
+          >
+            다시 시도
+          </button>
+        </div>
+      );
+    }
     return (
       <EmptyState
         lottieSrc="/animations/empty-message.json"

@@ -4,6 +4,7 @@ import type { Block, PlaceBlockData, PlacesBlock, CourseBlock, MessageItem } fro
 import { getWelcomeMessage } from '@/mocks/agent-responses';
 import { openChatStream } from '@/lib/sse';
 import { chatsApi } from '@/lib/api';
+import { friendlyApiError } from '@/lib/auth-errors';
 import { useMapStore } from './mapStore';
 
 // SSE 블록 → 레거시 Message 타입 어댑터.
@@ -142,6 +143,9 @@ interface ChatStore {
 
   // History
   sessions: ChatSession[];
+  // loadFromServer의 4상태 UI용 — sessions가 비어있을 때만 의미.
+  chatsLoading: boolean;
+  chatsError: string | null;
 
   sendMessage: (text: string) => Promise<void>;
   setAgent: (agent: AgentType) => void;
@@ -151,7 +155,7 @@ interface ChatStore {
   loadSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   renameSession: (sessionId: string, title: string) => Promise<void>;
-  // BE에서 thread 목록 동기화. 비로그인/실패 시 silent.
+  // BE에서 thread 목록 동기화. 비로그인/실패 시 silent하지만 chatsError를 채움.
   loadFromServer: () => Promise<void>;
 }
 
@@ -169,6 +173,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   selectedAgent: 'claude',
   sessionId: `session-${Date.now()}`,
   sessions: [],
+  chatsLoading: false,
+  chatsError: null,
 
   initWelcome: () => {
     const { selectedAgent, messages } = get();
@@ -448,6 +454,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   loadFromServer: async () => {
+    set({ chatsLoading: true, chatsError: null });
     try {
       const res = await chatsApi.list({ limit: 50 });
       const selectedAgent = get().selectedAgent;
@@ -462,9 +469,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       // 로컬-only 세션(아직 BE에 메시지 전송 안 한 새 대화)은 보존.
       const serverIds = new Set(serverSessions.map((s) => s.id));
       const localOnly = get().sessions.filter((s) => !serverIds.has(s.id));
-      set({ sessions: [...serverSessions, ...localOnly] });
-    } catch {
-      // 비로그인 또는 네트워크 실패 — silent.
+      set({ sessions: [...serverSessions, ...localOnly], chatsLoading: false });
+    } catch (e) {
+      set({
+        chatsLoading: false,
+        chatsError: friendlyApiError(e, '대화 목록을 불러올 수 없습니다'),
+      });
     }
   },
 
