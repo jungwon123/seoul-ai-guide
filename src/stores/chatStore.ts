@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import type { AgentType, Message, Place, Itinerary, PlaceCategory, TransportMode } from '@/types';
-import type { Block, PlaceBlockData, PlacesBlock, CourseBlock } from '@/types/api';
+import type { Block, PlaceBlockData, PlacesBlock, CourseBlock, MessageItem } from '@/types/api';
 import { getWelcomeMessage } from '@/mocks/agent-responses';
 import { openChatStream } from '@/lib/sse';
+import { chatsApi } from '@/lib/api';
 import { useMapStore } from './mapStore';
 
 // SSE 블록 → 레거시 Message 타입 어댑터.
@@ -71,6 +72,57 @@ function courseBlockToItinerary(block: CourseBlock): Itinerary {
   };
 }
 
+// BE의 MessageItem(blocks[]) → 레거시 Message로 변환.
+// place/places → places, course → itinerary/itineraries, text/text_stream → text,
+// intent/status/done/error 같은 제어 프레임은 무시(히스토리에는 의미 없음).
+function messageItemToMessage(item: MessageItem, threadId: string): Message {
+  const blocks: Block[] = item.blocks ?? [];
+  let text = '';
+  let places: Place[] | undefined;
+  let itinerary: Itinerary | undefined;
+  const itineraries: Itinerary[] = [];
+  const otherBlocks: Block[] = [];
+
+  for (const b of blocks) {
+    if (b.type === 'text') {
+      text += b.content;
+    } else if (b.type === 'text_stream') {
+      text += b.delta;
+    } else if (b.type === 'place') {
+      places = [singlePlaceBlockToPlace(b)];
+    } else if (b.type === 'places') {
+      places = placesBlockToPlaces(b);
+    } else if (b.type === 'course') {
+      const it = courseBlockToItinerary(b);
+      itineraries.push(it);
+      if (!itinerary) itinerary = it;
+    } else if (
+      b.type === 'intent' ||
+      b.type === 'status' ||
+      b.type === 'done' ||
+      b.type === 'done_partial' ||
+      b.type === 'error'
+    ) {
+      // 제어 프레임은 메시지 본문에 보존하지 않음.
+    } else {
+      otherBlocks.push(b);
+    }
+  }
+
+  return {
+    id: String(item.message_id),
+    role: item.role === 'assistant' ? 'agent' : 'user',
+    text,
+    timestamp: item.created_at,
+    places,
+    itinerary,
+    itineraries: itineraries.length > 1 ? itineraries : undefined,
+    blocks: otherBlocks.length > 0 ? otherBlocks : undefined,
+    threadId,
+    messageId: item.message_id,
+  };
+}
+
 export interface ChatSession {
   id: string;
   title: string;
@@ -96,8 +148,11 @@ interface ChatStore {
   clearChat: () => void;
   initWelcome: () => void;
   newChat: () => void;
-  loadSession: (sessionId: string) => void;
-  deleteSession: (sessionId: string) => void;
+  loadSession: (sessionId: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
+  renameSession: (sessionId: string, title: string) => Promise<void>;
+  // BE에서 thread 목록 동기화. 비로그인/실패 시 silent.
+  loadFromServer: () => Promise<void>;
 }
 
 function generateSessionTitle(messages: Message[]): string {
@@ -315,23 +370,102 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }, 0);
   },
 
-  loadSession: (id: string) => {
-    const { sessions } = get();
-    const session = sessions.find((s) => s.id === id);
-    if (!session) return;
-    set({
-      sessionId: session.id,
-      messages: session.messages,
-      selectedAgent: session.agent,
-      streamingText: '',
-      isLoading: false,
-    });
+  loadSession: async (id: string) => {
+    const { sessions, selectedAgent } = get();
+    const existing = sessions.find((s) => s.id === id);
+    try {
+      const res = await chatsApi.messages(id, { limit: 100 });
+      const messages = res.items.map((it) => messageItemToMessage(it, id));
+      const now = new Date().toISOString();
+      const session: ChatSession = existing
+        ? { ...existing, messages, updatedAt: now }
+        : { id, title: '새 대화', agent: selectedAgent, messages, createdAt: now, updatedAt: now };
+      set({
+        sessionId: id,
+        messages,
+        selectedAgent: session.agent,
+        streamingText: '',
+        isLoading: false,
+        sessions: existing
+          ? sessions.map((s) => (s.id === id ? session : s))
+          : [session, ...sessions],
+      });
+    } catch {
+      // BE 실패 시 로컬 캐시로 폴백.
+      if (existing) {
+        set({
+          sessionId: existing.id,
+          messages: existing.messages,
+          selectedAgent: existing.agent,
+          streamingText: '',
+          isLoading: false,
+        });
+      }
+    }
   },
 
-  deleteSession: (id: string) => {
+  deleteSession: async (id: string) => {
+    // Optimistic — 로컬에서 즉시 제거. BE 실패해도 다음 loadFromServer에서 복원됨.
+    const state = get();
+    if (state.sessionId === id) {
+      set({
+        sessions: state.sessions.filter((s) => s.id !== id),
+        sessionId: `session-${Date.now()}`,
+        messages: [],
+        streamingText: '',
+        isLoading: false,
+      });
+    } else {
+      set({ sessions: state.sessions.filter((s) => s.id !== id) });
+    }
+    try {
+      await chatsApi.delete(id);
+    } catch {
+      // silent — 다음 새로고침에 BE 진실로 복구
+    }
+  },
+
+  renameSession: async (id: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    // Optimistic 적용 + 실패 시 되돌림.
+    const prev = get().sessions.find((s) => s.id === id)?.title ?? null;
     set((state) => ({
-      sessions: state.sessions.filter((s) => s.id !== id),
+      sessions: state.sessions.map((s) =>
+        s.id === id ? { ...s, title: trimmed, updatedAt: new Date().toISOString() } : s,
+      ),
     }));
+    try {
+      await chatsApi.rename(id, trimmed);
+    } catch {
+      // 롤백 (BE에서 거절). prev가 null이면 그냥 두기.
+      if (prev !== null) {
+        set((state) => ({
+          sessions: state.sessions.map((s) => (s.id === id ? { ...s, title: prev } : s)),
+        }));
+      }
+    }
+  },
+
+  loadFromServer: async () => {
+    try {
+      const res = await chatsApi.list({ limit: 50 });
+      const selectedAgent = get().selectedAgent;
+      const serverSessions: ChatSession[] = res.items.map((t) => ({
+        id: t.thread_id,
+        title: t.title ?? '새 대화',
+        agent: selectedAgent,
+        messages: [],
+        createdAt: t.updated_at,
+        updatedAt: t.updated_at,
+      }));
+      // 로컬-only 세션(아직 BE에 메시지 전송 안 한 새 대화)은 보존.
+      const serverIds = new Set(serverSessions.map((s) => s.id));
+      const localOnly = get().sessions.filter((s) => !serverIds.has(s.id));
+      set({ sessions: [...serverSessions, ...localOnly] });
+    } catch {
+      // 비로그인 또는 네트워크 실패 — silent.
+    }
   },
 
   clearChat: () => set({ messages: [], isLoading: false, streamingText: '' }),

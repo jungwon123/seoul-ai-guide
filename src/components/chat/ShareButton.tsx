@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Share2, Check } from 'lucide-react';
 import { chatsApi } from '@/lib/api';
+import { friendlyApiError } from '@/lib/auth-errors';
 import { toast } from '@/stores/toastStore';
 
 type Props = {
@@ -51,7 +52,7 @@ export default function ShareButton({ threadId }: Props) {
         toast.info('클립보드 권한이 없어 prompt로 표시했어요');
       }
     } catch (e) {
-      const msg = (e as Error).message || '공유 실패';
+      const msg = friendlyApiError(e, '공유 링크 생성에 실패했습니다');
       setError(msg);
       toast.error(msg);
     } finally {

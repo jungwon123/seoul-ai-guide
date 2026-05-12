@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { Place, MessageBookmarkItem, MessageSnapshot } from '@/types';
+import type { BookmarkItem, PinType } from '@/types/api';
+import { bookmarksApi } from '@/lib/api';
 import placesData from '@/mocks/places.json';
 
 const allPlaces = placesData as Place[];
@@ -67,8 +69,34 @@ interface ToggleMessageInput {
   snapshot: MessageSnapshot;
 }
 
+// snapshot 내용으로 BE의 pin_type 추정. 명시적 종류가 없으면 'general'.
+function pinTypeFromSnapshot(s: MessageSnapshot): PinType {
+  if (s.itinerary) return 'course';
+  if (s.places && s.places.length > 0) return 'place';
+  return 'general';
+}
+
+// BE 응답엔 snapshot이 없으므로 preview_text를 본문으로 재구성.
+function bookmarkItemToMessage(item: BookmarkItem): MessageBookmarkItem {
+  return {
+    bookmarkId: String(item.bookmark_id),
+    messageId: String(item.message_id),
+    conversationId: item.thread_id,
+    snapshot: {
+      role: 'assistant',
+      createdAt: item.created_at,
+      content: item.preview_text ?? '',
+    },
+    createdAt: item.created_at,
+  };
+}
+
+// 로컬 추가 시 BE 호출 전 임시로 부여하는 ID prefix. 동기화 후 BE id로 교체됨.
+const TEMP_BOOKMARK_PREFIX = 'temp-mb-';
+const isTempBookmark = (id: string): boolean => id.startsWith(TEMP_BOOKMARK_PREFIX);
+
 interface BookmarkStore {
-  // Place bookmarks
+  // Place bookmarks (localStorage only — phase 3에선 BE 통합 보류)
   bookmarkedIds: string[];
   // SSE-driven 장소(places.json에 없는)도 카드에 노출되도록 스냅샷 보관.
   placeSnapshots: Record<string, Place>;
@@ -79,11 +107,13 @@ interface BookmarkStore {
   isBookmarked: (id: string) => boolean;
   getBookmarkedPlaces: () => Place[];
 
-  // Message bookmarks (new)
+  // Message bookmarks (BE 동기화)
   messageItems: MessageBookmarkItem[];
-  toggleMessage: (input: ToggleMessageInput) => void;
-  removeMessage: (messageId: string) => void;
+  toggleMessage: (input: ToggleMessageInput) => Promise<void>;
+  removeMessage: (messageId: string) => Promise<void>;
   isMessageBookmarked: (messageId: string) => boolean;
+  // BE에서 메시지 북마크 목록 동기화. 비로그인/실패 시 silent.
+  loadFromServer: () => Promise<void>;
 }
 
 // 초기 ID 중 places.json에도 없고 snapshots에도 없으면 stale → 제거.
@@ -146,31 +176,80 @@ export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
       .filter((p): p is Place => p !== undefined);
   },
 
-  toggleMessage: ({ messageId, conversationId, snapshot }) => {
+  toggleMessage: async ({ messageId, conversationId, snapshot }) => {
     const { messageItems } = get();
-    const exists = messageItems.some((m) => m.messageId === messageId);
-    const next = exists
-      ? messageItems.filter((m) => m.messageId !== messageId)
-      : [
-          {
-            bookmarkId: `mb_${messageId}`,
-            messageId,
-            conversationId,
-            snapshot,
-            createdAt: new Date().toISOString(),
-          },
-          ...messageItems,
-        ];
-    saveMessageItems(next);
-    set({ messageItems: next });
+    const existing = messageItems.find((m) => m.messageId === messageId);
+
+    if (existing) {
+      // 이미 북마크돼 있음 → 해제. removeMessage가 BE delete까지 처리.
+      await get().removeMessage(messageId);
+      return;
+    }
+
+    // Optimistic 추가 — BE 응답 오기 전 임시 ID로 표시.
+    const tempId = `${TEMP_BOOKMARK_PREFIX}${messageId}-${Date.now()}`;
+    const optimistic: MessageBookmarkItem = {
+      bookmarkId: tempId,
+      messageId,
+      conversationId,
+      snapshot,
+      createdAt: new Date().toISOString(),
+    };
+    const optimisticItems = [optimistic, ...messageItems];
+    saveMessageItems(optimisticItems);
+    set({ messageItems: optimisticItems });
+
+    try {
+      const res = await bookmarksApi.create({
+        thread_id: conversationId,
+        message_id: messageId,
+        pin_type: pinTypeFromSnapshot(snapshot),
+        preview_text: snapshot.content?.slice(0, 200) || undefined,
+      });
+      // BE id로 교체
+      const updated = get().messageItems.map((m) =>
+        m.bookmarkId === tempId
+          ? { ...m, bookmarkId: String(res.bookmark_id), createdAt: res.created_at }
+          : m,
+      );
+      saveMessageItems(updated);
+      set({ messageItems: updated });
+    } catch {
+      // 롤백 — 비로그인이거나 BE 실패. 로컬에서도 제거.
+      const rolled = get().messageItems.filter((m) => m.bookmarkId !== tempId);
+      saveMessageItems(rolled);
+      set({ messageItems: rolled });
+    }
   },
 
-  removeMessage: (messageId) => {
+  removeMessage: async (messageId) => {
+    const target = get().messageItems.find((m) => m.messageId === messageId);
+    // Optimistic 제거 — UI는 즉시 반응. BE는 백그라운드 호출.
     const next = get().messageItems.filter((m) => m.messageId !== messageId);
     saveMessageItems(next);
     set({ messageItems: next });
+
+    if (!target) return;
+    // 아직 BE에 만들어지지 않은 임시 항목이면 BE 호출 스킵.
+    if (isTempBookmark(target.bookmarkId)) return;
+    try {
+      await bookmarksApi.delete(target.bookmarkId);
+    } catch {
+      // silent — 다음 loadFromServer에서 진실 복구.
+    }
   },
 
   isMessageBookmarked: (messageId) =>
     get().messageItems.some((m) => m.messageId === messageId),
+
+  loadFromServer: async () => {
+    try {
+      const res = await bookmarksApi.list({ limit: 100 });
+      const items = res.items.map(bookmarkItemToMessage);
+      saveMessageItems(items);
+      set({ messageItems: items });
+    } catch {
+      // 비로그인 / 네트워크 실패 — 로컬 유지.
+    }
+  },
 }));

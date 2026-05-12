@@ -3,6 +3,7 @@ import { Bookmark, MapPin, Calendar } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
+import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 import { useLocalStorage } from '@/lib/useHydrated';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -105,6 +106,9 @@ export default function App() {
   const onboarded = storedOnboarded === 'true' || onboardedOverride;
 
   const initWelcome = useChatStore((s) => s.initWelcome);
+  const loadChatsFromServer = useChatStore((s) => s.loadFromServer);
+  const loadBookmarksFromServer = useBookmarkStore((s) => s.loadFromServer);
+  const authToken = useAuthStore((s) => s.token);
   const navigation = useMapStore((s) => s.navigation);
 
   const placeCount = useBookmarkStore((s) => s.bookmarkedIds.length);
@@ -112,6 +116,13 @@ export default function App() {
   const totalBookmarks = placeCount + messageCount;
 
   useEffect(() => { initWelcome(); }, [initWelcome]);
+
+  // 로그인 직후 + 새로고침 시 BE thread/북마크 목록 동기화. 비로그인 상태에선 호출 안 함.
+  useEffect(() => {
+    if (!authToken) return;
+    loadChatsFromServer();
+    loadBookmarksFromServer();
+  }, [authToken, loadChatsFromServer, loadBookmarksFromServer]);
 
   useEffect(() => {
     if (navigation) setOverlay('map');
