@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { sharedApi } from '@/lib/api';
+import { friendlyApiError } from '@/lib/auth-errors';
 import type { SharedConversation } from '@/types/api';
 
 export default function SharedPage() {
@@ -24,7 +25,7 @@ export default function SharedPage() {
         if (!abort) setData(res);
       })
       .catch((e) => {
-        if (!abort) setError((e as Error).message || '공유 링크를 불러올 수 없습니다');
+        if (!abort) setError(friendlyApiError(e, '공유 링크를 불러올 수 없습니다'));
       })
       .finally(() => {
         if (!abort) setLoading(false);

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usersApi, googleCalendarApi } from '@/lib/api';
+import { friendlyApiError } from '@/lib/auth-errors';
 import Button from '@/components/ui/Button';
 
 export default function SettingsPage() {
@@ -31,7 +32,7 @@ export default function SettingsPage() {
       setUser({ ...user, nickname: res.nickname });
       setNicknameMsg('닉네임을 저장했습니다.');
     } catch (err) {
-      setNicknameMsg((err as Error).message || '저장 실패');
+      setNicknameMsg(friendlyApiError(err, '닉네임 저장에 실패했습니다'));
     } finally {
       setSavingNick(false);
     }
@@ -46,7 +47,7 @@ export default function SettingsPage() {
       // 동의 화면으로 전체 리다이렉트. 콜백은 BE가 직접 처리.
       window.location.href = auth_url;
     } catch (err) {
-      setCalMsg((err as Error).message || '연동 URL을 불러올 수 없습니다');
+      setCalMsg(friendlyApiError(err, '연동 URL을 불러올 수 없습니다'));
       setConnectingCal(false);
     }
   };
@@ -61,7 +62,7 @@ export default function SettingsPage() {
       setNewPw('');
       setPwMsg('비밀번호를 변경했습니다.');
     } catch (err) {
-      setPwMsg((err as Error).message || '변경 실패');
+      setPwMsg(friendlyApiError(err, '비밀번호 변경에 실패했습니다'));
     } finally {
       setSavingPw(false);
     }

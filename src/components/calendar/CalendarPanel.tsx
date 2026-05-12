@@ -4,6 +4,7 @@ import { useCalendarStore } from '@/stores/calendarStore';
 import { TRANSPORT_LABELS } from '@/lib/utils';
 import { downloadICS } from '@/lib/ics-export';
 import { googleCalendarApi } from '@/lib/api';
+import { friendlyApiError } from '@/lib/auth-errors';
 import { toast } from '@/stores/toastStore';
 import EmptyState from '@/components/ui/EmptyState';
 import type { Itinerary } from '@/types';
@@ -17,7 +18,7 @@ function GoogleCalendarConnectBar() {
       const { auth_url } = await googleCalendarApi.getAuthUrl();
       window.location.href = auth_url;
     } catch (e) {
-      toast.error((e as Error).message || '연동 URL을 불러올 수 없습니다');
+      toast.error(friendlyApiError(e, '연동 URL을 불러올 수 없습니다'));
       setBusy(false);
     }
   };
