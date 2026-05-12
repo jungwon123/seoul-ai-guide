@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import AuthLayout from './AuthLayout';
 import Button from '@/components/ui/Button';
 
@@ -21,7 +22,7 @@ export default function SignupPage() {
       await signup(email.trim(), password, nickname.trim() || undefined);
       navigate('/', { replace: true });
     } catch (err) {
-      setError((err as Error).message || '회원가입에 실패했습니다');
+      setError(friendlyAuthError(err, 'signup'));
     } finally {
       setSubmitting(false);
     }

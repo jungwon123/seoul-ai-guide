@@ -89,9 +89,32 @@ export class ApiHttpError extends Error {
   }
 }
 
+// Pydantic의 영문 msg 일부를 사용자 화면용 한글로 치환. 매핑 없는 경우 원문 유지.
+function humanizePydanticMsg(msg: string | undefined): string {
+  if (!msg) return '';
+  if (msg.startsWith('Field required')) return '필수 입력 항목입니다';
+  if (msg.includes('valid email address')) return '이메일 형식이 올바르지 않습니다';
+  const minMatch = msg.match(/at least (\d+) character/i);
+  if (minMatch) return `최소 ${minMatch[1]}자 이상이어야 합니다`;
+  const maxMatch = msg.match(/at most (\d+) character/i);
+  if (maxMatch) return `최대 ${maxMatch[1]}자까지 가능합니다`;
+  return msg;
+}
+
 function extractErrorMessage(payload: ApiError | undefined, status: number): { code?: string; message: string } {
   if (!payload) return { message: `HTTP ${status}` };
   if (typeof payload.detail === 'string') return { message: payload.detail };
+  // FastAPI 422 — Pydantic ValidationError가 detail 배열로 들어옴.
+  if (Array.isArray(payload.detail)) {
+    const lines = payload.detail
+      .map((d) => {
+        const field = Array.isArray(d.loc) && d.loc.length > 0 ? String(d.loc[d.loc.length - 1]) : '';
+        const human = humanizePydanticMsg(d.msg);
+        return field ? `${field}: ${human}` : human;
+      })
+      .filter(Boolean);
+    return { message: lines.length > 0 ? lines.join(', ') : `HTTP ${status}` };
+  }
   if (payload.detail && typeof payload.detail === 'object') {
     return { code: payload.detail.code, message: payload.detail.message ?? `HTTP ${status}` };
   }
@@ -200,8 +223,6 @@ export const authApi = {
     request<TokenResponse>('/api/v1/auth/signup', { method: 'POST', body: JSON.stringify(body), auth: false }),
   login: (body: { email: string; password: string }) =>
     request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(body), auth: false }),
-  // ⚠️ BE 미구현 (`models/user.py`에 GoogleLoginRequest는 있으나 라우트 추가 대기 중).
-  //   호출 시 404. BE 라우트 머지 후 활성화.
   google: (body: { id_token: string }) =>
     request<TokenResponse>('/api/v1/auth/google', { method: 'POST', body: JSON.stringify(body), auth: false }),
 };

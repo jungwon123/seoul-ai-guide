@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import AuthLayout from './AuthLayout';
 import Button from '@/components/ui/Button';
 
@@ -29,7 +30,7 @@ export default function LoginPage() {
       await login(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError((err as Error).message || '로그인에 실패했습니다');
+      setError(friendlyAuthError(err, 'login'));
     } finally {
       setSubmitting(false);
     }

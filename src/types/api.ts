@@ -303,7 +303,16 @@ export type SseEventType =
   | 'done_partial'
   | 'error';
 
+export type ApiErrorDetailItem = {
+  type?: string;
+  loc?: (string | number)[];
+  msg?: string;
+  input?: unknown;
+  ctx?: Record<string, unknown>;
+};
+
 export type ApiError = {
   error?: { code?: string; message?: string };
-  detail?: string | { code?: string; message?: string };
+  // FastAPI/Pydantic: 422 응답은 detail이 배열 형태. 그 외 라우트는 string/object.
+  detail?: string | { code?: string; message?: string } | ApiErrorDetailItem[];
 };
