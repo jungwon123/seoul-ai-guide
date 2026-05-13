@@ -86,8 +86,25 @@ function buildMarkerContent(
         transition: font-size 0.15s, border-color 0.15s;
       ">${place.name}</div>`;
 
+  // 도장 찍기 임팩트: pinEl이 위에서 회전하며 내려와 충격, shockwave 링이 퍼짐.
+  // stagger로 마커들이 순차적으로 톡톡 찍히게.
+  const stampDelay = Math.min(index * 60, 600); // 최대 600ms — 너무 길어지지 않게
+  const ringBorderRadius = isBookmark || itineraryMode ? '12px' : '50%';
+
   wrapper.innerHTML = `
     <div data-ring style="position: relative;">
+      <div data-shockwave style="
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 42px; height: 42px;
+        border-radius: ${ringBorderRadius};
+        border: 2px solid ${cat.color};
+        pointer-events: none;
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 0;
+        animation: stampShockwave 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${stampDelay}ms 1 forwards;
+        will-change: transform, opacity;
+      "></div>
       <div data-pin style="
         background: ${cat.color};
         ${shape}
@@ -96,6 +113,12 @@ function buildMarkerContent(
         color: white;
         letter-spacing: -0.02em;
         transition: width 0.15s, height 0.15s, font-size 0.15s, box-shadow 0.15s;
+        animation:
+          stampImpact 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) ${stampDelay}ms 1 both,
+          stampJitter 4.5s ease-in-out ${stampDelay + 650}ms infinite;
+        transform-origin: center;
+        will-change: transform;
+        filter: url(#markerInkBleed);
       ">${cat.label[0]}</div>
       ${badge}
     </div>
@@ -287,6 +310,17 @@ export default function GoogleMap({
   }, [showHeatmap, congestionPoints, mapReady]);
 
   return (
-    <div ref={containerRef} className="w-full h-full rounded-lg" style={{ minHeight: 300 }} />
+    <>
+      {/* 마커 도장 잉크 번짐(印章) 필터 — 가장자리를 살짝 일그러뜨려 진짜 잉크 느낌. */}
+      <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
+        <defs>
+          <filter id="markerInkBleed" x="-15%" y="-15%" width="130%" height="130%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="2" seed="7" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+      <div ref={containerRef} className="w-full h-full rounded-lg" style={{ minHeight: 300 }} />
+    </>
   );
 }

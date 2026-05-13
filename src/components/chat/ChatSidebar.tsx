@@ -3,7 +3,7 @@ import { X, Plus, MessageCircle, Trash2, Settings, LogOut, User, RefreshCw } fro
 import { Link, useNavigate } from 'react-router-dom';
 import { useChatStore, type ChatSession } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
-import { AGENT_COLORS, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -125,7 +125,6 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
           ) : (
             sessions.map((session: ChatSession) => {
               const isActive = session.id === sessionId;
-              const agentColor = AGENT_COLORS[session.agent];
               return (
                 <div
                   key={session.id}
@@ -135,10 +134,7 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
                   )}
                   onClick={() => handleLoadSession(session.id)}
                 >
-                  <div
-                    className="w-[6px] h-[6px] rounded-full mt-[7px] shrink-0"
-                    style={{ backgroundColor: agentColor }}
-                  />
+                  <div className="w-[6px] h-[6px] rounded-full mt-[7px] shrink-0 bg-brand" />
                   <div className="flex-1 min-w-0">
                     <p className={cn(
                       'text-[13px] leading-tight truncate',

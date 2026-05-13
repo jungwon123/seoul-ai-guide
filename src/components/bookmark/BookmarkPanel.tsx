@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MessageSquare, MapPin, Sparkles, Trash2 } from 'lucide-react';
 import type { MessageBookmarkItem, Place } from '@/types';
-import { AGENT_COLORS, CATEGORY_CONFIG, cn } from '@/lib/utils';
+import { CATEGORY_CONFIG, cn } from '@/lib/utils';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { useMapStore } from '@/stores/mapStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -243,8 +243,6 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
   return (
     <div className="px-4 pb-6 pt-1 stagger-children space-y-2.5">
       {grouped.map((item) => {
-        const agent = item.snapshot.agent ?? 'claude';
-        const color = AGENT_COLORS[agent];
         const relDate = formatRelativeDate(item.createdAt);
         const placeCount = item.snapshot.places?.length ?? 0;
 
@@ -255,16 +253,6 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
             onClick={() => { loadSession(item.conversationId); onClose?.(); }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span
-                className="w-[18px] h-[18px] rounded-md flex items-center justify-center text-[9px] font-bold"
-                style={{ backgroundColor: `${color}14`, color }}
-              >
-                {agent[0].toUpperCase()}
-              </span>
-              <span className="text-[11px] font-medium" style={{ color }}>
-                {agent}
-              </span>
-              <span className="text-[11px] text-text-muted">·</span>
               <span className="text-[11px] text-text-muted">{relDate}</span>
 
               <button
