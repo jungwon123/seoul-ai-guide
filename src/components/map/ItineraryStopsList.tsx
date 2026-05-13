@@ -3,19 +3,17 @@ import { Star, MapPin } from 'lucide-react';
 import type { NavigationState } from '@/stores/mapStore';
 import { useMapStore } from '@/stores/mapStore';
 import { CATEGORY_CONFIG } from '@/lib/utils';
-import placesData from '@/mocks/places.json';
-import type { Place } from '@/types';
+import type { PlaceCategory } from '@/types';
 
-const allPlaces = placesData as Place[];
+type Section = '아침' | '오후' | '저녁';
+const SECTION_ORDER: Section[] = ['아침', '오후', '저녁'];
 
-function timeOfDayLabel(arrivalTime: string): string {
+function timeOfDayLabel(arrivalTime: string): Section {
   const hour = parseInt(arrivalTime.split(':')[0], 10);
-  if (hour < 12) return 'Morning';
-  if (hour < 17) return 'Afternoon';
-  return 'Evening';
+  if (hour < 12) return '아침';
+  if (hour < 17) return '오후';
+  return '저녁';
 }
-
-const SECTION_ORDER = ['Morning', 'Afternoon', 'Evening'] as const;
 
 interface Props {
   navigation: NavigationState;
@@ -28,12 +26,12 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
   const selectedPlace = useMapStore((s) => s.selectedPlace);
   const { itinerary, stopIndex } = navigation;
 
-  const grouped = itinerary.stops.reduce<Record<string, typeof itinerary.stops>>((acc, stop) => {
+  const grouped = itinerary.stops.reduce<Record<Section, typeof itinerary.stops>>((acc, stop) => {
     const key = timeOfDayLabel(stop.arrivalTime);
     if (!acc[key]) acc[key] = [];
     acc[key].push(stop);
     return acc;
-  }, {});
+  }, {} as Record<Section, typeof itinerary.stops>);
 
   return (
     <div>
@@ -44,19 +42,18 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
           <div key={section} className="px-5 pt-5 pb-2">
             <h3 className="text-[14px] font-semibold text-text-secondary mb-3">{section}</h3>
             <div className="space-y-3">
-              {stops.map((stop) => {
-                const place = allPlaces.find((p) => p.id === stop.placeId);
-                if (!place) return null;
-                const cat = CATEGORY_CONFIG[place.category];
+              {stops.map((stop, idxInSection) => {
+                const cat = CATEGORY_CONFIG[(stop.category ?? 'tourism') as PlaceCategory];
                 const isCurrent = itinerary.stops[stopIndex]?.placeId === stop.placeId;
-                const isSelected = selectedPlace?.id === place.id;
+                const isSelected = selectedPlace?.id === stop.placeId;
                 const globalIdx = itinerary.stops.findIndex((s) => s.placeId === stop.placeId);
+                const key = stop.placeId || `${section}-${idxInSection}`;
 
                 return (
                   <button
-                    key={stop.placeId}
+                    key={key}
                     onClick={() => { goToStop(globalIdx); onStopSelect?.(); }}
-                    aria-label={`${place.name} 선택`}
+                    aria-label={`${stop.placeName} 선택`}
                     className={`w-full flex gap-3 p-3 rounded-2xl border text-left transition-[border-color,background-color] cursor-pointer ${
                       isCurrent || isSelected
                         ? 'border-brand bg-brand-subtle'
@@ -65,12 +62,12 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
                   >
                     <div
                       className="w-[72px] h-[72px] rounded-xl bg-bg-subtle shrink-0 flex items-center justify-center overflow-hidden"
-                      style={{ background: place.image ? undefined : `${cat.color}14` }}
+                      style={{ background: stop.imageUrl ? undefined : `${cat.color}14` }}
                     >
-                      {place.image ? (
+                      {stop.imageUrl ? (
                         <img
-                          src={place.image}
-                          alt={`${place.name} 사진`}
+                          src={stop.imageUrl}
+                          alt={`${stop.placeName} 사진`}
                           width={72}
                           height={72}
                           className="w-full h-full object-cover"
@@ -88,22 +85,24 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
                         {stop.arrivalTime}
                       </div>
                       <div className="text-[14px] font-semibold text-text-primary truncate">
-                        {place.name}
+                        {stop.placeName}
                       </div>
                       <div className="flex items-center gap-1 mt-1 text-[11px] text-text-muted">
-                        {place.rating > 0 && (
+                        {stop.rating && stop.rating > 0 && (
                           <>
                             <Star size={10} fill="currentColor" className="text-amber-500" aria-hidden="true" />
-                            <span className="tabular-nums">{place.rating}</span>
+                            <span className="tabular-nums">{stop.rating}</span>
                             <span className="mx-0.5">·</span>
                           </>
                         )}
                         <MapPin size={10} aria-hidden="true" />
                         <span className="truncate">{cat.label}</span>
                       </div>
-                      <p className="text-[12px] text-text-secondary mt-1.5 line-clamp-2 leading-[1.5]">
-                        {place.summary}
-                      </p>
+                      {(stop.reason ?? stop.address) && (
+                        <p className="text-[12px] text-text-secondary mt-1.5 line-clamp-2 leading-[1.5]">
+                          {stop.reason ?? stop.address}
+                        </p>
+                      )}
                     </div>
                   </button>
                 );

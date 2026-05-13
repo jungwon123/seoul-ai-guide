@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 import type { AgentType, Message, Place, Itinerary, PlaceCategory, TransportMode } from '@/types';
-import type { Block, PlaceBlockData, PlacesBlock, CourseBlock, MessageItem } from '@/types/api';
+import type { Block, PlaceBlockData, PlacesBlock, CourseBlock, EventsBlock, EventItem, MessageItem } from '@/types/api';
 import { getWelcomeMessage } from '@/mocks/agent-responses';
 import { openChatStream } from '@/lib/sse';
 import { chatsApi } from '@/lib/api';
 import { friendlyApiError } from '@/lib/auth-errors';
+import { normalizeCategory } from '@/lib/utils';
 import { useMapStore } from './mapStore';
 
 // SSE 블록 → 레거시 Message 타입 어댑터.
-const ALLOWED_CATS: PlaceCategory[] = ['tourism', 'shopping', 'culture', 'food'];
 
 function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
   // congestion은 BE 표준 스펙엔 없는 mock 확장 필드. 있으면 통과시킴.
@@ -18,7 +18,7 @@ function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
   return {
     id: it.place_id,
     name: it.name,
-    category: (ALLOWED_CATS.includes(it.category as PlaceCategory) ? it.category : 'tourism') as PlaceCategory,
+    category: normalizeCategory(it.category) ?? 'tourism',
     address: it.address ?? '',
     lat: it.lat ?? 0,
     lng: it.lng ?? 0,
@@ -34,39 +34,64 @@ function placesBlockToPlaces(block: PlacesBlock): Place[] {
   return block.items.map((it) => singlePlaceBlockToPlace({ ...it, type: 'place' }));
 }
 
+// EVENT_RECOMMEND 인텐트 응답의 events 블록 → 마커용 Place[].
+// lat/lng가 없는 항목은 마커로 띄울 수 없어 제외.
+function eventsBlockToPlaces(block: EventsBlock): Place[] {
+  return block.items
+    .filter((it): it is EventItem & { lat: number; lng: number } =>
+      typeof it.lat === 'number' && typeof it.lng === 'number',
+    )
+    .map((it) => ({
+      id: it.event_id,
+      name: it.title,
+      category: 'culture' as PlaceCategory,
+      address: it.address ?? it.place_name ?? '',
+      lat: it.lat,
+      lng: it.lng,
+      hours: '',
+      rating: 0,
+      summary: '',
+      image: it.image_url,
+    }));
+}
+
 function courseBlockToItinerary(block: CourseBlock): Itinerary {
-  // BE의 CourseBlock은 도착 시간/이동 수단 정보가 없으므로 합리적 기본값으로 채움.
-  // duration_minutes 누적으로 도착시간 계산.
-  let cursor = 10 * 60; // 10:00 from minutes-of-day
+  // BE CourseBlock 실제 스키마: stop이 nested(place/transit_to_next). arrival_time/transit는 BE 값을 우선,
+  // 누락 시 누적 커서로 보정.
+  let cursor = 10 * 60; // 10:00 fallback start
   const stops = block.stops.map((s, i) => {
-    const hh = String(Math.floor(cursor / 60)).padStart(2, '0');
-    const mm = String(cursor % 60).padStart(2, '0');
-    const arrivalTime = `${hh}:${mm}`;
-    const duration = s.duration_minutes ?? 60;
-    cursor += duration + 15; // 다음 정거장까지 도보 15분 가정
-    // image_url, address, category는 BE 표준 CourseStop엔 없는 mock 확장 필드.
-    const ext = s as typeof s & {
-      image_url?: string;
-      address?: string;
-      category?: PlaceCategory;
-    };
+    const p = s.place;
+    const transit = s.transit_to_next ?? null;
+    const arrivalTime = s.arrival_time ?? (() => {
+      const hh = String(Math.floor(cursor / 60)).padStart(2, '0');
+      const mm = String(cursor % 60).padStart(2, '0');
+      return `${hh}:${mm}`;
+    })();
+    const duration = s.duration_min ?? 60;
+    const isLast = i >= block.stops.length - 1;
+    const travelTimeToNext = isLast ? 0 : (transit?.duration_min ?? 15);
+    const transportToNext: TransportMode = (transit?.mode ?? 'walk') as TransportMode;
+    cursor += duration + travelTimeToNext;
+    const category = normalizeCategory(p.category);
     return {
       order: s.order ?? i + 1,
-      placeId: s.place_id,
-      placeName: s.name,
+      placeId: p.place_id,
+      placeName: p.name,
       arrivalTime,
       duration,
-      transportToNext: 'walk' as TransportMode,
-      travelTimeToNext: i < block.stops.length - 1 ? 15 : 0,
-      lat: s.lat,
-      lng: s.lng,
-      imageUrl: ext.image_url,
-      address: ext.address,
-      category: ext.category,
+      transportToNext,
+      travelTimeToNext,
+      lat: p.location?.lat,
+      lng: p.location?.lng,
+      imageUrl: p.photo_url,
+      address: p.address,
+      category,
+      rating: p.rating,
+      reason: s.recommendation_reason,
     };
   });
   return {
-    id: `itin-${Date.now()}`,
+    id: block.course_id ?? `itin-${Date.now()}`,
     title: block.title ?? '추천 코스',
     date: new Date().toISOString().slice(0, 10),
     stops,
@@ -88,7 +113,8 @@ function messageItemToMessage(item: MessageItem, threadId: string): Message {
     if (b.type === 'text') {
       text += b.content;
     } else if (b.type === 'text_stream') {
-      text += b.delta;
+      // BE는 라이브에선 delta, 저장본에선 content 필드를 씀.
+      text += b.delta ?? b.content ?? '';
     } else if (b.type === 'place') {
       places = [singlePlaceBlockToPlace(b)];
     } else if (b.type === 'places') {
@@ -97,6 +123,11 @@ function messageItemToMessage(item: MessageItem, threadId: string): Message {
       const it = courseBlockToItinerary(b);
       itineraries.push(it);
       if (!itinerary) itinerary = it;
+    } else if (b.type === 'events') {
+      // events 블록은 채팅 카드용으로 otherBlocks에 보존하면서, 좌표 있는 항목은 마커용 Place로도 추출.
+      const eventPlaces = eventsBlockToPlaces(b);
+      if (eventPlaces.length > 0) places = places ? [...places, ...eventPlaces] : eventPlaces;
+      otherBlocks.push(b);
     } else if (
       b.type === 'intent' ||
       b.type === 'status' ||
@@ -213,7 +244,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const conn = openChatStream(sessionId, text, {
         text_stream: (data) => {
           if (data.type === 'text_stream') {
-            acc += data.delta;
+            acc += data.delta ?? data.content ?? '';
             set({ streamingText: acc });
           }
         },
@@ -238,7 +269,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         },
         // 그 외 블록은 그대로 message.blocks에 보존 → BlockRenderer가 렌더.
         chart: (data) => otherBlocks.push(data),
-        events: (data) => otherBlocks.push(data),
+        events: (data) => {
+          if (data.type === 'events') {
+            const eventPlaces = eventsBlockToPlaces(data);
+            if (eventPlaces.length > 0) places = places ? [...places, ...eventPlaces] : eventPlaces;
+          }
+          otherBlocks.push(data);
+        },
         calendar: (data) => otherBlocks.push(data),
         references: (data) => otherBlocks.push(data),
         analysis_sources: (data) => otherBlocks.push(data),
@@ -306,6 +343,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingText: '',
       sessions: updatedSessions,
     });
+
+    // BE가 thread 자동 제목 생성을 안 해주는 우회 — 첫 메시지 응답 후 로컬 title을 서버에 push.
+    // 실패해도 로컬 title은 유지되므로 fire-and-forget. BE 자동 제목 기능 들어오면 제거.
+    if (existingIdx < 0 && acc.length > 0) {
+      chatsApi.rename(sessionId, session.title).catch(() => {});
+    }
   },
 
   setAgent: (agent: AgentType) => {

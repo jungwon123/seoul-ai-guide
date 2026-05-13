@@ -9,7 +9,6 @@ interface Props {
 }
 
 export default memo(function ChatHeader({ onOpenSidebar, onGoHome }: Props) {
-  const selectedAgent = useChatStore((s) => s.selectedAgent);
   const isLoading = useChatStore((s) => s.isLoading);
 
   return (
@@ -21,7 +20,7 @@ export default memo(function ChatHeader({ onOpenSidebar, onGoHome }: Props) {
       >
         <Menu size={18} strokeWidth={1.8} />
       </button>
-      <CompactOrb agent={selectedAgent} isActive={isLoading} onClick={onGoHome} />
+      <CompactOrb isActive={isLoading} onClick={onGoHome} />
     </div>
   );
 });

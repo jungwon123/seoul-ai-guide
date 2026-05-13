@@ -44,7 +44,7 @@ const blocksToText = (blocks: Block[]): string =>
   blocks
     .map((b) => {
       if (b.type === 'text') return b.content;
-      if (b.type === 'text_stream') return b.delta;
+      if (b.type === 'text_stream') return b.delta ?? b.content ?? '';
       return '';
     })
     .join('');
@@ -166,7 +166,7 @@ export const useApiChatStore = create<ApiChatStore>((set, get) => ({
         if (data.type === 'text_stream') {
           // rAF 배칭: 1토큰 = 1 setState면 긴 응답에서 수천번 리렌더가 일어난다.
           // 같은 프레임 내 도착한 delta들을 모아 1번만 set으로 flush.
-          scheduleStreamFlush(set, assistantMsg.id, data.delta);
+          scheduleStreamFlush(set, assistantMsg.id, data.delta ?? data.content ?? '');
         }
       },
       place: (data) => appendBlock(set, assistantMsg.id, data),

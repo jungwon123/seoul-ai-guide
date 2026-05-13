@@ -126,7 +126,6 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
             sessions.map((session: ChatSession) => {
               const isActive = session.id === sessionId;
               const agentColor = AGENT_COLORS[session.agent];
-              const messageCount = session.messages.filter((m) => m.role === 'user').length;
               return (
                 <div
                   key={session.id}
@@ -147,10 +146,8 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
                     )}>
                       {session.title}
                     </p>
-                    <p className="text-[11px] text-text-muted mt-1 flex items-center gap-1.5">
-                      <span>{formatDate(session.updatedAt)}</span>
-                      <span>·</span>
-                      <span>{messageCount}개 메시지</span>
+                    <p className="text-[11px] text-text-muted mt-1">
+                      {formatDate(session.updatedAt)}
                     </p>
                   </div>
                   <button

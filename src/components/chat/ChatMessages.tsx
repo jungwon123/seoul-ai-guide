@@ -2,7 +2,7 @@ import { memo, useEffect, useRef } from 'react';
 import { useChatStore } from '@/stores/chatStore';
 import MessageBubble from './MessageBubble';
 import StreamingMessage from './StreamingMessage';
-import LottiePlayer from '@/components/ui/LottiePlayer';
+import AgentOrb from '@/components/agent/AgentOrb';
 
 export default memo(function ChatMessages() {
   const messages = useChatStore((s) => s.messages);
@@ -21,14 +21,9 @@ export default memo(function ChatMessages() {
     <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
       {hasOnlyWelcome && (
         <div className="flex flex-col items-center justify-center pt-16 pb-8 px-8 animate-fade-up">
-          <LottiePlayer
-            src="/animations/AI-logo.json"
-            className="w-[180px] h-[180px] mb-6"
-            ariaLabel="Seoul Edit AI"
-            fallback={
-              <div className="w-[180px] h-[180px] mb-6 rounded-full bg-brand-subtle border border-border" />
-            }
-          />
+          <div className="mb-6">
+            <AgentOrb state={isLoading ? 'thinking' : 'idle'} size={220} />
+          </div>
           <h2 className="text-[22px] font-bold text-text-primary mb-2 tracking-tight">
             서울을 탐색해보세요
           </h2>

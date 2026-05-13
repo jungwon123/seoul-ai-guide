@@ -124,7 +124,9 @@ export type FeedbackResponse = {
 export type IntentBlock = { type: 'intent'; intent: string; confidence?: number };
 export type StatusFrame = { type: 'status'; message: string; node?: string };
 export type TextBlock = { type: 'text'; content: string };
-export type TextStreamBlock = { type: 'text_stream'; delta: string };
+// 라이브 SSE: { type, delta } 토큰. DB 저장본: { type, content } 전체 텍스트.
+// FE 어댑터에서 둘 다 다뤄야 하므로 둘 다 optional.
+export type TextStreamBlock = { type: 'text_stream'; delta?: string; content?: string };
 
 export type PlaceBlockData = {
   type: 'place';
@@ -152,6 +154,8 @@ export type EventItem = {
   district?: string;
   place_name?: string;
   address?: string;
+  lat?: number;
+  lng?: number;
   start_date?: string;
   end_date?: string;
   category?: string;
@@ -161,32 +165,79 @@ export type EventItem = {
 
 export type EventsBlock = { type: 'events'; items: EventItem[]; total_count?: number };
 
-export type CourseStop = {
-  order: number;
+export type CoursePlaceInfo = {
   place_id: string;
   name: string;
-  lat?: number;
-  lng?: number;
-  duration_minutes?: number;
-  memo?: string;
+  category?: string;
+  category_label?: string;
+  address?: string;
+  district?: string;
+  location?: { lat: number; lng: number } | null;
+  rating?: number;
+  summary?: string;
+  photo_url?: string;
+};
+
+export type CourseTransit = {
+  mode: 'walk' | 'subway' | 'bus' | 'taxi';
+  mode_ko?: string;
+  distance_m?: number;
+  duration_min?: number;
+};
+
+export type CourseStop = {
+  order: number;
+  arrival_time?: string;
+  duration_min?: number;
+  place: CoursePlaceInfo;
+  transit_to_next?: CourseTransit | null;
+  recommendation_reason?: string;
 };
 
 export type CourseBlock = {
   type: 'course';
+  course_id?: string;
   title?: string;
+  description?: string;
+  total_distance_m?: number;
+  total_duration_min?: number;
+  total_stay_min?: number;
+  total_transit_min?: number;
   stops: CourseStop[];
-  total_duration_minutes?: number;
 };
 
 export type MarkerItem = { place_id: string; lat: number; lng: number; label?: string };
 export type MapMarkersBlock = { type: 'map_markers'; markers: MarkerItem[] };
 
+export type LatLng = { lat: number; lng: number };
+
+export type MapRouteMarker = {
+  order: number;
+  position: LatLng;
+  label?: string;
+  category?: string;
+};
+
+export type MapRouteSegment = {
+  from_order: number;
+  to_order: number;
+  mode: 'walk' | 'subway' | 'bus' | 'taxi';
+  coordinates: [number, number][]; // GeoJSON [lng, lat] pairs
+};
+
+export type MapRoutePolyline = {
+  type: string; // "straight" | "routed" 등
+  segments: MapRouteSegment[];
+};
+
 export type MapRouteBlock = {
   type: 'map_route';
-  polyline?: string;
-  waypoints?: { lat: number; lng: number }[];
-  distance_meters?: number;
-  duration_seconds?: number;
+  course_id?: string;
+  bounds?: { sw: LatLng; ne: LatLng };
+  center?: LatLng;
+  suggested_zoom?: number;
+  markers: MapRouteMarker[];
+  polyline: MapRoutePolyline;
 };
 
 export type ChartDataset = {

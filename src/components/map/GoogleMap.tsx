@@ -221,12 +221,14 @@ export default function GoogleMap({
         entriesRef.current.set(place.id, { marker, place, pinEl, ringEl, labelEl });
       });
 
-      if (markers.length > 1) {
+      // 코스(itineraryMode)일 때만 마커 간 경로선을 그림.
+      // 장소/행사 추천처럼 독립된 장소 목록에는 선을 연결하지 않음.
+      if (itineraryMode && markers.length > 1) {
         const path = markers.map((p) => ({ lat: p.lat, lng: p.lng }));
         polylineRef.current = new google.maps.Polyline({
           path,
-          strokeWeight: itineraryMode ? 7 : 5,
-          strokeColor: itineraryMode ? '#1D4ED8' : '#4F46E5',
+          strokeWeight: 7,
+          strokeColor: '#1D4ED8',
           strokeOpacity: 0.9,
           map,
         });
