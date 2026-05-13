@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MessageSquare, MapPin, Sparkles, Trash2 } from 'lucide-react';
 import type { MessageBookmarkItem, Place } from '@/types';
-import { AGENT_COLORS, CATEGORY_CONFIG, cn } from '@/lib/utils';
+import { CATEGORY_CONFIG, cn } from '@/lib/utils';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { useMapStore } from '@/stores/mapStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -119,7 +119,7 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
     return (
       <EmptyState
         lottieSrc="/animations/empty-place.json"
-        icon={<MapPin size={28} strokeWidth={1.2} />}
+        icon={<MapPin size={24} strokeWidth={1.2} />}
         title="저장한 장소가 없어요"
         description="채팅이나 지도에서 마음에 드는 장소를 저장해보세요"
       />
@@ -233,7 +233,7 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
     return (
       <EmptyState
         lottieSrc="/animations/empty-message.json"
-        icon={<Sparkles size={28} strokeWidth={1.2} />}
+        icon={<Sparkles size={24} strokeWidth={1.2} />}
         title="저장한 대화가 없어요"
         description="에이전트 답변 위에 마우스를 올리면 북마크 아이콘이 나타나요"
       />
@@ -243,8 +243,6 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
   return (
     <div className="px-4 pb-6 pt-1 stagger-children space-y-2.5">
       {grouped.map((item) => {
-        const agent = item.snapshot.agent ?? 'claude';
-        const color = AGENT_COLORS[agent];
         const relDate = formatRelativeDate(item.createdAt);
         const placeCount = item.snapshot.places?.length ?? 0;
 
@@ -255,16 +253,6 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
             onClick={() => { loadSession(item.conversationId); onClose?.(); }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span
-                className="w-[18px] h-[18px] rounded-md flex items-center justify-center text-[9px] font-bold"
-                style={{ backgroundColor: `${color}14`, color }}
-              >
-                {agent[0].toUpperCase()}
-              </span>
-              <span className="text-[11px] font-medium" style={{ color }}>
-                {agent}
-              </span>
-              <span className="text-[11px] text-text-muted">·</span>
               <span className="text-[11px] text-text-muted">{relDate}</span>
 
               <button
@@ -321,31 +309,37 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
 
 /* =========================== 공통 =========================== */
 
+// 공유 EmptyState와 시각적으로 동일 — 위치 컨텍스트(top-anchored)만 다름.
 function EmptyState({
   icon, title, description, lottieSrc,
 }: { icon: React.ReactNode; title: string; description: string; lottieSrc?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center pt-16 pb-12 px-8 text-center animate-fade-up">
+    <div className="flex flex-col items-center pt-16 pb-12 px-8 text-center animate-fade-up">
       {lottieSrc ? (
-        <LottiePlayer
-          src={lottieSrc}
-          className="w-28 h-28 mb-3"
-          ariaLabel={title}
-          fallback={
-            <div className="w-16 h-16 rounded-full bg-bg-subtle border border-border flex items-center justify-center text-text-muted mb-4">
-              {icon}
-            </div>
-          }
-        />
+        <div className="w-32 h-32 mb-4">
+          <LottiePlayer
+            src={lottieSrc}
+            className="w-full h-full"
+            ariaLabel={title}
+            fallback={
+              <div className="w-14 h-14 rounded-2xl bg-bg-subtle border border-border flex items-center justify-center text-text-muted mx-auto">
+                {icon}
+              </div>
+            }
+          />
+        </div>
       ) : (
-        <div className="w-16 h-16 rounded-full bg-bg-subtle border border-border flex items-center justify-center text-text-muted mb-4">
+        <div className="w-14 h-14 rounded-2xl bg-bg-subtle border border-border flex items-center justify-center text-text-muted mb-5">
           {icon}
         </div>
       )}
-      <h3 className="text-[16px] font-semibold text-text-primary tracking-[-0.01em] mb-1.5">
+      <h3
+        className="text-[20px] text-text-primary mb-2 tracking-[-0.02em]"
+        style={{ fontFamily: 'var(--font-display)' }}
+      >
         {title}
       </h3>
-      <p className="text-[13px] text-text-muted leading-[1.6] max-w-[260px]">
+      <p className="text-[13px] text-text-muted max-w-[240px] mx-auto leading-[1.65]">
         {description}
       </p>
     </div>

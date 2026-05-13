@@ -44,6 +44,8 @@ export interface ItineraryStop {
   imageUrl?: string;
   address?: string;
   category?: PlaceCategory;
+  rating?: number;
+  reason?: string;
 }
 
 export interface Itinerary {

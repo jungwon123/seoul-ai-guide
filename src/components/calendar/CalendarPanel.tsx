@@ -44,7 +44,7 @@ export default function CalendarPanel() {
       <div className="h-full flex flex-col">
         <GoogleCalendarConnectBar />
         <div className="flex-1 flex items-center justify-center">
-          <EmptyState icon={Calendar} title="일정 없음" description="에이전트에게 일정을 만들어달라고 해보세요" />
+          <EmptyState icon={Calendar} title="일정 없음" description="에이전트에게 일정을 만들어달라고 해보세요" lottieSrc="/animations/calender.json" />
         </div>
       </div>
     );

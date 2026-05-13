@@ -20,7 +20,7 @@ export default function AuthLayout({ title, subtitle, children, footer }: Props)
             <path d="M 12 12 L 1.608 18 A 12 12 0 0 1 12 0 Z" fill="#F4A12C" />
             <circle cx="12" cy="12" r="2.4" fill="#FFFFFF" />
           </svg>
-          <span className="font-display text-xl tracking-tight">Seoul Edit</span>
+          <span className="font-display text-xl tracking-tight">LocalBiz</span>
         </div>
 
         <div className="bg-bg-surface border-2 border-border-strong rounded-2xl p-8 shadow-[4px_4px_0_rgba(15,15,15,0.9)]">

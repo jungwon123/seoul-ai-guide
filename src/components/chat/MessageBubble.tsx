@@ -13,7 +13,6 @@ import { BlockRenderer } from './blocks';
 
 export default memo(function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
-  const agent = message.agent ?? 'claude';
 
   const conversationId = useChatStore((s) => s.sessionId);
   const toggleMessage = useBookmarkStore((s) => s.toggleMessage);
@@ -27,7 +26,6 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
       role: 'assistant',
       createdAt: message.timestamp,
       content: message.text,
-      agent: message.agent,
       places: message.places,
       itinerary: message.itinerary ?? null,
     };
@@ -48,7 +46,7 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
         </div>
       ) : (
         <div className="group/bubble relative flex gap-2.5 pr-4">
-          <AgentMark agent={agent} size={28} className="mt-0.5" />
+          <AgentMark size={28} className="mt-0.5" />
 
           <div className="flex-1 min-w-0 space-y-2">
             <div className="text-[14px] leading-[1.7] text-text-primary">

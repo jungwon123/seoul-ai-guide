@@ -12,6 +12,7 @@ import ChatInputConnected from '@/components/chat/ChatInputConnected';
 import ChatSidebar from '@/components/chat/ChatSidebar';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import LottiePlayer from '@/components/ui/LottiePlayer';
+import AgentOrb from '@/components/agent/AgentOrb';
 
 // Overlay panels — lazy loaded so the initial chat view never pulls in
 // three.js / google-maps / calendar. These only load on first tab tap.
@@ -203,12 +204,9 @@ export default function App() {
                 className="flex items-center gap-2 cursor-pointer group"
                 aria-label="대화로 돌아가기"
               >
-                <LottiePlayer
-                  src="/animations/AI-logo.json"
-                  className="w-8 h-8 shrink-0"
-                  ariaLabel="Seoul Edit AI"
-                  fallback={<div className="w-8 h-8 rounded-full bg-brand-subtle border border-border" />}
-                />
+                <div className="w-8 h-8 shrink-0">
+                  <AgentOrb state="idle" size={32} interactive={false} />
+                </div>
                 <h2 className="text-[15px] font-semibold text-text-primary">
                   {NAV_ITEMS.find((n) => n.key === overlay)?.label}
                 </h2>
