@@ -52,37 +52,40 @@ export default function ItineraryCard({ itinerary }: { itinerary: Itinerary }) {
             <div key={stop.order}>
               {/* Stop card */}
               <div className="flex gap-3 p-2.5 rounded-xl border border-border/60 bg-bg-surface">
-                {/* Thumbnail */}
-                <div
-                  className="relative w-[60px] h-[60px] rounded-lg shrink-0 flex items-center justify-center overflow-hidden"
-                  style={{
-                    background: (stop.imageUrl || place?.image)
-                      ? undefined
-                      : cat
-                        ? `${cat.color}14`
-                        : 'var(--color-bg-subtle)',
-                  }}
-                >
-                  {(stop.imageUrl || place?.image) ? (
-                    <img
-                      src={stop.imageUrl || place?.image}
-                      alt={stop.placeName}
-                      width={60}
-                      height={60}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span
-                      className="text-[22px] font-semibold"
-                      style={{ color: cat?.color ?? 'var(--color-text-muted)' }}
-                    >
-                      {cat?.label[0] ?? '·'}
-                    </span>
-                  )}
-                  {/* Order badge */}
+                {/* Thumbnail — 외부 컨테이너는 overflow 허용해 order 뱃지가 모서리 밖으로 살짝 튀어나옴 */}
+                <div className="relative w-[60px] h-[60px] shrink-0">
+                  {/* 이미지/폴백 래퍼 — 둥근 모서리 클립용 overflow-hidden은 안쪽에만 */}
+                  <div
+                    className="absolute inset-0 rounded-lg overflow-hidden flex items-center justify-center"
+                    style={{
+                      background: (stop.imageUrl || place?.image)
+                        ? undefined
+                        : cat
+                          ? `${cat.color}14`
+                          : 'var(--color-bg-subtle)',
+                    }}
+                  >
+                    {(stop.imageUrl || place?.image) ? (
+                      <img
+                        src={stop.imageUrl || place?.image}
+                        alt={stop.placeName}
+                        width={60}
+                        height={60}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span
+                        className="text-[22px] font-semibold"
+                        style={{ color: cat?.color ?? 'var(--color-text-muted)' }}
+                      >
+                        {cat?.label[0] ?? '·'}
+                      </span>
+                    )}
+                  </div>
+                  {/* Order badge — 외부 컨테이너에 absolute, 음수 offset으로 모서리 바깥으로 */}
                   <span
-                    className="absolute -top-1.5 -left-1.5 w-[18px] h-[18px] rounded-full bg-text-primary text-white text-[10px] font-bold flex items-center justify-center shadow-sm border-2 border-bg-surface tabular-nums"
+                    className="absolute -top-1.5 -left-1.5 w-[18px] h-[18px] rounded-full bg-text-primary text-white text-[10px] font-bold flex items-center justify-center shadow-sm border-2 border-bg-surface tabular-nums z-10"
                     aria-hidden="true"
                   >
                     {i + 1}

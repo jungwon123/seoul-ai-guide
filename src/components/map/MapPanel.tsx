@@ -248,6 +248,7 @@ export default function MapPanel() {
                 icon={MapPin}
                 title="지도 탐색"
                 description="에이전트에게 장소를 추천받으면 여기에 표시돼요"
+                lottieSrc="/animations/locationfinding.json"
               />
             </div>
           )}

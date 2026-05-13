@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 // LocalBiz 단일 에이전트 시각화 — 회전하는 와이어프레임 구 + 입자.
-// Seoul Edit 88 올림픽 팔레트 (네이비/레드/오렌지/그린).
+// LocalBiz 88 올림픽 팔레트 (네이비/레드/오렌지/그린).
 // 모든 치수는 baseRadius에 비례 — 어떤 size에서도 캔버스 안에 들어가도록 설계.
 export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking';
 

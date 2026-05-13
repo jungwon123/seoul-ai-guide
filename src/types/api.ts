@@ -128,6 +128,14 @@ export type TextBlock = { type: 'text'; content: string };
 // FE 어댑터에서 둘 다 다뤄야 하므로 둘 다 optional.
 export type TextStreamBlock = { type: 'text_stream'; delta?: string; content?: string };
 
+// BE PlaceBlock.congestion — district 단위 area_proxy 혼잡도.
+// docs/be-requests.md #3 참조. PR #70 머지 시 자동 활성화.
+export type CongestionBlockInfo = {
+  level: 'low' | 'medium' | 'high';
+  updated_at: string;  // ISO date
+  source?: string;     // "area_proxy" 등
+};
+
 export type PlaceBlockData = {
   type: 'place';
   place_id: string;
@@ -140,6 +148,7 @@ export type PlaceBlockData = {
   rating?: number;
   image_url?: string;
   summary?: string;
+  congestion?: CongestionBlockInfo;
 };
 
 export type PlacesBlock = {
@@ -161,6 +170,7 @@ export type EventItem = {
   category?: string;
   image_url?: string;
   homepage_url?: string;
+  description?: string;
 };
 
 export type EventsBlock = { type: 'events'; items: EventItem[]; total_count?: number };

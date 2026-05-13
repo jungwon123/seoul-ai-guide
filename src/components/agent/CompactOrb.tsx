@@ -18,11 +18,11 @@ export default memo(function CompactOrb({ isActive, onClick }: CompactOrbProps) 
       </div>
       <div className="flex flex-col">
         <span className="text-[13px] font-semibold text-text-primary leading-tight tracking-[-0.01em]">
-          Seoul Edit
+          LocalBiz
         </span>
-        <span className="text-[10px] text-text-muted leading-tight">
-          {isActive ? '응답 중...' : 'AI 에이전트'}
-        </span>
+        {isActive && (
+          <span className="text-[10px] text-text-muted leading-tight">응답 중...</span>
+        )}
       </div>
     </button>
   );

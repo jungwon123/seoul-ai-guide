@@ -11,10 +11,14 @@ import { useMapStore } from './mapStore';
 // SSE 블록 → 레거시 Message 타입 어댑터.
 
 function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
-  // congestion은 BE 표준 스펙엔 없는 mock 확장 필드. 있으면 통과시킴.
-  const ext = it as PlaceBlockData & {
-    congestion?: { level: 'low' | 'medium' | 'high'; updatedAt: string };
-  };
+  // BE PlaceBlock.congestion (PR #70 머지 시 자동 활성화). snake_case → camelCase 변환.
+  // mock 시절 camelCase updatedAt 폴백 흡수 — 양쪽 데이터 지원.
+  const c = it.congestion as
+    | { level: 'low' | 'medium' | 'high'; updated_at?: string; updatedAt?: string }
+    | undefined;
+  const congestion = c
+    ? { level: c.level, updatedAt: c.updated_at ?? c.updatedAt ?? '' }
+    : undefined;
   return {
     id: it.place_id,
     name: it.name,
@@ -26,7 +30,7 @@ function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
     rating: it.rating ?? 0,
     summary: it.summary ?? '',
     image: it.image_url,
-    congestion: ext.congestion,
+    congestion,
   };
 }
 

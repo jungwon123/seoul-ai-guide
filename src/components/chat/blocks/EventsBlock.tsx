@@ -39,6 +39,11 @@ export default function EventsBlock({ data }: { data: EventsBlockData }) {
                   </span>
                 )}
               </div>
+              {ev.description && (
+                <p className="text-[12px] text-text-secondary leading-[1.5] mt-1.5 line-clamp-2">
+                  {ev.description}
+                </p>
+              )}
             </div>
           </div>
         </a>

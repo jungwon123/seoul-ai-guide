@@ -52,7 +52,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             className="text-[42px] text-text-primary mb-3 leading-[1.1]"
             style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}
           >
-            Seoul Edit
+            LocalBiz
           </h1>
           <p className="text-[16px] text-text-secondary max-w-xs mx-auto leading-[1.6] mb-10">
             당신만의 서울을 큐레이션하세요.

@@ -45,7 +45,7 @@ export default function SharedPage() {
             <path d="M 12 12 L 1.608 18 A 12 12 0 0 1 12 0 Z" fill="#F4A12C" />
             <circle cx="12" cy="12" r="2.4" fill="#FFFFFF" />
           </svg>
-          <span className="font-display text-base">Seoul Edit</span>
+          <span className="font-display text-base">LocalBiz</span>
         </Link>
 
         <div className="bg-bg-surface border-2 border-border-strong rounded-2xl p-6 shadow-[3px_3px_0_rgba(15,15,15,0.9)]">

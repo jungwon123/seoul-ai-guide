@@ -95,6 +95,11 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
           <MapPin size={9} aria-hidden="true" />
           <span className="truncate">{place.address.split(' ').slice(1, 3).join(' ')}</span>
         </div>
+        {place.summary && (
+          <p className="text-[12px] text-text-secondary leading-[1.5] mt-1.5 line-clamp-2">
+            {place.summary}
+          </p>
+        )}
       </div>
     </div>
   );
