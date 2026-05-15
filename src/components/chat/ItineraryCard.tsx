@@ -1,7 +1,7 @@
 import { Clock, Star, MapPin, Footprints, Train, Bus, Car } from 'lucide-react';
 import type { Itinerary, TransportMode, Place } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
-import { useCalendarStore } from '@/stores/calendarStore';
+import { useChatStore } from '@/stores/chatStore';
 import { useMapStore } from '@/stores/mapStore';
 import placesData from '@/mocks/places.json';
 
@@ -21,8 +21,9 @@ const TRANSPORT_LABEL: Record<TransportMode, string> = {
   taxi: '택시',
 };
 
-export default function ItineraryCard({ itinerary }: { itinerary: Itinerary }) {
-  const addEvent = useCalendarStore((s) => s.addEvent);
+export default function ItineraryCard({ itinerary, hideActions = false }: { itinerary: Itinerary; hideActions?: boolean }) {
+  const sendMessage = useChatStore((s) => s.sendMessage);
+  const isLoading = useChatStore((s) => s.isLoading);
   const startNavigation = useMapStore((s) => s.startNavigation);
 
   return (
@@ -138,21 +139,27 @@ export default function ItineraryCard({ itinerary }: { itinerary: Itinerary }) {
         })}
       </div>
 
-      {/* Actions */}
-      <div className="flex border-t border-border">
-        <button
-          onClick={() => startNavigation(itinerary)}
-          className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle transition-colors cursor-pointer border-r border-border"
-        >
-          경로 보기
-        </button>
-        <button
-          onClick={() => addEvent(itinerary)}
-          className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle transition-colors cursor-pointer"
-        >
-          일정 추가
-        </button>
-      </div>
+      {/* Actions — shared 페이지 같은 read-only 컨텍스트에선 숨김 */}
+      {!hideActions && (
+        <div className="flex border-t border-border">
+          <button
+            onClick={() => startNavigation(itinerary)}
+            className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle transition-colors cursor-pointer border-r border-border"
+          >
+            경로 보기
+          </button>
+          <button
+            onClick={() => {
+              if (isLoading) return;
+              void sendMessage(`"${itinerary.title}" 코스를 내 캘린더에 추가해줘`);
+            }}
+            disabled={isLoading}
+            className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            일정 추가
+          </button>
+        </div>
+      )}
     </div>
   );
 }

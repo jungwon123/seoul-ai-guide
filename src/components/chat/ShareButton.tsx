@@ -1,7 +1,8 @@
 // 채팅 공유 버튼 — 클릭 시 share_token 발급 + URL 클립보드 복사.
+// 공유 후엔 "취소" 보조 액션 노출.
 
 import { useState } from 'react';
-import { Share2, Check } from 'lucide-react';
+import { Share2, Check, X } from 'lucide-react';
 import { chatsApi } from '@/lib/api';
 import { friendlyApiError } from '@/lib/auth-errors';
 import { toast } from '@/stores/toastStore';
@@ -33,16 +34,21 @@ export default function ShareButton({ threadId }: Props) {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 한 번이라도 공유했으면 "취소" 보조 액션 노출. 페이지 이탈 시 리셋(데모용 충분).
+  const [wasShared, setWasShared] = useState(false);
 
-  const onClick = async () => {
+  const onShare = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
       const res = await chatsApi.share(threadId, {});
-      const url = res.share_url.startsWith('http')
-        ? res.share_url
-        : `${window.location.origin}${res.share_url}`;
+      // BE는 share_url을 "/shared/{token}"로 발급하지만 vite/vercel rewrite가 BE API로 잡아채감.
+      // FE 라우트는 /s/{token}이므로 사용자에게 보여줄 URL은 그 형태로 치환.
+      const fePath = res.share_url.replace(/^\/shared\//, '/s/');
+      const url = fePath.startsWith('http')
+        ? fePath
+        : `${window.location.origin}${fePath}`;
       const ok = await copyOrPrompt(url);
       if (ok) {
         setCopied(true);
@@ -51,6 +57,7 @@ export default function ShareButton({ threadId }: Props) {
       } else {
         toast.info('클립보드 권한이 없어 prompt로 표시했어요');
       }
+      setWasShared(true);
     } catch (e) {
       const msg = friendlyApiError(e, '공유 링크 생성에 실패했습니다');
       setError(msg);
@@ -60,17 +67,49 @@ export default function ShareButton({ threadId }: Props) {
     }
   };
 
+  const onRevoke = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await chatsApi.revokeShare(threadId);
+      setWasShared(false);
+      toast.success('공유를 취소했어요');
+    } catch (e) {
+      const msg = friendlyApiError(e, '공유 취소에 실패했습니다');
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      title={error ?? '공유 링크 복사'}
-      aria-label="공유 링크 복사"
-      className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded hover:bg-bg-overlay transition-colors"
-    >
-      {copied ? <Check size={14} /> : <Share2 size={14} />}
-      <span>{copied ? '링크 복사됨' : '공유'}</span>
-    </button>
+    <div className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        onClick={onShare}
+        disabled={busy}
+        title={error ?? '공유 링크 복사'}
+        aria-label="공유 링크 복사"
+        className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded hover:bg-bg-overlay transition-colors disabled:opacity-50"
+      >
+        {copied ? <Check size={14} /> : <Share2 size={14} />}
+        <span>{copied ? '링크 복사됨' : '공유'}</span>
+      </button>
+      {wasShared && (
+        <button
+          type="button"
+          onClick={onRevoke}
+          disabled={busy}
+          title="공유 취소"
+          aria-label="공유 취소"
+          className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-[#DC2626] px-1.5 py-1 rounded hover:bg-[#FEF2F2] transition-colors disabled:opacity-50"
+        >
+          <X size={13} />
+          <span>취소</span>
+        </button>
+      )}
+    </div>
   );
 }

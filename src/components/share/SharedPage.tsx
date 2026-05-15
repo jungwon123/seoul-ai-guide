@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { sharedApi } from '@/lib/api';
 import { friendlyApiError } from '@/lib/auth-errors';
-import type { SharedConversation } from '@/types/api';
+import type { Block, SharedConversation } from '@/types/api';
+import { BlockRenderer } from '@/components/chat/blocks';
+import PlaceCarousel from '@/components/chat/PlaceCarousel';
+import ItineraryCard from '@/components/chat/ItineraryCard';
+import {
+  singlePlaceBlockToPlace,
+  placesBlockToPlaces,
+  courseBlockToItinerary,
+} from '@/stores/chatStore';
 
 export default function SharedPage() {
   const { token } = useParams<{ token: string }>();
@@ -82,29 +90,71 @@ export default function SharedPage() {
 
 function SharedMessage({ role, blocks, createdAt }: { role: string; blocks: unknown[]; createdAt: string }) {
   const isUser = role === 'user';
-  const text = blocks
+  const time = new Date(createdAt).toLocaleString('ko-KR');
+  const typedBlocks = blocks as Block[];
+
+  // 텍스트 블록들은 모아서 하나의 버블로 (chat UI와 동일 패턴).
+  const text = typedBlocks
     .map((b) => {
-      const block = b as { type?: string; content?: string; delta?: string; text?: string };
-      if (block.type === 'text' || block.type === 'text_stream') {
-        return block.content ?? block.delta ?? block.text ?? '';
-      }
+      if (b.type === 'text') return b.content;
+      if (b.type === 'text_stream') return b.delta ?? b.content ?? '';
       return '';
     })
     .filter(Boolean)
-    .join(' ');
-  const time = new Date(createdAt).toLocaleString('ko-KR');
+    .join('');
+
+  // 구조화 블록 — 카드/카루셀로 별도 렌더. intent/done/error 같은 제어 프레임 skip.
+  // map_markers/map_route는 shared에 지도가 없어서 skip.
+  const structuredBlocks = typedBlocks.filter(
+    (b) =>
+      b.type !== 'text' &&
+      b.type !== 'text_stream' &&
+      b.type !== 'intent' &&
+      b.type !== 'status' &&
+      b.type !== 'done' &&
+      b.type !== 'done_partial' &&
+      b.type !== 'error' &&
+      b.type !== 'map_markers' &&
+      b.type !== 'map_route',
+  );
 
   return (
-    <div className={isUser ? 'self-end max-w-[85%]' : 'self-start max-w-[90%]'}>
-      <div
-        className={
-          isUser
-            ? 'bg-brand-subtle border border-brand rounded-2xl rounded-br-md px-4 py-2.5 text-sm'
-            : 'bg-bg-warm border border-border rounded-2xl rounded-bl-md px-4 py-2.5 text-sm'
-        }
-      >
-        {text || <span className="text-text-muted">[멀티미디어 응답]</span>}
-      </div>
+    <div className={isUser ? 'self-end max-w-[85%]' : 'self-start w-full max-w-full'}>
+      {text && (
+        <div
+          className={
+            isUser
+              ? 'bg-brand-subtle border border-brand rounded-2xl rounded-br-md px-4 py-2.5 text-sm whitespace-pre-wrap'
+              : 'bg-bg-warm border border-border rounded-2xl rounded-bl-md px-4 py-2.5 text-sm whitespace-pre-wrap leading-[1.6]'
+          }
+        >
+          {text}
+        </div>
+      )}
+
+      {!isUser && structuredBlocks.length > 0 && (
+        <div className="flex flex-col gap-2.5 mt-2.5">
+          {structuredBlocks.map((b, i) => {
+            if (b.type === 'place') {
+              return <PlaceCarousel key={i} places={[singlePlaceBlockToPlace(b)]} />;
+            }
+            if (b.type === 'places') {
+              return <PlaceCarousel key={i} places={placesBlockToPlaces(b)} />;
+            }
+            if (b.type === 'course') {
+              return <ItineraryCard key={i} itinerary={courseBlockToItinerary(b)} hideActions />;
+            }
+            return <BlockRenderer key={i} block={b} />;
+          })}
+        </div>
+      )}
+
+      {!text && structuredBlocks.length === 0 && (
+        <div className="bg-bg-warm border border-border rounded-2xl px-4 py-2.5 text-sm text-text-muted">
+          [내용 없음]
+        </div>
+      )}
+
       <div className="text-[10px] text-text-muted mt-1 px-2">{time}</div>
     </div>
   );

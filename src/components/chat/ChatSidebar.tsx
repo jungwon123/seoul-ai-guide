@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { X, Plus, MessageCircle, Trash2, Settings, LogOut, User, RefreshCw } from 'lucide-react';
+import { memo, useState, useRef, useEffect, useCallback, type KeyboardEvent, type FocusEvent } from 'react';
+import { X, Plus, MessageCircle, Trash2, Settings, LogOut, User, RefreshCw, Pencil, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useChatStore, type ChatSession } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -32,6 +32,7 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
   const newChat = useChatStore((s) => s.newChat);
   const loadSession = useChatStore((s) => s.loadSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
+  const renameSession = useChatStore((s) => s.renameSession);
   const chatsLoading = useChatStore((s) => s.chatsLoading);
   const chatsError = useChatStore((s) => s.chatsError);
   const loadFromServer = useChatStore((s) => s.loadFromServer);
@@ -123,39 +124,16 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
               </div>
             )
           ) : (
-            sessions.map((session: ChatSession) => {
-              const isActive = session.id === sessionId;
-              return (
-                <div
-                  key={session.id}
-                  className={cn(
-                    'group flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150',
-                    isActive ? 'bg-brand-subtle' : 'hover:bg-bg-subtle',
-                  )}
-                  onClick={() => handleLoadSession(session.id)}
-                >
-                  <div className="w-[6px] h-[6px] rounded-full mt-[7px] shrink-0 bg-brand" />
-                  <div className="flex-1 min-w-0">
-                    <p className={cn(
-                      'text-[13px] leading-tight truncate',
-                      isActive ? 'font-semibold text-brand' : 'font-medium text-text-primary',
-                    )}>
-                      {session.title}
-                    </p>
-                    <p className="text-[11px] text-text-muted mt-1">
-                      {formatDate(session.updatedAt)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                    className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all cursor-pointer shrink-0 mt-0.5"
-                    aria-label="대화 삭제"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              );
-            })
+            sessions.map((session: ChatSession) => (
+              <SessionItem
+                key={session.id}
+                session={session}
+                isActive={session.id === sessionId}
+                onLoad={handleLoadSession}
+                onDelete={deleteSession}
+                onRename={renameSession}
+              />
+            ))
           )}
         </div>
 
@@ -198,3 +176,128 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
     </>
   );
 });
+
+// 사이드바 세션 카드 — 인라인 제목 편집 지원.
+// Pencil: 편집 진입 / Enter or blur: 저장 / Escape: 취소.
+interface SessionItemProps {
+  session: ChatSession;
+  isActive: boolean;
+  onLoad: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => Promise<void>;
+}
+
+function SessionItem({ session, isActive, onLoad, onDelete, onRename }: SessionItemProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(session.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  // 외부에서 title이 바뀌면 (BE rename 동기화 등) draft도 동기화.
+  useEffect(() => {
+    if (!editing) setDraft(session.title);
+  }, [session.title, editing]);
+
+  const commit = useCallback(async () => {
+    const trimmed = draft.trim();
+    setEditing(false);
+    if (!trimmed || trimmed === session.title) {
+      setDraft(session.title);
+      return;
+    }
+    await onRename(session.id, trimmed).catch(() => {
+      // 실패 시 원래 값 복구.
+      setDraft(session.title);
+    });
+  }, [draft, session.id, session.title, onRename]);
+
+  const cancel = useCallback(() => {
+    setDraft(session.title);
+    setEditing(false);
+  }, [session.title]);
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void commit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancel();
+    }
+  };
+
+  const handleBlur = (_e: FocusEvent<HTMLInputElement>) => {
+    void commit();
+  };
+
+  return (
+    <div
+      className={cn(
+        'group flex items-start gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150',
+        editing ? 'cursor-default' : 'cursor-pointer',
+        isActive ? 'bg-brand-subtle' : 'hover:bg-bg-subtle',
+      )}
+      onClick={() => { if (!editing) onLoad(session.id); }}
+    >
+      <div className="w-[6px] h-[6px] rounded-full mt-[7px] shrink-0 bg-brand" />
+      <div className="flex-1 min-w-0">
+        {editing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            onClick={(e) => e.stopPropagation()}
+            maxLength={200}
+            className="w-full text-[13px] leading-tight font-medium text-text-primary bg-bg-surface border border-brand rounded px-1.5 py-0.5 outline-none"
+            aria-label="대화 제목 편집"
+          />
+        ) : (
+          <p className={cn(
+            'text-[13px] leading-tight truncate',
+            isActive ? 'font-semibold text-brand' : 'font-medium text-text-primary',
+          )}>
+            {session.title}
+          </p>
+        )}
+        <p className="text-[11px] text-text-muted mt-1">
+          {formatDate(session.updatedAt)}
+        </p>
+      </div>
+      {editing ? (
+        <button
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); void commit(); }}
+          className="w-6 h-6 rounded-md flex items-center justify-center text-brand hover:bg-brand-subtle transition-colors cursor-pointer shrink-0 mt-0.5"
+          aria-label="제목 저장"
+        >
+          <Check size={12} />
+        </button>
+      ) : (
+        <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-subtle transition-all cursor-pointer"
+            aria-label="대화 제목 편집"
+          >
+            <Pencil size={12} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(session.id); }}
+            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all cursor-pointer"
+            aria-label="대화 삭제"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

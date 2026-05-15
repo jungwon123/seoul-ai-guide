@@ -61,7 +61,8 @@ function Bootstrap() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route path="/shared/:token" element={<SharedPage />} />
+          {/* /shared/:token은 BE API와 충돌(vite/vercel rewrite 잡힘) — FE 라우트는 /s/:token. */}
+          <Route path="/s/:token" element={<SharedPage />} />
           <Route path="/calendar/connected" element={<CalendarConnected />} />
           <Route
             path="/settings"

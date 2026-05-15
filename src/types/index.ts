@@ -126,10 +126,14 @@ export interface MessageSnapshot {
   itinerary?: Itinerary | null;
 }
 
+// PinType은 BE bookmarks 모델과 동일 (api.ts 재export 회피 — 순환 import 방지).
+export type BookmarkPinType = 'place' | 'event' | 'course' | 'analysis' | 'general';
+
 export interface MessageBookmarkItem {
   bookmarkId: string;
   messageId: string;
   conversationId: string;
+  pinType: BookmarkPinType;
   snapshot: MessageSnapshot;
   createdAt: string;
 }

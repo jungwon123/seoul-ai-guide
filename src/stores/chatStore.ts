@@ -10,7 +10,7 @@ import { useMapStore } from './mapStore';
 
 // SSE 블록 → 레거시 Message 타입 어댑터.
 
-function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
+export function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
   // BE PlaceBlock.congestion (PR #70 머지 시 자동 활성화). snake_case → camelCase 변환.
   // mock 시절 camelCase updatedAt 폴백 흡수 — 양쪽 데이터 지원.
   const c = it.congestion as
@@ -34,7 +34,7 @@ function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
   };
 }
 
-function placesBlockToPlaces(block: PlacesBlock): Place[] {
+export function placesBlockToPlaces(block: PlacesBlock): Place[] {
   return block.items.map((it) => singlePlaceBlockToPlace({ ...it, type: 'place' }));
 }
 
@@ -59,7 +59,7 @@ function eventsBlockToPlaces(block: EventsBlock): Place[] {
     }));
 }
 
-function courseBlockToItinerary(block: CourseBlock): Itinerary {
+export function courseBlockToItinerary(block: CourseBlock): Itinerary {
   // BE CourseBlock 실제 스키마: stop이 nested(place/transit_to_next). arrival_time/transit는 BE 값을 우선,
   // 누락 시 누적 커서로 보정.
   let cursor = 10 * 60; // 10:00 fallback start
