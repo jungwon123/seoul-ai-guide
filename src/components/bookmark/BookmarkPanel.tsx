@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react';
 import { MessageSquare, MapPin, Sparkles, Trash2 } from 'lucide-react';
-import type { MessageBookmarkItem, Place } from '@/types';
+import type { BookmarkPinType, MessageBookmarkItem, Place } from '@/types';
+
+// 북마크 핀 타입별 칩 — 88 팔레트 매핑. general은 별도 표시 X (기본).
+const PIN_TYPE_CONFIG: Record<BookmarkPinType, { label: string; color: string; bg: string } | null> = {
+  place:    { label: '장소', color: '#1F3A8B', bg: '#1F3A8B14' },
+  event:    { label: '행사', color: '#F4A12C', bg: '#F4A12C14' },
+  course:   { label: '코스', color: '#00853E', bg: '#00853E14' },
+  analysis: { label: '분석', color: '#6B7280', bg: '#6B728014' },
+  general:  null,
+};
 import { CATEGORY_CONFIG, cn } from '@/lib/utils';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { useMapStore } from '@/stores/mapStore';
@@ -245,6 +254,7 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
       {grouped.map((item) => {
         const relDate = formatRelativeDate(item.createdAt);
         const placeCount = item.snapshot.places?.length ?? 0;
+        const pinChip = PIN_TYPE_CONFIG[item.pinType];
 
         return (
           <article
@@ -253,6 +263,14 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
             onClick={() => { loadSession(item.conversationId); onClose?.(); }}
           >
             <div className="flex items-center gap-2 mb-2">
+              {pinChip && (
+                <span
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md tracking-tight"
+                  style={{ color: pinChip.color, backgroundColor: pinChip.bg }}
+                >
+                  {pinChip.label}
+                </span>
+              )}
               <span className="text-[11px] text-text-muted">{relDate}</span>
 
               <button

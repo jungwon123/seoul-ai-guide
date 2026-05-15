@@ -83,6 +83,7 @@ function bookmarkItemToMessage(item: BookmarkItem): MessageBookmarkItem {
     bookmarkId: String(item.bookmark_id),
     messageId: String(item.message_id),
     conversationId: item.thread_id,
+    pinType: item.pin_type,
     snapshot: {
       role: 'assistant',
       createdAt: item.created_at,
@@ -198,6 +199,7 @@ export const useBookmarkStore = create<BookmarkStore>((set, get) => ({
       bookmarkId: tempId,
       messageId,
       conversationId,
+      pinType: pinTypeFromSnapshot(snapshot),
       snapshot,
       createdAt: new Date().toISOString(),
     };

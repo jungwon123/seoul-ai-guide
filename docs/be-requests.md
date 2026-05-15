@@ -179,6 +179,153 @@ class EventItem(BaseModel):
 
 ---
 
+## 9. 대화 북마크 422 — DoneBlock에 message_id 추가 (Active)
+
+**상태**: 🔴 BE 요청 필요. 현재 응답 직후 북마크 시 422 발생.
+
+**증상**: 사용자가 응답 받자마자 북마크 누르면 **422 Unprocessable Entity**. 새로고침/탭 전환 후엔 정상.
+
+**원인**:
+- `BookmarkCreateRequest.message_id: int` (BE schema)
+- FE는 SSE 응답 후 BE에 저장된 메시지의 진짜 `message_id`를 알 방법이 없어서, fresh local string id(`"msg-1234567890-agent"`)를 그대로 보냄
+- Pydantic int validation 실패 → 422
+- 새로고침하면 `loadFromServer`가 히스토리에서 real int id로 메시지 재로드 → 북마크 가능
+
+**원인 파일**: `backend/src/models/blocks.py:308`의 `DoneBlock`에 `message_id` 필드 없음.
+
+**요청**:
+```python
+class DoneBlock(BaseModel):
+    type: str = "done"
+    status: str = "done"
+    error_message: Optional[str] = None
+    message_id: Optional[int] = None       # ← 신규 (assistant 메시지 id)
+    user_message_id: Optional[int] = None  # ← (선택) user 메시지 id
+```
+
+→ FE는 `done` 이벤트 받을 때 local agent 메시지의 `messageId`를 BE id로 즉시 교체. 사용자가 응답 직후 북마크해도 정상 동작.
+
+**FE 측 작업 (BE 머지 후)**:
+- `chatStore.ts`의 `done` 핸들러에서 `data.message_id`로 local 메시지 id 갱신 한 줄 추가.
+
+---
+
+## 10. 장소 북마크 BE API 신규 (Active)
+
+**상태**: 🔴 BE 신규 작업 필요. 현재 FE는 localStorage만 사용.
+
+**증상/현황**: 사용자가 PlaceCard ★ 누른 장소가 **현재 브라우저에만 저장**됨. 디바이스 간 동기화 X, 캐시 지우면 사라짐, 계정 따라가지 않음.
+
+**원인**: BE에 장소 북마크 endpoint 미구현. 대화 북마크(`bookmarks` 테이블)는 메시지 컨텍스트 강제(`thread_id` + `message_id` 필수)라 장소 단독 북마크에 부적합.
+
+**요청**: **별도 테이블 + 별도 endpoint 3종** 신규 구현.
+
+### 엔드포인트 설계
+
+**POST `/api/v1/users/me/place-bookmarks`** — 추가
+```python
+class PlaceBookmarkCreateRequest(BaseModel):
+    place_id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., max_length=200)
+    # 시점 스냅샷
+    category: Optional[str] = None
+    address: Optional[str] = None
+    district: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    rating: Optional[float] = None
+    image_url: Optional[str] = None
+    summary: Optional[str] = Field(None, max_length=500)
+    # 발견 출처 (선택)
+    source_thread_id: Optional[str] = None
+    source_message_id: Optional[int] = None
+```
+
+**GET `/api/v1/users/me/place-bookmarks`** — 목록 (cursor 페이지네이션, `created_at DESC` 정렬)
+
+**DELETE `/api/v1/users/me/place-bookmarks/{bookmark_id}`** — 삭제 (soft delete, 대화 북마크와 일관)
+
+### DB 테이블
+
+```sql
+CREATE TABLE place_bookmarks (
+  bookmark_id     BIGSERIAL PRIMARY KEY,
+  user_id         BIGINT NOT NULL REFERENCES users(user_id),
+  place_id        VARCHAR(100) NOT NULL,
+  name            VARCHAR(200) NOT NULL,
+  category        VARCHAR(50),
+  address         TEXT,
+  district        VARCHAR(50),
+  lat             DOUBLE PRECISION,
+  lng             DOUBLE PRECISION,
+  rating          REAL,
+  image_url       TEXT,
+  summary         TEXT,
+  source_thread_id  VARCHAR(100),
+  source_message_id BIGINT,
+  is_deleted      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at      TIMESTAMPTZ,
+  UNIQUE(user_id, place_id)
+);
+
+CREATE INDEX idx_place_bookmarks_user_created
+  ON place_bookmarks(user_id, created_at DESC)
+  WHERE is_deleted = FALSE;
+```
+
+### 핵심 결정 사항
+
+1. **`(user_id, place_id)` UNIQUE** — 중복 시 **idempotent 200 OK** 반환 권장 (FE 마이그레이션 친화)
+2. **시점 스냅샷 보관** — places 테이블 데이터가 변해도(휴업/폐점/이름 변경) 북마크엔 영향 X
+3. **`source_thread_id`/`source_message_id`** — 어느 대화에서 발견했는지 추적 (분석/UX, 선택)
+4. **Soft delete** — 대화 북마크와 패턴 통일
+5. **Auth** — JWT 필수, 비로그인은 401
+
+### FE 측 작업 (BE 완성 후)
+
+1. `src/lib/api.ts`에 `placeBookmarksApi` 추가 (대화 북마크 패턴 그대로)
+2. `bookmarkStore.toggle`/`add`/`remove`에 BE 호출 + optimistic 패턴 (대화 북마크 `toggleMessage` 참고)
+3. `loadFromServer`에서 장소 북마크 동시 fetch
+4. 로그인 직후 기존 localStorage 데이터 → BE 일괄 migrate (idempotent라 안전)
+
+---
+
+## 11. 캘린더 OAuth callback — FE 페이지 redirect (Active)
+
+**상태**: 🔴 BE 한 줄 수정 필요. 현재 사용자가 raw JSON 페이지 봄.
+
+**증상**: 캘린더 연동 OAuth 흐름 자체는 정상 완료. 단, 마지막에 **`{"message":"Google Calendar 연동이 완료되었습니다."}` JSON이 그대로 브라우저에 표시**됨. FE의 "연동 완료" 페이지(`CalendarConnected`)가 안 보임.
+
+**원인**: `backend/src/api/google_calendar_auth.py:175`
+```python
+return {"message": "Google Calendar 연동이 완료되었습니다."}
+```
+→ FastAPI가 dict를 JSON 응답으로 직렬화. 브라우저는 raw JSON 페이지 표시.
+
+**요청**:
+```python
+from fastapi.responses import RedirectResponse
+
+# 성공 시
+return RedirectResponse(
+    url="https://seoul-ai-guide.vercel.app/calendar/connected",
+    status_code=302,
+)
+
+# 에러 시 (선택)
+return RedirectResponse(
+    url=f"https://seoul-ai-guide.vercel.app/calendar/connected?error={error_code}",
+    status_code=302,
+)
+```
+
+production / dev / local 환경별 FE base URL은 `FE_BASE_URL` 같은 환경변수로 분리 권장.
+
+**FE 측**: `src/main.tsx:65`에 `<Route path="/calendar/connected">` 이미 존재. `?error=` 쿼리 파라미터 처리도 `CalendarConnected.tsx`에 완성됨. BE redirect만 추가되면 즉시 동작.
+
+---
+
 ## 해소된 이슈 (Resolved — 기록용)
 
 ### R1. text_stream 블록 필드명 (라이브 vs 저장본)
