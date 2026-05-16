@@ -149,6 +149,8 @@ export type PlaceBlockData = {
   image_url?: string;
   summary?: string;
   congestion?: CongestionBlockInfo;
+  naver_map_url?: string;
+  kakao_map_url?: string;
 };
 
 export type PlacesBlock = {

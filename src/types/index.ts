@@ -12,6 +12,7 @@ export type CongestionLevel = 'low' | 'medium' | 'high';
 export interface Congestion {
   level: CongestionLevel;
   updatedAt?: string;
+  source?: string;
 }
 
 // === Place ===
@@ -27,6 +28,8 @@ export interface Place {
   summary: string;
   image?: string;
   congestion?: Congestion;
+  naverMapUrl?: string;
+  kakaoMapUrl?: string;
 }
 
 // === Itinerary ===

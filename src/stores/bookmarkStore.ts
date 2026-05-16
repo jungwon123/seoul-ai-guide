@@ -10,7 +10,10 @@ const allPlaces = placesData as Place[];
 const PLACE_STORAGE_KEY = 'seoul-ai-bookmarks';
 const PLACE_SNAPSHOT_STORAGE_KEY = 'seoul-ai-bookmark-snapshots';
 const MSG_STORAGE_KEY = 'seoul-ai-message-bookmarks';
-const DEFAULT_PLACE_IDS = ['place-001', 'place-002', 'place-003', 'place-004'];
+// prod에선 빈 상태로 시작. dev에선 mock 4개 시드해서 UI 검수 편의.
+const DEFAULT_PLACE_IDS: string[] = import.meta.env.DEV
+  ? ['place-001', 'place-002', 'place-003', 'place-004']
+  : [];
 
 function loadPlaceIds(): string[] {
   try {

@@ -15,8 +15,10 @@ import Toaster from '@/components/ui/Toaster';
 //   따라서 disable 모드에선 단순 early-return으로 부족하고, 기존에 등록된
 //   SW를 명시 unregister해 줘야 한다.
 async function startMockServiceWorker(): Promise<void> {
-  if (!import.meta.env.DEV) return;
-  if (import.meta.env.VITE_DISABLE_MSW === 'true') {
+  // prod 또는 명시적 DISABLE 시 항상 언레지스터.
+  // 과거 dev 방문으로 같은 origin에 등록된 stale SW가 prod 페이지의 fetch를
+  // 가로채는 사고를 막기 위함 — main.tsx 진입 시점에 강제 정리한다.
+  if (!import.meta.env.DEV || import.meta.env.VITE_DISABLE_MSW === 'true') {
     await unregisterMswServiceWorker();
     return;
   }
