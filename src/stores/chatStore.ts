@@ -14,10 +14,10 @@ export function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
   // BE PlaceBlock.congestion (PR #70 머지 시 자동 활성화). snake_case → camelCase 변환.
   // mock 시절 camelCase updatedAt 폴백 흡수 — 양쪽 데이터 지원.
   const c = it.congestion as
-    | { level: 'low' | 'medium' | 'high'; updated_at?: string; updatedAt?: string }
+    | { level: 'low' | 'medium' | 'high'; updated_at?: string; updatedAt?: string; source?: string }
     | undefined;
   const congestion = c
-    ? { level: c.level, updatedAt: c.updated_at ?? c.updatedAt ?? '' }
+    ? { level: c.level, updatedAt: c.updated_at ?? c.updatedAt ?? '', source: c.source }
     : undefined;
   return {
     id: it.place_id,
@@ -31,6 +31,8 @@ export function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
     summary: it.summary ?? '',
     image: it.image_url,
     congestion,
+    naverMapUrl: it.naver_map_url,
+    kakaoMapUrl: it.kakao_map_url,
   };
 }
 

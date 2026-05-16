@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { MapPin, Star, Bookmark, Users } from 'lucide-react';
-import type { Place } from '@/types';
-import { CATEGORY_CONFIG, CONGESTION_CONFIG } from '@/lib/utils';
+import { MapPin, Star, Bookmark } from 'lucide-react';
+import type { Place, CongestionLevel } from '@/types';
+import { CATEGORY_CONFIG } from '@/lib/utils';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import BookingForm from '@/components/booking/BookingForm';
+
+const CONGESTION_BADGE: Record<CongestionLevel, { label: string; className: string }> = {
+  low: { label: '한산', className: 'bg-green-100 text-green-700' },
+  medium: { label: '보통', className: 'bg-yellow-100 text-yellow-700' },
+  high: { label: '혼잡', className: 'bg-red-100 text-red-700' },
+};
 
 interface PlaceCardProps {
   place: Place;
@@ -57,26 +63,40 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
           >
             {cat.label}
           </span>
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-            {place.rating > 0 && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-bg-surface/90 text-text-primary backdrop-blur-sm tabular-nums">
-                <Star size={10} fill="currentColor" className="text-amber-500" aria-hidden="true" />
-                {place.rating}
-              </span>
+          <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1">
+            <div className="flex items-center gap-1.5">
+              {place.rating > 0 && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-bg-surface/90 text-text-primary backdrop-blur-sm tabular-nums">
+                  <Star size={10} fill="currentColor" className="text-amber-500" aria-hidden="true" />
+                  {place.rating}
+                </span>
+              )}
+              <button
+                onClick={handleBookmark}
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-bg-surface/90 backdrop-blur-sm transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+                aria-label={isBookmarked ? '북마크 해제' : '북마크'}
+                aria-pressed={isBookmarked}
+              >
+                <Bookmark
+                  size={13}
+                  strokeWidth={isBookmarked ? 0 : 1.8}
+                  fill={isBookmarked ? '#F59E0B' : 'none'}
+                  className={isBookmarked ? '' : 'text-text-primary'}
+                />
+              </button>
+            </div>
+            {place.congestion && (
+              <div className="flex flex-col items-end gap-0.5">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${CONGESTION_BADGE[place.congestion.level].className}`}
+                >
+                  {CONGESTION_BADGE[place.congestion.level].label}
+                </span>
+                {place.congestion.updatedAt && (
+                  <span className="text-[10px] text-gray-400">기준: {place.congestion.updatedAt}</span>
+                )}
+              </div>
             )}
-            <button
-              onClick={handleBookmark}
-              className="w-7 h-7 rounded-full flex items-center justify-center bg-bg-surface/90 backdrop-blur-sm transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
-              aria-label={isBookmarked ? '북마크 해제' : '북마크'}
-              aria-pressed={isBookmarked}
-            >
-              <Bookmark
-                size={13}
-                strokeWidth={isBookmarked ? 0 : 1.8}
-                fill={isBookmarked ? '#F59E0B' : 'none'}
-                className={isBookmarked ? '' : 'text-text-primary'}
-              />
-            </button>
           </div>
         </div>
 
@@ -88,21 +108,36 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
             <MapPin size={11} strokeWidth={1.5} aria-hidden="true" />
             <span className="truncate">{place.address}</span>
           </div>
-          {place.congestion && (
-            <div className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] font-medium tabular-nums"
-              style={{
-                backgroundColor: CONGESTION_CONFIG[place.congestion.level].bg,
-                color: CONGESTION_CONFIG[place.congestion.level].color,
-              }}
-            >
-              <Users size={10} strokeWidth={2} aria-hidden="true" />
-              <span>지금 {CONGESTION_CONFIG[place.congestion.level].label}</span>
-            </div>
-          )}
           {!compact && (
             <p className="text-[13px] text-text-primary mt-2 leading-[1.6] line-clamp-2">
               {place.summary}
             </p>
+          )}
+          {(place.naverMapUrl || place.kakaoMapUrl) && (
+            <div className="flex items-center gap-2 mt-2">
+              {place.naverMapUrl && (
+                <a
+                  href={place.naverMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-green-600 hover:underline"
+                >
+                  네이버 지도
+                </a>
+              )}
+              {place.kakaoMapUrl && (
+                <a
+                  href={place.kakaoMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-yellow-600 hover:underline"
+                >
+                  카카오맵
+                </a>
+              )}
+            </div>
           )}
           {!compact && (
             <div className="flex border-t border-border mt-3">

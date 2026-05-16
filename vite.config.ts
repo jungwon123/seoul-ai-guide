@@ -32,15 +32,15 @@ export default defineConfig({
     // VITE_DEV_BE 환경변수로 타겟 변경 가능. 기본은 GCE localbiz-api.
     proxy: {
       '/api': {
-        target: process.env.VITE_DEV_BE || 'http://34.22.91.75:8000',
+        target: process.env.VITE_DEV_BE || 'https://34.50.44.75.nip.io',
         changeOrigin: true,
       },
       '/health': {
-        target: process.env.VITE_DEV_BE || 'http://34.22.91.75:8000',
+        target: process.env.VITE_DEV_BE || 'https://34.50.44.75.nip.io',
         changeOrigin: true,
       },
       '/shared': {
-        target: process.env.VITE_DEV_BE || 'http://34.22.91.75:8000',
+        target: process.env.VITE_DEV_BE || 'https://34.50.44.75.nip.io',
         changeOrigin: true,
       },
     },

@@ -7,7 +7,7 @@ import EventsBlock from './EventsBlock';
 import ReferencesBlock from './ReferencesBlock';
 import AnalysisSourcesBlock from './AnalysisSourcesBlock';
 import DisambiguationBlock from './DisambiguationBlock';
-import MapMarkersBlock from './MapMarkersBlock';
+import MapBlock from './MapBlock';
 import MapRouteBlock from './MapRouteBlock';
 import CalendarBlock from './CalendarBlock';
 
@@ -17,7 +17,7 @@ export {
   ReferencesBlock,
   AnalysisSourcesBlock,
   DisambiguationBlock,
-  MapMarkersBlock,
+  MapBlock,
   MapRouteBlock,
   CalendarBlock,
 };
@@ -35,7 +35,7 @@ export function BlockRenderer({ block }: { block: Block }): ReactElement | null 
     case 'disambiguation':
       return <DisambiguationBlock data={block} />;
     case 'map_markers':
-      return <MapMarkersBlock data={block} />;
+      return <MapBlock markers={block.markers} />;
     case 'map_route':
       return <MapRouteBlock data={block} />;
     case 'calendar':

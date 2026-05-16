@@ -77,17 +77,21 @@ export default function MapPanel() {
 
   const hasContent = displayMarkers.length > 0 || is3D;
 
-  // Congestion overlay data: all places with congestion → fixed geo-radius circles
+  // Congestion overlay — mock places.json 기반 demo 시각화.
+  // prod에선 노출 차단 (BE 혼잡도는 PlaceCard 뱃지로 표시).
   const congestionPoints = useMemo(
-    () => (placesData as Place[])
-      .filter((p): p is Place & { congestion: NonNullable<Place['congestion']> } => !!p.congestion)
-      .map((p) => {
-        const level = p.congestion.level;
-        const cfg = CONGESTION_CONFIG[level];
-        // low 150m / medium 250m / high 400m
-        const radiusMeters = level === 'high' ? 400 : level === 'medium' ? 250 : 150;
-        return { lat: p.lat, lng: p.lng, color: cfg.color, radiusMeters };
-      }),
+    () => {
+      if (!import.meta.env.DEV) return [];
+      return (placesData as Place[])
+        .filter((p): p is Place & { congestion: NonNullable<Place['congestion']> } => !!p.congestion)
+        .map((p) => {
+          const level = p.congestion.level;
+          const cfg = CONGESTION_CONFIG[level];
+          // low 150m / medium 250m / high 400m
+          const radiusMeters = level === 'high' ? 400 : level === 'medium' ? 250 : 150;
+          return { lat: p.lat, lng: p.lng, color: cfg.color, radiusMeters };
+        });
+    },
     [],
   );
 

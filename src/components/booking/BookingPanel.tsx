@@ -5,7 +5,8 @@ import bookingsData from '@/mocks/bookings.json';
 import type { Booking } from '@/types';
 import EmptyState from '@/components/ui/EmptyState';
 
-const bookings = bookingsData as Booking[];
+// Phase 1 mock — BE 미연동. prod 빌드에선 mock 노출 차단.
+const bookings: Booking[] = import.meta.env.DEV ? (bookingsData as Booking[]) : [];
 
 const statusConfig = {
   pending: { label: '진행 중', color: '#EA580C', icon: Clock },
