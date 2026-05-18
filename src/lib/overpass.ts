@@ -2,6 +2,9 @@
  * Overpass API를 통해 OpenStreetMap 건물 데이터를 가져옴
  */
 
+import { latLngToDistrict, type SeoulDistrict } from './seoul-districts';
+import { getCachedDistrict, setCachedDistrict } from './buildings-cache';
+
 // Pre-cached bounds for instant loading
 const CACHED_BOUNDS = { south: 37.562, west: 126.970, north: 37.585, east: 126.999 };
 
@@ -38,9 +41,27 @@ function distanceM(lat1: number, lon1: number, lat2: number, lon2: number): numb
 // Per-point building cache (keyed by "lat,lng")
 const pointCache = new Map<string, BuildingData[]>();
 
+function filterByDistance(buildings: BuildingData[], lat: number, lng: number, radiusM: number): BuildingData[] {
+  return buildings.filter((b) => {
+    const centroid = b.coords.reduce(
+      (acc, [blat, blon]) => [acc[0] + blat, acc[1] + blon],
+      [0, 0],
+    );
+    centroid[0] /= b.coords.length;
+    centroid[1] /= b.coords.length;
+    return distanceM(lat, lng, centroid[0], centroid[1]) <= radiusM;
+  });
+}
+
 /**
  * Fetch buildings within a radius around a point.
- * Uses cached data if available, otherwise falls back to Overpass.
+ *
+ * 우선순위:
+ *  1. pointCache (메모리 — 같은 (lat,lng,radius) 재요청)
+ *  2. 종로 사전 캐시 (정적 JSON, 즉시)
+ *  3. 자치구 IndexedDB 캐시 (한 번 받은 자치구는 영구 보관)
+ *  4. 자치구 전체 Overpass fetch → IndexedDB 저장 → 거리 필터
+ *  5. 폴백: point-radius Overpass fetch (자치구 매핑 실패 또는 모든 미러 실패 시)
  */
 export async function fetchBuildingsNearPoint(
   lat: number,
@@ -58,26 +79,77 @@ export async function fetchBuildingsNearPoint(
   const west = lng - lngOffset;
   const east = lng + lngOffset;
 
-  let allBuildings: BuildingData[];
-
+  // (2) 종로 사전 캐시 우선 — 가장 빠름.
   if (isWithinCachedBounds(south, west, north, east)) {
-    // Filter from local cache by distance
     const cached = await loadCachedBuildings();
-    allBuildings = cached.filter((b) => {
-      const centroid = b.coords.reduce(
-        (acc, [blat, blon]) => [acc[0] + blat, acc[1] + blon],
-        [0, 0],
-      );
-      centroid[0] /= b.coords.length;
-      centroid[1] /= b.coords.length;
-      return distanceM(lat, lng, centroid[0], centroid[1]) <= radiusM;
-    });
-  } else {
-    allBuildings = await fetchBuildings(south, west, north, east);
+    const filtered = filterByDistance(cached, lat, lng, radiusM);
+    pointCache.set(key, filtered);
+    return filtered;
   }
 
+  // (3-4) 자치구 캐시 경로.
+  const district = latLngToDistrict(lat, lng);
+  if (district) {
+    let districtBuildings = await getCachedDistrict(district.slug);
+    if (!districtBuildings) {
+      districtBuildings = await fetchBuildingsInDistrict(district);
+      if (districtBuildings.length > 0) {
+        // 비동기 저장 — 다음 호출 전에 완료될 보장은 없으나 fire-and-forget 으로 충분.
+        setCachedDistrict(district.slug, districtBuildings).catch(() => {});
+      }
+    }
+    if (districtBuildings.length > 0) {
+      const filtered = filterByDistance(districtBuildings, lat, lng, radiusM);
+      pointCache.set(key, filtered);
+      return filtered;
+    }
+  }
+
+  // (5) 폴백: point-radius Overpass (자치구 매핑 실패 또는 자치구 fetch 0건).
+  const allBuildings = await fetchBuildings(south, west, north, east);
   pointCache.set(key, allBuildings);
   return allBuildings;
+}
+
+/**
+ * 자치구 전체 bbox 를 한 번에 Overpass 로 받아옴. fetchBuildings 와 달리
+ * MAX_BBOX_DEGREES 클램핑이 없고 timeout 도 더 김.
+ */
+async function fetchBuildingsInDistrict(district: SeoulDistrict): Promise<BuildingData[]> {
+  const { south, west, north, east } = district.bbox;
+  const query = `
+    [out:json][timeout:120];
+    (
+      way["building"](${south},${west},${north},${east});
+      relation["building"](${south},${west},${north},${east});
+    );
+    out body;
+    >;
+    out skel qt;
+  `;
+
+  const controller = new AbortController();
+  const body = `data=${encodeURIComponent(query)}`;
+
+  try {
+    return await Promise.any(
+      OVERPASS_URLS.map(async (url) => {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]),
+        });
+        if (!response.ok) throw new Error(`${response.status}`);
+        const data = await response.json();
+        controller.abort();
+        return parseBuildings(data);
+      }),
+    );
+  } catch {
+    console.warn(`Overpass: 자치구 ${district.slug} fetch 실패 — 빈 결과 반환`);
+    return [];
+  }
 }
 
 const OVERPASS_URLS = [
