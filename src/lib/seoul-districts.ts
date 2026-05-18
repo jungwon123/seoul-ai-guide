@@ -1,7 +1,14 @@
-// 서울 25개 자치구 — bbox(SW-NE) 와 대표 중심점.
-// 좌표 → 자치구 매핑: 모든 자치구 bbox 안에 들어가는 후보 중 중심점에서
-// 가장 가까운 것을 선택 (대부분 자치구가 직사각 형태가 아니라 경계가 겹침).
-// Source: 서울 행정구역 공개 데이터(2024).
+// 서울 25개 자치구 — bbox + 중심점 + polygon 경계.
+// Polygon 경계는 행정구역 공개 GeoJSON 기반 (southkorea/seoul-maps).
+// 좌표 → 자치구 매핑 우선순위:
+//   1) bbox 후보 필터 (빠른 reject)
+//   2) polygon point-in-polygon (정확)
+//   3) polygon 모두 miss 시 bbox 후보 중심점에서 최단거리 (fallback)
+
+import polygonsData from './seoul-districts-polygons.json';
+
+// JSON 의 polygon coords는 GeoJSON 형식: [[lng, lat], [lng, lat], ...]
+const POLYGONS = polygonsData as unknown as Record<string, [number, number][]>;
 
 export interface SeoulDistrict {
   slug: string;       // 영문 식별자 — IndexedDB key, 파일명 등에 사용
@@ -49,17 +56,38 @@ function distanceM(lat1: number, lon1: number, lat2: number, lon2: number): numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Ray casting point-in-polygon. polygon = [[lng, lat], ...] (GeoJSON 순서).
+function pointInPolygon(lat: number, lng: number, polygon: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i]; // [lng, lat]
+    const [xj, yj] = polygon[j];
+    const intersect = yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 /**
- * 좌표 → 자치구 매핑. bbox 후보 중 중심점이 가장 가까운 자치구 선택.
- * 후보가 없으면 (서울 외) null. 서울 전역 어디든 매칭되도록 bbox는 약간 여유 있게 잡아둠.
+ * 좌표 → 자치구 매핑. bbox 후보를 추린 뒤 polygon test 로 정확히 결정.
+ * polygon test 가 모두 실패하면 bbox 후보 중 중심점 최단거리로 fallback.
+ * 후보 자체가 없으면 (서울 밖) null.
  */
 export function latLngToDistrict(lat: number, lng: number): SeoulDistrict | null {
   const candidates = SEOUL_DISTRICTS.filter(
     (d) => lat >= d.bbox.south && lat <= d.bbox.north && lng >= d.bbox.west && lng <= d.bbox.east,
   );
   if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
 
+  // 1) Polygon 정확 매칭
+  for (const d of candidates) {
+    const poly = POLYGONS[d.slug];
+    if (poly && pointInPolygon(lat, lng, poly)) return d;
+  }
+
+  // 2) Fallback — polygon 미스 (좌표 정밀도 / 단순화 오차) 시 중심점 최단거리.
+  if (candidates.length === 1) return candidates[0];
   let best = candidates[0];
   let bestDist = distanceM(lat, lng, best.center.lat, best.center.lng);
   for (let i = 1; i < candidates.length; i++) {
