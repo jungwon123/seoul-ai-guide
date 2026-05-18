@@ -38,15 +38,24 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
   const sessions = useChatStore((s) => s.sessions);
 
   // GSAP spring 으로 사이드바 슬라이드 인/아웃 — back.out 으로 살짝 오버슈트.
+  // ⚠ JSX 에 inline style.transform 을 두면 React 가 매 렌더마다 덮어써서 GSAP 와 충돌.
+  //    transform 은 GSAP 가 단독 관리. 초기 위치는 useGSAP 의 first-run 분기에서 set.
+  const firstRun = useRef(true);
   useGSAP(() => {
     const el = sidebarRef.current;
     if (!el) return;
+    const targetX = isOpen ? 0 : -100;
+    if (firstRun.current) {
+      firstRun.current = false;
+      gsap.set(el, { xPercent: targetX });
+      return;
+    }
     if (prefersReducedMotion()) {
-      gsap.set(el, { xPercent: isOpen ? 0 : -100 });
+      gsap.set(el, { xPercent: targetX });
       return;
     }
     gsap.to(el, {
-      xPercent: isOpen ? 0 : -100,
+      xPercent: targetX,
       duration: isOpen ? 0.5 : 0.32,
       ease: isOpen ? 'back.out(1.3)' : 'power3.in',
     });
@@ -89,7 +98,6 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
 
       <div
         ref={sidebarRef}
-        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(-100%)' }}
         className="fixed left-0 top-0 bottom-0 z-50 w-[300px] bg-bg-surface border-r border-border flex flex-col will-change-transform"
       >
         <div className="flex items-center justify-between px-4 h-[52px] border-b border-border shrink-0">
