@@ -175,6 +175,9 @@ interface ChatStore {
   messages: Message[];
   isLoading: boolean;
   streamingText: string;
+  // BE 가 SSE status 이벤트로 보내는 진행 상황 메시지 ("코스를 계획하고 있어요..." 등).
+  // text_stream 첫 delta 도착 시 비움 (실 답변이 흐르기 시작하면 상태 텍스트 무의미).
+  currentStatus: string;
   selectedAgent: AgentType;
   sessionId: string;
 
@@ -207,6 +210,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   messages: [],
   isLoading: false,
   streamingText: '',
+  currentStatus: '',
   selectedAgent: 'claude',
   sessionId: `session-${Date.now()}`,
   sessions: [],
@@ -237,7 +241,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     };
 
     const updatedMessages = [...messages, userMsg];
-    set({ messages: updatedMessages, isLoading: true, streamingText: '' });
+    set({ messages: updatedMessages, isLoading: true, streamingText: '', currentStatus: '' });
 
     // SSE 누적 버퍼 — done 시 한 번에 Message 빌드.
     let acc = '';
@@ -254,7 +258,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         text_stream: (data) => {
           if (data.type === 'text_stream') {
             acc += data.delta ?? data.content ?? '';
-            set({ streamingText: acc });
+            // 실제 답변이 흐르기 시작하면 진행 상태 텍스트는 더 이상 의미 없음.
+            set({ streamingText: acc, currentStatus: '' });
           }
         },
         places: (data) => {
@@ -292,7 +297,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         map_markers: (data) => otherBlocks.push(data),
         map_route: (data) => otherBlocks.push(data),
         intent: () => {},
-        status: () => {},
+        status: (data) => {
+          // BE 가 보내는 진행 상황 메시지를 TypingIndicator 에 노출.
+          if (data.type === 'status' && data.message) {
+            set({ currentStatus: data.message });
+          }
+        },
         done: (data) => {
           if (data.type === 'done' && typeof data.message_id === 'number') {
             beMessageId = data.message_id;
@@ -354,6 +364,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       messages: allMessages,
       isLoading: false,
       streamingText: '',
+      currentStatus: '',
       sessions: updatedSessions,
     });
 
