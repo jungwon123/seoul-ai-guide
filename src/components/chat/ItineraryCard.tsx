@@ -1,9 +1,17 @@
+import { useRef } from 'react';
 import { Clock, Star, MapPin, Footprints, Train, Bus, Car } from 'lucide-react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import type { Itinerary, TransportMode, Place } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
 import { useChatStore } from '@/stores/chatStore';
 import { useMapStore } from '@/stores/mapStore';
 import placesData from '@/mocks/places.json';
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' &&
+    !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
 
 const ALL_PLACES = placesData as Place[];
 
@@ -25,6 +33,21 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
   const sendMessage = useChatStore((s) => s.sendMessage);
   const isLoading = useChatStore((s) => s.isLoading);
   const startNavigation = useMapStore((s) => s.startNavigation);
+  const stopsRef = useRef<HTMLDivElement>(null);
+
+  // 일정 stop 리스트를 위에서부터 차례로 reveal — 정적 등장보다 시선 유도가 자연스럽다.
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    const items = stopsRef.current?.children;
+    if (!items || items.length === 0) return;
+    gsap.from(Array.from(items), {
+      y: 12,
+      opacity: 0,
+      duration: 0.4,
+      ease: 'power2.out',
+      stagger: 0.08,
+    });
+  }, { scope: stopsRef });
 
   return (
     <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden">
@@ -42,7 +65,7 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
       </div>
 
       {/* Stops */}
-      <div className="px-3 py-3 space-y-2">
+      <div ref={stopsRef} className="px-3 py-3 space-y-2">
         {itinerary.stops.map((stop, i) => {
           const place = ALL_PLACES.find((p) => p.id === stop.placeId);
           const cat = place ? CATEGORY_CONFIG[place.category] : null;
