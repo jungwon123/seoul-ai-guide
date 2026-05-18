@@ -6,6 +6,9 @@ import type {
   BookmarkCreateRequest,
   BookmarkCreateResponse,
   BookmarkListResponse,
+  PlaceBookmarkCreateRequest,
+  PlaceBookmarkItem,
+  PlaceBookmarkListResponse,
   ChatDetailResponse,
   ChatListResponse,
   FeedbackRequest,
@@ -259,6 +262,19 @@ export const bookmarksApi = {
     request<BookmarkListResponse>(buildUrl('/api/v1/users/me/bookmarks', params)),
   delete: (bookmark_id: string | number) =>
     request<void>(`/api/v1/users/me/bookmarks/${encodeURIComponent(String(bookmark_id))}`, { method: 'DELETE' }),
+};
+
+// 장소 북마크 — BE PR #80 (3 endpoints, soft delete, idempotent upsert).
+export const placeBookmarksApi = {
+  list: (params?: { cursor?: string; limit?: number }) =>
+    request<PlaceBookmarkListResponse>(buildUrl('/api/v1/users/me/place-bookmarks', params)),
+  create: (body: PlaceBookmarkCreateRequest) =>
+    request<PlaceBookmarkItem>('/api/v1/users/me/place-bookmarks', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  delete: (bookmark_id: number) =>
+    request<void>(`/api/v1/users/me/place-bookmarks/${bookmark_id}`, { method: 'DELETE' }),
 };
 
 export const chatsApi = {
