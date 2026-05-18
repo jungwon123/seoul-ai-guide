@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { MapPin, Star, Bookmark } from 'lucide-react';
+import gsap from 'gsap';
 import type { Place, CongestionLevel } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import BookingForm from '@/components/booking/BookingForm';
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' &&
+    !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
 
 const CONGESTION_BADGE: Record<CongestionLevel, { label: string; className: string }> = {
   low: { label: '한산', className: 'bg-green-100 text-green-700' },
@@ -22,6 +28,8 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
   const toggleBookmark = useBookmarkStore((s) => s.toggle);
   const isBookmarked = useBookmarkStore((s) => s.bookmarkedIds.includes(place.id));
   const [bookingOpen, setBookingOpen] = useState(false);
+  const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
+  const burstRef = useRef<HTMLSpanElement>(null);
 
   const cat = CATEGORY_CONFIG[place.category];
 
@@ -31,7 +39,34 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
 
   const handleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation();
+    const wasBookmarked = isBookmarked;
     toggleBookmark(place);
+
+    if (prefersReducedMotion()) return;
+
+    // 버튼 스케일 팝 — 항상 (추가/해제 모두 시각 피드백).
+    if (bookmarkBtnRef.current) {
+      gsap.fromTo(
+        bookmarkBtnRef.current,
+        { scale: 0.85 },
+        { scale: 1, duration: 0.35, ease: 'back.out(2.2)' },
+      );
+    }
+
+    // 파티클 버스트 — 추가 시에만.
+    if (!wasBookmarked && burstRef.current) {
+      const particles = burstRef.current.querySelectorAll<HTMLSpanElement>('.bm-particle');
+      const count = particles.length;
+      gsap.set(particles, { x: 0, y: 0, scale: 0.4, opacity: 1 });
+      gsap.to(particles, {
+        x: (i) => Math.cos((i / count) * Math.PI * 2 + Math.PI / 6) * 22,
+        y: (i) => Math.sin((i / count) * Math.PI * 2 + Math.PI / 6) * 22,
+        opacity: 0,
+        scale: 1.1,
+        duration: 0.55,
+        ease: 'power2.out',
+      });
+    }
   };
 
   return (
@@ -72,8 +107,9 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
                 </span>
               )}
               <button
+                ref={bookmarkBtnRef}
                 onClick={handleBookmark}
-                className="w-7 h-7 rounded-full flex items-center justify-center bg-bg-surface/90 backdrop-blur-sm transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+                className="relative w-7 h-7 rounded-full flex items-center justify-center bg-bg-surface/90 backdrop-blur-sm hover:scale-110 cursor-pointer"
                 aria-label={isBookmarked ? '북마크 해제' : '북마크'}
                 aria-pressed={isBookmarked}
               >
@@ -83,6 +119,14 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
                   fill={isBookmarked ? '#F59E0B' : 'none'}
                   className={isBookmarked ? '' : 'text-text-primary'}
                 />
+                <span ref={burstRef} className="pointer-events-none absolute inset-0" aria-hidden="true">
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <span
+                      key={i}
+                      className="bm-particle absolute top-1/2 left-1/2 w-1 h-1 -ml-0.5 -mt-0.5 rounded-full bg-amber-400 opacity-0"
+                    />
+                  ))}
+                </span>
               </button>
             </div>
             {place.congestion && (

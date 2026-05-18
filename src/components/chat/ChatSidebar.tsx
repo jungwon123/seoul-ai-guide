@@ -1,9 +1,16 @@
 import { memo, useState, useRef, useEffect, useCallback, type KeyboardEvent, type FocusEvent } from 'react';
 import { X, Plus, MessageCircle, Trash2, Settings, LogOut, User, RefreshCw, Pencil, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import { useChatStore, type ChatSession } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' &&
+    !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -27,7 +34,23 @@ function formatDate(dateStr: string): string {
 
 export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   const navigate = useNavigate();
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const sessions = useChatStore((s) => s.sessions);
+
+  // GSAP spring 으로 사이드바 슬라이드 인/아웃 — back.out 으로 살짝 오버슈트.
+  useGSAP(() => {
+    const el = sidebarRef.current;
+    if (!el) return;
+    if (prefersReducedMotion()) {
+      gsap.set(el, { xPercent: isOpen ? 0 : -100 });
+      return;
+    }
+    gsap.to(el, {
+      xPercent: isOpen ? 0 : -100,
+      duration: isOpen ? 0.5 : 0.32,
+      ease: isOpen ? 'back.out(1.3)' : 'power3.in',
+    });
+  }, { dependencies: [isOpen], scope: sidebarRef });
   const sessionId = useChatStore((s) => s.sessionId);
   const newChat = useChatStore((s) => s.newChat);
   const loadSession = useChatStore((s) => s.loadSession);
@@ -65,10 +88,9 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
       )}
 
       <div
-        className={cn(
-          'fixed left-0 top-0 bottom-0 z-50 w-[300px] bg-bg-surface border-r border-border flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-          isOpen ? 'translate-x-0' : '-translate-x-full',
-        )}
+        ref={sidebarRef}
+        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(-100%)' }}
+        className="fixed left-0 top-0 bottom-0 z-50 w-[300px] bg-bg-surface border-r border-border flex flex-col will-change-transform"
       >
         <div className="flex items-center justify-between px-4 h-[52px] border-b border-border shrink-0">
           <h2 className="text-[14px] font-semibold text-text-primary">대화 내역</h2>
