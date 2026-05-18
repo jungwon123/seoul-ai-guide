@@ -3,7 +3,7 @@ import { Star, MapPin } from 'lucide-react';
 import type { NavigationState } from '@/stores/mapStore';
 import { useMapStore } from '@/stores/mapStore';
 import { CATEGORY_CONFIG } from '@/lib/utils';
-import type { PlaceCategory } from '@/types';
+import { deriveStopCategory } from '@/lib/stop-category';
 
 type Section = '아침' | '오후' | '저녁';
 const SECTION_ORDER: Section[] = ['아침', '오후', '저녁'];
@@ -43,7 +43,7 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
             <h3 className="text-[14px] font-semibold text-text-secondary mb-3">{section}</h3>
             <div className="space-y-3">
               {stops.map((stop, idxInSection) => {
-                const cat = CATEGORY_CONFIG[(stop.category ?? 'tourism') as PlaceCategory];
+                const cat = CATEGORY_CONFIG[deriveStopCategory(stop)];
                 const isCurrent = itinerary.stops[stopIndex]?.placeId === stop.placeId;
                 const isSelected = selectedPlace?.id === stop.placeId;
                 const globalIdx = itinerary.stops.findIndex((s) => s.placeId === stop.placeId);
