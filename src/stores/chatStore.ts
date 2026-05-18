@@ -245,6 +245,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     let itinerary: Itinerary | undefined;
     const itineraries: Itinerary[] = [];
     const otherBlocks: Block[] = [];
+    // BE PR #81 — done 이벤트에서 송신되는 assistant message_id 캡처.
+    // 새로고침 없이 북마크/피드백/공유 버튼 동작에 필요.
+    let beMessageId: number | undefined;
 
     await new Promise<void>((resolve) => {
       const conn = openChatStream(sessionId, text, {
@@ -290,7 +293,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         map_route: (data) => otherBlocks.push(data),
         intent: () => {},
         status: () => {},
-        done: () => {
+        done: (data) => {
+          if (data.type === 'done' && typeof data.message_id === 'number') {
+            beMessageId = data.message_id;
+          }
           conn.close();
           resolve();
         },
@@ -319,7 +325,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       itineraries: itineraries.length > 1 ? itineraries : undefined,
       blocks: otherBlocks.length > 0 ? otherBlocks : undefined,
       threadId: sessionId,
-      messageId: agentId,
+      // BE 송신 message_id 우선, 없으면 FE 로컬 ID(fallback — 북마크/피드백 비활성).
+      messageId: beMessageId ?? agentId,
     };
 
     if (places && places.length > 0) {

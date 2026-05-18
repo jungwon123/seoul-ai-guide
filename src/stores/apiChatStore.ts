@@ -183,6 +183,12 @@ export const useApiChatStore = create<ApiChatStore>((set, get) => ({
       done: (data) => {
         // rAF 큐에 남은 delta가 있으면 done 처리 전 동기 flush.
         flushStreamSync(set);
+        // BE PR #81 — done.message_id 가 있으면 임시 로컬 ID를 BE id로 교체.
+        // loadThread/mapMessageItem 경로(`id: String(item.message_id)`)와 정합.
+        const beId =
+          data.type === 'done' && typeof data.message_id === 'number'
+            ? String(data.message_id)
+            : null;
         set((s) => ({
           isStreaming: false,
           currentStatus: '',
@@ -193,7 +199,7 @@ export const useApiChatStore = create<ApiChatStore>((set, get) => ({
               finalBlocks.push({ type: 'text', content: m.streamingText });
             }
             finalBlocks.push(data);
-            return { ...m, done: true, blocks: finalBlocks };
+            return { ...m, id: beId ?? m.id, done: true, blocks: finalBlocks };
           }),
           _connection: null,
         }));

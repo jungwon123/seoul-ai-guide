@@ -314,6 +314,9 @@ export type DoneBlock = {
   reason?: string;
   partial?: boolean;
   error_message?: string;
+  // BE PR #81 — done 시점에 DB에 저장된 assistant message_id.
+  // 북마크/피드백/공유 버튼이 새로고침 없이 즉시 사용 가능하도록 활용.
+  message_id?: number;
 };
 
 export type ErrorBlock = {
