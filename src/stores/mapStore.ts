@@ -10,6 +10,10 @@ export interface NavigationState {
   isPlaying: boolean;
 }
 
+// lat/lng → viewport pixel 좌표 변환기. GoogleMap 이 마운트 시 등록, 언마운트 시 null.
+// PlaceCard → 마커 FLIP 애니메이션이 이 함수를 통해 대상 좌표를 알아낸다.
+export type MapProjector = (lat: number, lng: number) => { x: number; y: number } | null;
+
 interface MapStore {
   markers: Place[];
   route: RoutePoint[];
@@ -19,10 +23,17 @@ interface MapStore {
   // Navigation
   navigation: NavigationState | null;
 
+  // Projection (FLIP 용)
+  projector: MapProjector | null;
+  // 지도 컨테이너 DOM — FLIP 도착 fallback (마커가 화면 밖일 때 컨테이너 중심으로).
+  mapContainerEl: HTMLElement | null;
+
   setMarkers: (places: Place[]) => void;
   setRoute: (route: RoutePoint[]) => void;
   selectPlace: (place: Place | null) => void;
   clearMap: () => void;
+  setProjector: (fn: MapProjector | null) => void;
+  setMapContainerEl: (el: HTMLElement | null) => void;
 
   // Navigation actions
   startNavigation: (itinerary: Itinerary) => void;
@@ -65,6 +76,8 @@ export const useMapStore = create<MapStore>((set, get) => ({
   selectedPlace: null,
   mapCenter: SEOUL_CENTER,
   navigation: null,
+  projector: null,
+  mapContainerEl: null,
 
   setMarkers: (places) =>
     set({
@@ -82,6 +95,10 @@ export const useMapStore = create<MapStore>((set, get) => ({
     }),
 
   clearMap: () => set({ markers: [], route: [], selectedPlace: null, mapCenter: SEOUL_CENTER }),
+
+  setProjector: (fn) => set({ projector: fn }),
+
+  setMapContainerEl: (el) => set({ mapContainerEl: el }),
 
   startNavigation: (itinerary) => {
     const places = getPlacesForItinerary(itinerary);

@@ -1,7 +1,7 @@
 import { memo, useCallback, useRef } from 'react';
 import { Bookmark } from 'lucide-react';
-import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { gsap } from '@/lib/gsap-setup';
 import type { Message, MessageSnapshot } from '@/types';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -28,8 +28,35 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
     s.messageItems.some((m) => m.messageId === message.id),
   );
 
+  // 외곽 컨테이너 진입 효과 — ScrollTrigger 로 스크롤 컨테이너 viewport 진입 시 페이드.
+  // 새로 도착한 메시지는 mount 시 이미 화면 안이라 즉시 발화 (animate-message 대체).
+  // 긴 히스토리에서 위로 스크롤 시 옛 메시지도 진입 타이밍에 자연스럽게 등장.
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    const el = bubbleRef.current;
+    if (!el) return;
+    const scroller = el.closest<HTMLElement>('[data-chat-scroller]');
+    if (!scroller) return;
+    const tween = gsap.from(el, {
+      y: 14,
+      opacity: 0,
+      duration: 0.45,
+      ease: 'power2.out',
+      scrollTrigger: {
+        trigger: el,
+        scroller,
+        start: 'top 95%',
+        once: true,
+      },
+    });
+    return () => {
+      tween.scrollTrigger?.kill();
+      tween.kill();
+    };
+  }, { scope: bubbleRef });
+
   // 어시스턴트 답변의 자식 섹션(text → places → itinerary → blocks → actions)을
-  // 작은 간격으로 순차 reveal. 사용자 메시지는 CSS animate-message 그대로 사용.
+  // 작은 간격으로 순차 reveal. 외곽 ScrollTrigger 와 독립적으로 mount 시 동작.
   useGSAP(() => {
     if (isUser) return;
     if (prefersReducedMotion()) return;
@@ -41,6 +68,7 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
       duration: 0.35,
       ease: 'power2.out',
       stagger: 0.07,
+      delay: 0.15,
     });
   }, { scope: bubbleRef });
 
@@ -61,7 +89,7 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
   }, [message, conversationId, toggleMessage]);
 
   return (
-    <div className={isUser ? 'animate-message' : ''} ref={bubbleRef}>
+    <div ref={bubbleRef}>
       {isUser ? (
         <div className="flex justify-end pl-12">
           <div className="bg-brand-subtle border border-brand/8 rounded-2xl rounded-br-sm px-3.5 py-2.5 text-[14px] leading-[1.6] text-text-primary">

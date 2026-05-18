@@ -5,6 +5,7 @@ import type { Place, CongestionLevel } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
+import { flipToMarker } from '@/lib/flip-to-marker';
 import BookingForm from '@/components/booking/BookingForm';
 
 function prefersReducedMotion(): boolean {
@@ -30,10 +31,14 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
   const [bookingOpen, setBookingOpen] = useState(false);
   const bookmarkBtnRef = useRef<HTMLButtonElement>(null);
   const burstRef = useRef<HTMLSpanElement>(null);
+  const articleRef = useRef<HTMLElement>(null);
 
   const cat = CATEGORY_CONFIG[place.category];
 
   const handleViewOnMap = () => {
+    if (articleRef.current) {
+      flipToMarker(place, articleRef.current);
+    }
     selectPlace(place);
   };
 
@@ -72,6 +77,7 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
   return (
     <>
       <article
+        ref={articleRef}
         aria-label={`${place.name} - ${cat.label}`}
         onClick={handleViewOnMap}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleViewOnMap(); }}
