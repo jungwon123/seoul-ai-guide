@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { MapScene3D } from '@/lib/three-scene';
-import { fetchBuildings, fetchBuildingsNearPoint } from '@/lib/overpass';
+import { fetchBuildingsNearPoint } from '@/lib/overpass';
 import type { Place } from '@/types';
 import { useMapStore } from '@/stores/mapStore';
 import type { NavigationState } from '@/stores/mapStore';
@@ -62,7 +62,9 @@ export default function ThreeMap({
     return () => ro.disconnect();
   }, []);
 
-  // Load buildings + tiles when center changes
+  // Load ground tiles + set center when camera target changes.
+  // 건물은 더 이상 viewport 단위로 받지 않는다 — 경로 추천 받은 stop 좌표 주변만
+  // navigation effect 에서 fetchBuildingsNearPoint 로 로드한다.
   const loadArea = useCallback(async () => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -84,22 +86,12 @@ export default function ThreeMap({
 
       // Set center first so markers render immediately
       scene.loadBuildings([], { lat: center.lat, lon: center.lng });
+      onBuildingCount(0);
 
-      // Load ground tiles + buildings in parallel
-      const [buildings] = await Promise.all([
-        fetchBuildings(bounds.south, bounds.west, bounds.north, bounds.east),
-        scene.loadGround(bounds, zoom),
-      ]);
+      await scene.loadGround(bounds, zoom);
 
-      // Ground is visible now — hide spinner
       onLoadingChange(false);
       scene.resetCamera();
-
-      // Add buildings (non-blocking visual enhancement)
-      if (buildings.length > 0) {
-        scene.loadBuildings(buildings, { lat: center.lat, lon: center.lng });
-        onBuildingCount(buildings.length);
-      }
     } catch (err) {
       onError(err instanceof Error ? err.message : '3D 로딩 실패');
       loadedCenterRef.current = '';
@@ -130,6 +122,9 @@ export default function ThreeMap({
 
     if (!navigation) {
       scene.clearRoute();
+      // 경로 해제 시 stop 주변에 띄워둔 건물도 함께 제거 (페이드 아웃).
+      scene.transitionBuildings([], { lat: center.lat, lon: center.lng });
+      onBuildingCount(0);
       prevNavRef.current = null;
       prevStopBuildingRef.current = -1;
       return;
@@ -166,7 +161,7 @@ export default function ThreeMap({
         });
       }
     }
-  }, [navId, navStopIndex, navigation, markers, onBuildingCount]);
+  }, [navId, navStopIndex, navigation, markers, onBuildingCount, center.lat, center.lng]);
 
   // Auto-play: advance stops when isPlaying (primitive deps)
   useEffect(() => {
