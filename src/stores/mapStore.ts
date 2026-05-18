@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Place, RoutePoint, Itinerary } from '@/types';
+import { deriveStopCategory } from '@/lib/stop-category';
 import placesData from '@/mocks/places.json';
 
 const allPlaces = placesData as Place[];
@@ -47,17 +48,19 @@ interface MapStore {
 const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 };
 
 function getPlacesForItinerary(itinerary: Itinerary): Place[] {
-  // 1순위: places.json 매칭 (레거시 mock 일정).
-  // 2순위: SSE-driven 일정 — stop 자체 필드(lat/lng/imageUrl 등)로 Place 합성.
+  // 마커용 Place 합성. 카테고리는 deriveStopCategory 로 통일된 우선순위 사용:
+  //   stop.category(BE) → mock category → 'tourism'.
+  // ItineraryCard/ItineraryStopsList 가 같은 helper 를 쓰므로 패널 간 일관성 보장.
   return itinerary.stops
     .map((stop): Place | null => {
+      const category = deriveStopCategory(stop);
       const matched = allPlaces.find((p) => p.id === stop.placeId);
-      if (matched) return matched;
+      if (matched) return { ...matched, category };
       if (stop.lat == null || stop.lng == null) return null;
       return {
         id: stop.placeId,
         name: stop.placeName,
-        category: stop.category ?? 'tourism',
+        category,
         address: stop.address ?? '',
         lat: stop.lat,
         lng: stop.lng,

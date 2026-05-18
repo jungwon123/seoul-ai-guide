@@ -4,6 +4,7 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import type { Itinerary, TransportMode, Place } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
+import { deriveStopCategory } from '@/lib/stop-category';
 import { useChatStore } from '@/stores/chatStore';
 import { useMapStore } from '@/stores/mapStore';
 import placesData from '@/mocks/places.json';
@@ -68,7 +69,9 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
       <div ref={stopsRef} className="px-3 py-3 space-y-2">
         {itinerary.stops.map((stop, i) => {
           const place = ALL_PLACES.find((p) => p.id === stop.placeId);
-          const cat = place ? CATEGORY_CONFIG[place.category] : null;
+          // 카테고리는 stop.category(BE) → mock → 'tourism' 우선순위로 결정.
+          // 지도 패널과 동일 helper 를 써서 양쪽 일관성 보장.
+          const cat = CATEGORY_CONFIG[deriveStopCategory(stop)];
           const isLast = i >= itinerary.stops.length - 1;
           const TransportIcon = !isLast ? TRANSPORT_ICON[stop.transportToNext] : null;
 
