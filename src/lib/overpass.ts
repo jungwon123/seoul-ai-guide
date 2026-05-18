@@ -28,6 +28,38 @@ async function loadCachedBuildings(): Promise<BuildingData[]> {
   return cachedBuildings;
 }
 
+// 자치구 단위 사전 정적 JSON 로더. mocks/buildings-{slug}.json 이 존재하는
+// 자치구만 등록. 새 자치구 사전 데이터는 여기에 import 한 줄 추가.
+// 형식은 jongno 와 동일한 압축 포맷 ({ c: [[lat,lng]...], h: number })
+const STATIC_DISTRICT_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
+  // 현재는 jongno 한 자치구만 사전 데이터 (전체 자치구의 일부 영역만 캐시).
+  // 다른 자치구 사전 데이터 추가 시 한 줄씩 등록:
+  //   gangnam: () => import('@/mocks/buildings-gangnam.json'),
+};
+
+const staticDistrictMemo = new Map<string, BuildingData[]>();
+
+async function loadStaticDistrict(slug: string): Promise<BuildingData[] | null> {
+  const cached = staticDistrictMemo.get(slug);
+  if (cached) return cached;
+  const loader = STATIC_DISTRICT_LOADERS[slug];
+  if (!loader) return null;
+  try {
+    const data = await loader();
+    const raw = (data.default || data) as { c: [number, number][]; h: number }[];
+    const parsed = raw.map((b, i) => ({
+      id: `static-${slug}-${i}`,
+      coords: b.c,
+      height: b.h,
+      tags: {},
+    }));
+    staticDistrictMemo.set(slug, parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 // Haversine distance approximation in meters
 function distanceM(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -87,10 +119,13 @@ export async function fetchBuildingsNearPoint(
     return filtered;
   }
 
-  // (3-4) 자치구 캐시 경로.
+  // (3) 자치구 매핑 → 정적 JSON / IDB / Overpass 순으로 조회.
   const district = latLngToDistrict(lat, lng);
   if (district) {
-    let districtBuildings = await getCachedDistrict(district.slug);
+    let districtBuildings = await loadStaticDistrict(district.slug);
+    if (!districtBuildings) {
+      districtBuildings = await getCachedDistrict(district.slug);
+    }
     if (!districtBuildings) {
       districtBuildings = await fetchBuildingsInDistrict(district);
       if (districtBuildings.length > 0) {
