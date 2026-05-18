@@ -18,7 +18,7 @@ export default memo(function ChatMessages() {
   }, [messages, isLoading]);
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
+    <div ref={scrollRef} data-chat-scroller className="flex-1 overflow-y-auto overscroll-contain">
       {hasOnlyWelcome && (
         <div className="flex flex-col items-center justify-center pt-14 pb-10 px-8 animate-fade-up">
           <div className="mb-7">

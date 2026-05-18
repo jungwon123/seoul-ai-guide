@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Place } from '@/types';
 import { CATEGORY_CONFIG } from '@/lib/utils';
 import { loadMaps, loadMarker } from '@/lib/google-maps-loader';
+import { useMapStore } from '@/stores/mapStore';
 
 export type DisplayMarker = Place & { isBookmark?: boolean };
 
@@ -206,6 +207,42 @@ export default function GoogleMap({
 
     return () => { cancelled = true; };
   }, []);
+
+  // 지도 컨테이너 DOM 등록 — FLIP fallback 용 (마커 화면 밖일 때 컨테이너 중심 사용).
+  useEffect(() => {
+    const setEl = useMapStore.getState().setMapContainerEl;
+    setEl(containerRef.current);
+    return () => setEl(null);
+  }, []);
+
+  // 외부(PlaceCard FLIP 등)가 lat/lng → 화면 px 변환을 요청할 수 있도록 projector 등록.
+  // OverlayView 의 onAdd 이후 getProjection() 이 유효하므로, 그 시점에 store 에 함수 주입.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || typeof google === 'undefined') return;
+
+    const setProjector = useMapStore.getState().setProjector;
+    const overlay = new google.maps.OverlayView();
+    overlay.onAdd = () => {
+      setProjector((lat: number, lng: number) => {
+        const proj = overlay.getProjection();
+        if (!proj) return null;
+        const point = proj.fromLatLngToContainerPixel(new google.maps.LatLng(lat, lng));
+        if (!point) return null;
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return null;
+        return { x: rect.left + point.x, y: rect.top + point.y };
+      });
+    };
+    overlay.draw = () => {};
+    overlay.onRemove = () => {};
+    overlay.setMap(map);
+
+    return () => {
+      overlay.setMap(null);
+      setProjector(null);
+    };
+  }, [mapReady]);
 
   // Create/update markers ONLY when the marker list changes (NOT on selection change)
   useEffect(() => {
