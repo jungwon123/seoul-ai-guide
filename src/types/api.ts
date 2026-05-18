@@ -54,6 +54,44 @@ export type BookmarkCreateResponse = {
   created_at: string;
 };
 
+// === Place Bookmarks (BE PR #80 — Phase 2) ===
+export type PlaceBookmarkCreateRequest = {
+  place_id: string;
+  name: string;
+  category?: string | null;
+  address?: string | null;
+  district?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  rating?: number | null;
+  image_url?: string | null;
+  summary?: string | null;
+  source_thread_id?: string | null;
+  source_message_id?: number | null;
+};
+
+export type PlaceBookmarkItem = {
+  bookmark_id: number;
+  place_id: string;
+  name: string;
+  category?: string | null;
+  address?: string | null;
+  district?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  rating?: number | null;
+  image_url?: string | null;
+  summary?: string | null;
+  source_thread_id?: string | null;
+  source_message_id?: number | null;
+  created_at: string;
+};
+
+export type PlaceBookmarkListResponse = {
+  items: PlaceBookmarkItem[];
+  next_cursor: string | null;
+};
+
 // === Chats ===
 export type ChatListItem = {
   thread_id: string;
