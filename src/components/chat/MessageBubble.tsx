@@ -24,8 +24,12 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
 
   const conversationId = useChatStore((s) => s.sessionId);
   const toggleMessage = useBookmarkStore((s) => s.toggleMessage);
+  // BE 가 발급한 message_id (number) 만 북마크/피드백/공유에 사용 가능.
+  // streaming 직후 done.message_id 캡처가 안 됐거나 user 메시지면 string 또는 undefined.
+  const beMessageId = typeof message.messageId === 'number' ? message.messageId : null;
+  const beMessageIdStr = beMessageId != null ? String(beMessageId) : null;
   const isMessageBookmarked = useBookmarkStore((s) =>
-    s.messageItems.some((m) => m.messageId === message.id),
+    beMessageIdStr != null && s.messageItems.some((m) => m.messageId === beMessageIdStr),
   );
 
   // 외곽 컨테이너 진입 효과 — ScrollTrigger 로 스크롤 컨테이너 viewport 진입 시 페이드.
@@ -74,6 +78,8 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
 
   const handleBookmark = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    // BE message_id 없으면 저장 불가 — 버튼 자체도 가려져 있어 일반적으로 도달 X.
+    if (!beMessageIdStr) return;
     const snapshot: MessageSnapshot = {
       role: 'assistant',
       createdAt: message.timestamp,
@@ -82,11 +88,11 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
       itinerary: message.itinerary ?? null,
     };
     toggleMessage({
-      messageId: message.id,
+      messageId: beMessageIdStr,
       conversationId,
       snapshot,
     });
-  }, [message, conversationId, toggleMessage]);
+  }, [message, beMessageIdStr, conversationId, toggleMessage]);
 
   return (
     <div ref={bubbleRef}>
@@ -138,33 +144,32 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
               </div>
             )}
 
-            {/* 어시스턴트 메시지 액션 행 — 항상 노출 (호버/터치 모두 접근 가능) */}
-            <div data-reveal className="flex items-center gap-1 pt-1">
-              <button
-                type="button"
-                onClick={handleBookmark}
-                className={`inline-flex items-center gap-1 px-2 py-1 rounded transition-colors cursor-pointer text-xs ${
-                  isMessageBookmarked
-                    ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
-                    : 'text-text-muted hover:text-text-primary hover:bg-bg-overlay'
-                }`}
-                aria-label={isMessageBookmarked ? '대화 북마크 해제' : '대화 북마크'}
-                aria-pressed={isMessageBookmarked}
-              >
-                <Bookmark
-                  size={14}
-                  strokeWidth={isMessageBookmarked ? 0 : 1.8}
-                  fill={isMessageBookmarked ? '#F59E0B' : 'none'}
-                />
-                <span>{isMessageBookmarked ? '저장됨' : '저장'}</span>
-              </button>
-              {message.threadId && message.messageId != null && String(message.messageId).length > 0 && (
-                <>
-                  <FeedbackButton threadId={message.threadId} messageId={message.messageId} />
-                  <ShareButton threadId={message.threadId} />
-                </>
-              )}
-            </div>
+            {/* 어시스턴트 메시지 액션 행 — BE 가 부여한 message_id 가 있어야 모든 액션 가능.
+                streaming 직후 done.message_id 캡처 실패 시엔 액션 행 숨김. */}
+            {beMessageId != null && message.threadId && (
+              <div data-reveal className="flex items-center gap-1 pt-1">
+                <button
+                  type="button"
+                  onClick={handleBookmark}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded transition-colors cursor-pointer text-xs ${
+                    isMessageBookmarked
+                      ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                      : 'text-text-muted hover:text-text-primary hover:bg-bg-overlay'
+                  }`}
+                  aria-label={isMessageBookmarked ? '대화 북마크 해제' : '대화 북마크'}
+                  aria-pressed={isMessageBookmarked}
+                >
+                  <Bookmark
+                    size={14}
+                    strokeWidth={isMessageBookmarked ? 0 : 1.8}
+                    fill={isMessageBookmarked ? '#F59E0B' : 'none'}
+                  />
+                  <span>{isMessageBookmarked ? '저장됨' : '저장'}</span>
+                </button>
+                <FeedbackButton threadId={message.threadId} messageId={beMessageId} />
+                <ShareButton threadId={message.threadId} />
+              </div>
+            )}
           </div>
         </div>
       )}
