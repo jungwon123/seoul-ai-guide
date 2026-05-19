@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { BuildingData } from './overpass';
+import { loadTileTexture } from './tile-cache';
 import type { Place } from '@/types';
 
 // ── Tile helpers ──
@@ -153,9 +154,6 @@ export class MapScene3D {
     const tlTile = lonLatToTile(bounds.west, bounds.north, zoom);
     const brTile = lonLatToTile(bounds.east, bounds.south, zoom);
 
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = 'anonymous';
-
     const promises: Promise<void>[] = [];
 
     for (let tx = tlTile.x - 1; tx <= brTile.x + 1; tx++) {
@@ -166,26 +164,20 @@ export class MapScene3D {
         const tl = this.latLonToLocal(nw.lat, nw.lon);
         const br = this.latLonToLocal(se.lat, se.lon);
 
-        const p = new Promise<void>((resolve) => {
-          loader.load(url, (texture) => {
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-            texture.colorSpace = THREE.SRGBColorSpace;
+        const p = loadTileTexture(url).then((texture) => {
+          if (!texture) return;
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+            tl.x, 0, tl.z, br.x, 0, tl.z, tl.x, 0, br.z, br.x, 0, br.z,
+          ]), 3));
+          geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
+            0, 1, 1, 1, 0, 0, 1, 0,
+          ]), 2));
+          geo.setIndex([0, 2, 1, 1, 2, 3]);
+          geo.computeVertexNormals();
 
-            const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
-              tl.x, 0, tl.z, br.x, 0, tl.z, tl.x, 0, br.z, br.x, 0, br.z,
-            ]), 3));
-            geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([
-              0, 1, 1, 1, 0, 0, 1, 0,
-            ]), 2));
-            geo.setIndex([0, 2, 1, 1, 2, 3]);
-            geo.computeVertexNormals();
-
-            const mat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-            group.add(new THREE.Mesh(geo, mat));
-            resolve();
-          }, undefined, () => resolve());
+          const mat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+          group.add(new THREE.Mesh(geo, mat));
         });
         promises.push(p);
       }
