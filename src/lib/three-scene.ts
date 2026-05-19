@@ -41,8 +41,11 @@ export class MapScene3D {
   private controls: OrbitControls;
   private buildings: THREE.Mesh[] = [];
   private tileGroup: THREE.Group | null = null;
-  private placeMarkers: THREE.Group[] = [];
+  // 마커는 InstancedMesh 그룹으로 한 번에 — Group/개별 mesh 보다 draw call 수십→2~3.
+  private placeMarkerGroup: THREE.Group | null = null;
   private gpsMarker: THREE.Group | null = null;
+  // loadBuildings 가 async chunked 라 직전 호출을 cancel 하기 위한 세대 counter.
+  private buildGeneration = 0;
   private running = false;
   private renderRequested = false;
   private dampingFrames = 0;
@@ -197,11 +200,23 @@ export class MapScene3D {
 
   // ── Buildings ──
 
-  loadBuildings(buildings: BuildingData[], center: { lat: number; lon: number }) {
+  // 빌딩 빌드 — async chunked 로 메인 스레드 블로킹 회피 + 거리 컬링.
+  // 카메라 중심에서 반경 maxDistanceM (기본 1500m) 안의 빌딩만 geometry 빌드.
+  // 중간에 다시 호출되면 buildGeneration 가 증가해 직전 빌드는 자동 중단.
+  async loadBuildings(
+    buildings: BuildingData[],
+    center: { lat: number; lon: number },
+    options?: { maxDistanceM?: number; chunkSize?: number },
+  ): Promise<void> {
     this.clearBuildings();
     this.setCenter(center.lat, center.lon);
 
     if (buildings.length === 0) return;
+
+    const generation = ++this.buildGeneration;
+    const maxDistanceM = options?.maxDistanceM ?? 1500;
+    const maxSq = maxDistanceM * maxDistanceM;
+    const chunkSize = options?.chunkSize ?? 200;
 
     const COLOR_BUCKETS: { min: number; color: number }[] = [
       { min: 60, color: 0x1a3a5c },
@@ -210,40 +225,61 @@ export class MapScene3D {
       { min: 8, color: 0x6baed6 },
       { min: 0, color: 0x9ecae1 },
     ];
-
     const getColorBucket = (h: number) => {
       for (const b of COLOR_BUCKETS) if (h > b.min) return b.color;
       return 0x9ecae1;
     };
 
-    // Group geometries by color for merging
     const buckets = new Map<number, THREE.BufferGeometry[]>();
     for (const bucket of COLOR_BUCKETS) buckets.set(bucket.color, []);
 
-    for (const b of buildings) {
-      try {
-        const shape = new THREE.Shape();
-        const pts = b.coords.map(([lat, lon]) => this.latLonToLocal(lat, lon));
-        shape.moveTo(pts[0].x, -pts[0].z);
-        for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i].x, -pts[i].z);
-        shape.closePath();
+    // 거리 컬링 — 빌딩 중심(centroid)이 카메라 중심에서 너무 멀면 skip.
+    // local 좌표 (x, z) 기반 (latLonToLocal 이 center 를 원점으로 반환).
+    for (let i = 0; i < buildings.length; i += chunkSize) {
+      // 직전 빌드가 cancel 되면 즉시 종료.
+      if (generation !== this.buildGeneration) return;
 
-        const geo = new THREE.ExtrudeGeometry(shape, { depth: b.height, bevelEnabled: false });
-        geo.rotateX(-Math.PI / 2);
+      const end = Math.min(i + chunkSize, buildings.length);
+      for (let j = i; j < end; j++) {
+        const b = buildings[j];
+        try {
+          const pts = b.coords.map(([lat, lon]) => this.latLonToLocal(lat, lon));
+          if (pts.length < 3) continue;
 
-        const color = getColorBucket(b.height);
-        buckets.get(color)!.push(geo);
-      } catch { /* skip invalid */ }
+          // centroid 거리 컬링 — 빠른 reject.
+          let cx = 0;
+          let cz = 0;
+          for (const p of pts) { cx += p.x; cz += p.z; }
+          cx /= pts.length;
+          cz /= pts.length;
+          if (cx * cx + cz * cz > maxSq) continue;
+
+          const shape = new THREE.Shape();
+          shape.moveTo(pts[0].x, -pts[0].z);
+          for (let k = 1; k < pts.length; k++) shape.lineTo(pts[k].x, -pts[k].z);
+          shape.closePath();
+
+          const geo = new THREE.ExtrudeGeometry(shape, { depth: b.height, bevelEnabled: false });
+          geo.rotateX(-Math.PI / 2);
+
+          buckets.get(getColorBucket(b.height))!.push(geo);
+        } catch { /* skip invalid */ }
+      }
+      // 다음 chunk 전에 event loop 양보.
+      await new Promise<void>((r) => setTimeout(r, 0));
     }
 
-    // Merge each color bucket into a single mesh
+    // 빌드 완료 직전에 한 번 더 generation 검사.
+    if (generation !== this.buildGeneration) {
+      for (const geos of buckets.values()) for (const g of geos) g.dispose();
+      return;
+    }
+
     for (const [color, geos] of buckets) {
       if (geos.length === 0) continue;
       const merged = mergeGeometries(geos, false);
-      if (!merged) continue;
-
-      // Dispose individual geometries after merge
       for (const g of geos) g.dispose();
+      if (!merged) continue;
 
       const mesh = new THREE.Mesh(merged, new THREE.MeshPhongMaterial({
         color,
@@ -342,65 +378,101 @@ export class MapScene3D {
 
   // ── Place markers (pins in 3D) ──
 
+  // 모든 마커를 InstancedMesh 3개(sphere/pole/ring)로 한꺼번에 — 그룹 단위 mesh
+  // 제거로 draw call 과 메모리 절감. selected 는 sphere scale 키워서 강조.
   setPlaceMarkers(places: Place[], selectedId?: string) {
-    // Clear old
-    for (const g of this.placeMarkers) {
-      g.traverse((c) => {
+    // 기존 그룹 제거
+    if (this.placeMarkerGroup) {
+      this.placeMarkerGroup.traverse((c) => {
         if ((c as THREE.Mesh).geometry) (c as THREE.Mesh).geometry.dispose();
-        if ((c as THREE.Mesh).material) ((c as THREE.Mesh).material as THREE.Material).dispose();
+        const mat = (c as THREE.Mesh).material;
+        if (mat) {
+          if (Array.isArray(mat)) mat.forEach((mm) => mm.dispose());
+          else (mat as THREE.Material).dispose();
+        }
       });
-      this.scene.remove(g);
+      this.scene.remove(this.placeMarkerGroup);
+      this.placeMarkerGroup = null;
     }
-    this.placeMarkers = [];
+
+    const n = places.length;
+    if (n === 0) {
+      this.requestRender();
+      return;
+    }
 
     const categoryColors: Record<string, number> = {
       tourism: 0x1f3a8b, shopping: 0xdc2127, culture: 0xf4a12c, food: 0x00853e,
     };
 
-    for (const place of places) {
-      const pos = this.latLonToLocal(place.lat, place.lng);
-      const group = new THREE.Group();
+    // 공유 geometry — InstancedMesh 가 instance 별 transform/color 만 보관.
+    const sphereGeo = new THREE.SphereGeometry(1, 16, 16);
+    const poleGeo = new THREE.CylinderGeometry(1.5, 1.5, 50, 8);
+    const ringGeo = new THREE.RingGeometry(6, 10, 32);
+
+    const sphereMesh = new THREE.InstancedMesh(
+      sphereGeo,
+      new THREE.MeshPhongMaterial({ vertexColors: true }),
+      n,
+    );
+    const poleMesh = new THREE.InstancedMesh(
+      poleGeo,
+      new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.5 }),
+      n,
+    );
+    const ringMesh = new THREE.InstancedMesh(
+      ringGeo,
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.4, side: THREE.DoubleSide, vertexColors: true }),
+      n,
+    );
+    sphereMesh.castShadow = true;
+    sphereMesh.receiveShadow = true;
+
+    const m = new THREE.Matrix4();
+    const color = new THREE.Color();
+    const dummyPos = new THREE.Vector3();
+    const dummyQuat = new THREE.Quaternion();
+    const dummyScale = new THREE.Vector3();
+    const ringQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+
+    for (let i = 0; i < n; i++) {
+      const place = places[i];
       const isSelected = place.id === selectedId;
-
-      // Pin sphere
+      const c = categoryColors[place.category] ?? 0x2563eb;
       const radius = isSelected ? 12 : 8;
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 16, 16),
-        new THREE.MeshPhongMaterial({
-          color: categoryColors[place.category] ?? 0x2563eb,
-          emissive: categoryColors[place.category] ?? 0x2563eb,
-          emissiveIntensity: isSelected ? 0.5 : 0.2,
-        }),
-      );
-      sphere.position.y = 50;
-      group.add(sphere);
+      const pos = this.latLonToLocal(place.lat, place.lng);
 
-      // Pole
-      const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.5, 1.5, 50, 8),
-        new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.5 }),
-      );
-      pole.position.y = 25;
-      group.add(pole);
+      // Sphere — pin 위쪽. 단위 구를 radius 만큼 scale.
+      dummyPos.set(pos.x, 50, pos.z);
+      dummyScale.set(radius, radius, radius);
+      m.compose(dummyPos, dummyQuat, dummyScale);
+      sphereMesh.setMatrixAt(i, m);
+      sphereMesh.setColorAt(i, color.setHex(c));
 
-      // Ground ring
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(6, 10, 32),
-        new THREE.MeshBasicMaterial({
-          color: categoryColors[place.category] ?? 0x2563eb,
-          transparent: true,
-          opacity: 0.4,
-          side: THREE.DoubleSide,
-        }),
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 1;
-      group.add(ring);
+      // Pole — y 25 중심, 단위 스케일.
+      dummyPos.set(pos.x, 25, pos.z);
+      dummyScale.set(1, 1, 1);
+      m.compose(dummyPos, dummyQuat, dummyScale);
+      poleMesh.setMatrixAt(i, m);
 
-      group.position.set(pos.x, 0, pos.z);
-      this.scene.add(group);
-      this.placeMarkers.push(group);
+      // Ring — 바닥에 깔린 형태로 회전.
+      dummyPos.set(pos.x, 1, pos.z);
+      m.compose(dummyPos, ringQuat, dummyScale);
+      ringMesh.setMatrixAt(i, m);
+      ringMesh.setColorAt(i, color.setHex(c));
     }
+
+    sphereMesh.instanceMatrix.needsUpdate = true;
+    poleMesh.instanceMatrix.needsUpdate = true;
+    ringMesh.instanceMatrix.needsUpdate = true;
+    if (sphereMesh.instanceColor) sphereMesh.instanceColor.needsUpdate = true;
+    if (ringMesh.instanceColor) ringMesh.instanceColor.needsUpdate = true;
+
+    const group = new THREE.Group();
+    group.add(sphereMesh, poleMesh, ringMesh);
+    this.scene.add(group);
+    this.placeMarkerGroup = group;
+
     this.requestRender();
   }
 
