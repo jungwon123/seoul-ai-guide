@@ -4,6 +4,7 @@ import type { Block, PlaceBlockData, PlacesBlock, CourseBlock, EventsBlock, Even
 import { getWelcomeMessage } from '@/mocks/agent-responses';
 import { openChatStream } from '@/lib/sse';
 import { chatsApi } from '@/lib/api';
+import { prefetchCourse3D } from '@/lib/prefetch-3d';
 import { friendlyApiError } from '@/lib/auth-errors';
 import { normalizeCategory } from '@/lib/utils';
 import { useMapStore } from './mapStore';
@@ -279,6 +280,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             itineraries.push(it);
             // 단수 필드는 첫 번째 코스로 유지 (기존 코드 호환).
             if (!itinerary) itinerary = it;
+            // 백그라운드 prefetch — 사용자가 3D 보기 토글하기 전 미리 데이터/모듈 준비.
+            prefetchCourse3D(it.stops);
           }
         },
         // 그 외 블록은 그대로 message.blocks에 보존 → BlockRenderer가 렌더.
