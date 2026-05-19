@@ -9,6 +9,8 @@ import type {
   PlaceBookmarkCreateRequest,
   PlaceBookmarkItem,
   PlaceBookmarkListResponse,
+  CalendarEventsResponse,
+  ImageUploadResponse,
   ChatDetailResponse,
   ChatListResponse,
   FeedbackRequest,
@@ -275,6 +277,27 @@ export const placeBookmarksApi = {
     }),
   delete: (bookmark_id: number) =>
     request<void>(`/api/v1/users/me/place-bookmarks/${bookmark_id}`, { method: 'DELETE' }),
+};
+
+// Google Calendar 이벤트 직조회 (BE Phase 1 — DB 미저장, Google source of truth).
+// 미연동 시 403 { detail: "google_calendar_not_connected" }.
+export const calendarApi = {
+  listEvents: (params?: { time_min?: string; time_max?: string; limit?: number; page_token?: string }) =>
+    request<CalendarEventsResponse>(buildUrl('/api/v1/users/me/calendar/events', params)),
+  deleteEvent: (event_id: string) =>
+    request<void>(`/api/v1/users/me/calendar/events/${encodeURIComponent(event_id)}`, { method: 'DELETE' }),
+};
+
+// 이미지 업로드 — GCS 임시 저장 후 1시간짜리 signed URL 반환.
+export const uploadApi = {
+  image: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return request<ImageUploadResponse>('/api/v1/upload/image', {
+      method: 'POST',
+      body: fd,
+    });
+  },
 };
 
 export const chatsApi = {
