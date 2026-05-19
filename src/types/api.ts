@@ -92,6 +92,31 @@ export type PlaceBookmarkListResponse = {
   next_cursor: string | null;
 };
 
+// === Calendar Events (BE Phase 1 — Google Calendar 직접 조회) ===
+export type CalendarEventSource = 'localbiz' | 'user';
+
+export type CalendarEventItem = {
+  event_id: string;
+  title: string;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
+  description: string | null;
+  calendar_link: string | null;
+  source: CalendarEventSource;
+};
+
+export type CalendarEventsResponse = {
+  items: CalendarEventItem[];
+  next_page_token: string | null;
+};
+
+// === Image Upload ===
+export type ImageUploadResponse = {
+  image_url: string;
+  expires_in_seconds: number;
+};
+
 // === Chats ===
 export type ChatListItem = {
   thread_id: string;
