@@ -139,7 +139,7 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
             {message.blocks && message.blocks.length > 0 && (
               <div data-reveal className="space-y-2">
                 {message.blocks.map((block, i) => (
-                  <BlockRenderer key={`${block.type}-${i}`} block={block} />
+                  <BlockRenderer key={`${block.type}-${i}`} block={block} places={message.places} />
                 ))}
               </div>
             )}

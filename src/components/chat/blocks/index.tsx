@@ -2,6 +2,7 @@
 
 import type { ReactElement } from 'react';
 import type { Block } from '@/types/api';
+import type { Place } from '@/types';
 import ChartBlock from './ChartBlock';
 import EventsBlock from './EventsBlock';
 import ReferencesBlock from './ReferencesBlock';
@@ -22,7 +23,7 @@ export {
   CalendarBlock,
 };
 
-export function BlockRenderer({ block }: { block: Block }): ReactElement | null {
+export function BlockRenderer({ block, places }: { block: Block; places?: Place[] }): ReactElement | null {
   switch (block.type) {
     case 'chart':
       return <ChartBlock data={block} />;
@@ -35,7 +36,8 @@ export function BlockRenderer({ block }: { block: Block }): ReactElement | null 
     case 'disambiguation':
       return <DisambiguationBlock data={block} />;
     case 'map_markers':
-      return <MapBlock markers={block.markers} />;
+      // places 가 있으면 place_id 매칭으로 진짜 카테고리/이미지 복원 (BE MarkerItem 은 카테고리 미포함).
+      return <MapBlock markers={block.markers} places={places} />;
     case 'map_route':
       return <MapRouteBlock data={block} />;
     case 'calendar':
