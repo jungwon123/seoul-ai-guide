@@ -283,8 +283,11 @@ export default function GoogleMap({
 
       // 코스(itineraryMode)일 때만 마커 간 경로선을 그림.
       // 장소/행사 추천처럼 독립된 장소 목록에는 선을 연결하지 않음.
-      if (itineraryMode && markers.length > 1) {
-        const path = markers.map((p) => ({ lat: p.lat, lng: p.lng }));
+      // 즐겨찾기(isBookmark)는 코스와 무관한 별도 핀이라 경로에서 제외 — 안 그러면
+      // 폴리라인이 즐겨찾기 위치까지 이어져 코스가 어지럽게 보임.
+      const routeMarkers = markers.filter((p) => !p.isBookmark);
+      if (itineraryMode && routeMarkers.length > 1) {
+        const path = routeMarkers.map((p) => ({ lat: p.lat, lng: p.lng }));
         polylineRef.current = new google.maps.Polyline({
           path,
           strokeWeight: 7,
