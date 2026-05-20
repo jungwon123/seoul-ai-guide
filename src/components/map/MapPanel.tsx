@@ -3,8 +3,6 @@ import { MapPin, Box, Map, Flame, Route } from 'lucide-react';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { CONGESTION_CONFIG } from '@/lib/utils';
-import placesData from '@/mocks/places.json';
-import type { Place } from '@/types';
 import PlaceOverlayCarousel from './PlaceOverlayCarousel';
 import EmptyState from '@/components/ui/EmptyState';
 import LottiePlayer from '@/components/ui/LottiePlayer';
@@ -79,22 +77,20 @@ export default function MapPanel() {
 
   const hasContent = displayMarkers.length > 0 || is3D;
 
-  // Congestion overlay — mock places.json 기반 demo 시각화.
-  // prod에선 노출 차단 (BE 혼잡도는 PlaceCard 뱃지로 표시).
+  // Congestion overlay — 현재 화면에 표시된 마커들 중 BE congestion 정보가 있는 것만 사용.
+  // BE PlaceBlock.congestion (area_proxy 단위 혼잡도)을 실제 데이터 소스로 활용.
   const congestionPoints = useMemo(
-    () => {
-      if (!import.meta.env.DEV) return [];
-      return (placesData as Place[])
-        .filter((p): p is Place & { congestion: NonNullable<Place['congestion']> } => !!p.congestion)
+    () =>
+      displayMarkers
+        .filter((p) => !!p.congestion)
         .map((p) => {
-          const level = p.congestion.level;
+          const level = p.congestion!.level;
           const cfg = CONGESTION_CONFIG[level];
-          // low 150m / medium 250m / high 400m
+          // low 150m / medium 250m / high 400m — 레벨이 높을수록 영향 반경도 넓음.
           const radiusMeters = level === 'high' ? 400 : level === 'medium' ? 250 : 150;
           return { lat: p.lat, lng: p.lng, color: cfg.color, radiusMeters };
-        });
-    },
-    [],
+        }),
+    [displayMarkers],
   );
 
   // Auto-off heatmap when switching to 3D (visualization is 2D-only here)
