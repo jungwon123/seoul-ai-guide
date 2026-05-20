@@ -314,14 +314,14 @@ function SessionItem({ session, isActive, onLoad, onDelete, onRename }: SessionI
         <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
           <button
             onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-subtle transition-all cursor-pointer"
+            className="w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-subtle transition-all cursor-pointer"
             aria-label="대화 제목 편집"
           >
             <Pencil size={12} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(session.id); }}
-            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all cursor-pointer"
+            className="w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all cursor-pointer"
             aria-label="대화 삭제"
           >
             <Trash2 size={12} />
