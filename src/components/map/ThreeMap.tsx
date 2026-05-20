@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { MapScene3D } from '@/lib/three-scene';
 import { fetchBuildingsNearPoint } from '@/lib/overpass';
+import { pickFocusBuildings } from '@/lib/focus-buildings';
 import type { Place } from '@/types';
 import { useMapStore } from '@/stores/mapStore';
 import type { NavigationState } from '@/stores/mapStore';
@@ -16,6 +17,8 @@ interface ThreeMapProps {
   onBuildingCount: (count: number) => void;
   onError: (msg: string) => void;
   navigation?: NavigationState | null;
+  // 강조 모드 — target 1개(빨강) + neighbors N개(파랑). default 10.
+  neighborCount?: number;
 }
 
 export default function ThreeMap({
@@ -27,6 +30,7 @@ export default function ThreeMap({
   onBuildingCount,
   onError,
   navigation,
+  neighborCount = 10,
 }: ThreeMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<MapScene3D | null>(null);
@@ -153,15 +157,23 @@ export default function ThreeMap({
     if (prevStopBuildingRef.current !== navStopIndex) {
       prevStopBuildingRef.current = navStopIndex;
       const coord = stopCoords[navStopIndex];
+      const stop = navigation.itinerary.stops[navStopIndex];
       if (coord) {
         fetchBuildingsNearPoint(coord.lat, coord.lng, 500).then((buildings) => {
           if (!sceneRef.current) return;
-          sceneRef.current.transitionBuildings(buildings, { lat: coord.lat, lon: coord.lng });
-          onBuildingCount(buildings.length);
+          // 강조 모드 — target(빨강) + neighborCount 개 neighbors(파랑) 만 렌더.
+          const focused = pickFocusBuildings(buildings, coord, neighborCount);
+          sceneRef.current.transitionFocusedBuildings(
+            focused.target,
+            focused.neighbors,
+            { lat: coord.lat, lon: coord.lng },
+            stop?.placeName,
+          );
+          onBuildingCount(focused.neighbors.length + (focused.target ? 1 : 0));
         });
       }
     }
-  }, [navId, navStopIndex, navigation, markers, onBuildingCount, center.lat, center.lng]);
+  }, [navId, navStopIndex, navigation, markers, onBuildingCount, center.lat, center.lng, neighborCount]);
 
   // Auto-play: advance stops when isPlaying (primitive deps)
   useEffect(() => {

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import type { BuildingData } from './overpass';
 import { loadTileTexture } from './tile-cache';
 import type { Place } from '@/types';
@@ -47,6 +48,9 @@ export class MapScene3D {
   private gpsMarker: THREE.Group | null = null;
   // loadBuildings 가 async chunked 라 직전 호출을 cancel 하기 위한 세대 counter.
   private buildGeneration = 0;
+  // CSS2DRenderer — target 빌딩 라벨용 DOM 오버레이.
+  private labelRenderer: CSS2DRenderer;
+  private focusLabel: CSS2DObject | null = null;
   private running = false;
   private renderRequested = false;
   private dampingFrames = 0;
@@ -106,6 +110,16 @@ export class MapScene3D {
 
     this.scene.add(new THREE.DirectionalLight(0x8ecae6, 0.3).translateX(-300).translateY(200).translateZ(-200));
     this.scene.add(new THREE.HemisphereLight(0xb8d4e8, 0x444444, 0.4));
+
+    // CSS2DRenderer — WebGL 위에 DOM 오버레이로 라벨 표시. canvas 부모에 absolute 로 얹음.
+    this.labelRenderer = new CSS2DRenderer();
+    this.labelRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    const labelEl = this.labelRenderer.domElement;
+    labelEl.style.position = 'absolute';
+    labelEl.style.top = '0';
+    labelEl.style.left = '0';
+    labelEl.style.pointerEvents = 'none';
+    canvas.parentElement?.appendChild(labelEl);
 
     this.requestRender = this.requestRender.bind(this);
   }
@@ -706,6 +720,7 @@ export class MapScene3D {
       if (!this.running) return;
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
+      this.labelRenderer.render(this.scene, this.camera);
       // Continue rendering for damping ease-out
       if (this.dampingFrames > 0) {
         this.dampingFrames--;
@@ -718,6 +733,7 @@ export class MapScene3D {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this.labelRenderer.setSize(w, h);
     this.requestRender();
   }
 
@@ -736,5 +752,198 @@ export class MapScene3D {
     }
     this.controls.dispose();
     this.renderer.dispose();
+    this.clearFocusLabel();
+    this.labelRenderer.domElement.remove();
+  }
+
+  private clearFocusLabel() {
+    if (!this.focusLabel) return;
+    this.scene.remove(this.focusLabel);
+    if (this.focusLabel.element.parentElement) {
+      this.focusLabel.element.parentElement.removeChild(this.focusLabel.element);
+    }
+    this.focusLabel = null;
+  }
+
+  /**
+   * 코스 stop 좌표 1개 + 주변 N개 강조 모드.
+   * target 빌딩: 빨강 + emissive glow + 윤곽선 + 위쪽 라벨.
+   * neighbors: 파란색 단일 merged mesh.
+   * 기존 빌딩 모두 clear 한 뒤 11개(또는 그 이하)만 렌더.
+   */
+  async loadFocusedBuildings(
+    target: BuildingData | null,
+    neighbors: BuildingData[],
+    center: { lat: number; lon: number },
+    targetLabel?: string,
+  ): Promise<void> {
+    this.clearBuildings();
+    this.clearFocusLabel();
+    this.setCenter(center.lat, center.lon);
+
+    const generation = ++this.buildGeneration;
+
+    // Target — 빨간색 + emissive + outline + label
+    if (target) {
+      const targetGeo = this.buildExtrudeForBuilding(target);
+      if (targetGeo) {
+        const targetMat = new THREE.MeshPhongMaterial({
+          color: 0xDC2626,
+          emissive: 0xDC2626,
+          emissiveIntensity: 0.4,
+          transparent: true,
+          opacity: 0.95,
+          shininess: 50,
+        });
+        const targetMesh = new THREE.Mesh(targetGeo, targetMat);
+        targetMesh.castShadow = true;
+        targetMesh.receiveShadow = true;
+        targetMesh.scale.y = 0.01;
+        targetMesh.userData.targetScaleY = 1;
+        this.scene.add(targetMesh);
+        this.buildings.push(targetMesh);
+
+        // 윤곽선 — EdgesGeometry. target mesh 의 자식으로 붙여 같이 변환.
+        const edges = new THREE.EdgesGeometry(targetGeo, 20);
+        const edgeMat = new THREE.LineBasicMaterial({
+          color: 0xFEE2E2,
+          transparent: true,
+          opacity: 0.9,
+        });
+        const edgeLines = new THREE.LineSegments(edges, edgeMat);
+        targetMesh.add(edgeLines);
+
+        // 라벨 — target 위쪽 (높이 + 30m 정도).
+        if (targetLabel) {
+          const labelDiv = document.createElement('div');
+          labelDiv.textContent = targetLabel;
+          labelDiv.style.cssText = `
+            background: rgba(220, 38, 38, 0.92);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(220,38,38,0.4);
+            transform: translate(-50%, -100%);
+            font-family: 'Pretendard Variable', system-ui, sans-serif;
+            letter-spacing: -0.01em;
+          `;
+          const labelObj = new CSS2DObject(labelDiv);
+          // 빌딩 footprint 중심 위치 계산
+          let cx = 0;
+          let cz = 0;
+          for (const [lat, lon] of target.coords) {
+            const local = this.latLonToLocal(lat, lon);
+            cx += local.x;
+            cz += local.z;
+          }
+          cx /= target.coords.length;
+          cz /= target.coords.length;
+          labelObj.position.set(cx, target.height + 30, cz);
+          this.scene.add(labelObj);
+          this.focusLabel = labelObj;
+        }
+      }
+    }
+
+    // Neighbors — 단일 merged blue mesh
+    const neighborGeos: THREE.BufferGeometry[] = [];
+    for (const b of neighbors) {
+      if (generation !== this.buildGeneration) return;
+      const geo = this.buildExtrudeForBuilding(b);
+      if (geo) neighborGeos.push(geo);
+    }
+
+    if (generation !== this.buildGeneration) {
+      for (const g of neighborGeos) g.dispose();
+      return;
+    }
+
+    if (neighborGeos.length > 0) {
+      const merged = mergeGeometries(neighborGeos, false);
+      for (const g of neighborGeos) g.dispose();
+      if (merged) {
+        const mesh = new THREE.Mesh(
+          merged,
+          new THREE.MeshPhongMaterial({
+            color: 0x3B82F6,
+            transparent: true,
+            opacity: 0.82,
+            shininess: 25,
+          }),
+        );
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.scale.y = 0.01;
+        mesh.userData.targetScaleY = 1;
+        this.scene.add(mesh);
+        this.buildings.push(mesh);
+      }
+    }
+
+    this.animateBuildings();
+  }
+
+  /** 페이드아웃 → loadFocusedBuildings. transitionBuildings 와 동일 패턴. */
+  transitionFocusedBuildings(
+    target: BuildingData | null,
+    neighbors: BuildingData[],
+    center: { lat: number; lon: number },
+    targetLabel?: string,
+  ) {
+    if (this.buildings.length === 0) {
+      this.loadFocusedBuildings(target, neighbors, center, targetLabel);
+      return;
+    }
+    const oldMeshes = [...this.buildings];
+    const fadeOutDuration = 300;
+    const fadeStart = performance.now();
+
+    const fadeOut = (now: number) => {
+      const t = Math.min((now - fadeStart) / fadeOutDuration, 1);
+      for (const m of oldMeshes) {
+        const mat = m.material as THREE.MeshPhongMaterial;
+        mat.opacity = (mat.opacity ?? 0.92) * (1 - t);
+        m.scale.y = m.userData.targetScaleY * (1 - t * 0.3);
+      }
+      this.requestRender();
+      if (t < 1) {
+        requestAnimationFrame(fadeOut);
+      } else {
+        for (const m of oldMeshes) {
+          m.traverse((c) => {
+            if ((c as THREE.Mesh).geometry) (c as THREE.Mesh).geometry.dispose();
+            const mat = (c as THREE.Mesh).material;
+            if (mat) {
+              if (Array.isArray(mat)) mat.forEach((mm) => mm.dispose());
+              else (mat as THREE.Material).dispose();
+            }
+          });
+          this.scene.remove(m);
+        }
+        this.buildings = [];
+        this.loadFocusedBuildings(target, neighbors, center, targetLabel);
+      }
+    };
+    requestAnimationFrame(fadeOut);
+  }
+
+  // 단일 빌딩 ExtrudeGeometry 빌드. 좌표가 적거나 잘못된 경우 null.
+  private buildExtrudeForBuilding(b: BuildingData): THREE.BufferGeometry | null {
+    try {
+      const pts = b.coords.map(([lat, lon]) => this.latLonToLocal(lat, lon));
+      if (pts.length < 3) return null;
+      const shape = new THREE.Shape();
+      shape.moveTo(pts[0].x, -pts[0].z);
+      for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i].x, -pts[i].z);
+      shape.closePath();
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: b.height, bevelEnabled: false });
+      geo.rotateX(-Math.PI / 2);
+      return geo;
+    } catch {
+      return null;
+    }
   }
 }

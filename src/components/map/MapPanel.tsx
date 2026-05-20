@@ -64,6 +64,8 @@ export default function MapPanel() {
 
   // Route panel visibility — toggled by the "경로" button. Auto-opens when a new itinerary begins.
   const [routePanelOpen, setRoutePanelOpen] = useState(true);
+  // 3D 강조 모드 — target 빌딩 + 주변 N개. 5/10/15 토글.
+  const [neighborCount, setNeighborCount] = useState<5 | 10 | 15>(10);
   const navId = navigation?.itinerary.id ?? null;
   useEffect(() => { if (navId) setRoutePanelOpen(true); }, [navId]);
   const closeRoutePanel = useCallback(() => setRoutePanelOpen(false), []);
@@ -123,6 +125,7 @@ export default function MapPanel() {
                     onBuildingCount={handleBuildingCount}
                     onError={handleError}
                     navigation={navigation}
+                    neighborCount={neighborCount}
                   />
                 </Suspense>
               ) : (
@@ -167,6 +170,26 @@ export default function MapPanel() {
                     <Route size={14} aria-hidden="true" />
                     경로
                   </button>
+                )}
+                {is3D && navigation && (
+                  <div className="flex items-center gap-1 bg-white border border-border rounded-xl shadow-md px-1.5 py-1">
+                    <span className="text-[11px] font-medium text-text-muted px-1.5">주변</span>
+                    {([5, 10, 15] as const).map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setNeighborCount(n)}
+                        className={`px-2 py-1 rounded-lg text-[12px] font-semibold transition-colors cursor-pointer tabular-nums ${
+                          neighborCount === n
+                            ? 'bg-brand text-white'
+                            : 'text-text-secondary hover:bg-bg-subtle'
+                        }`}
+                        aria-pressed={neighborCount === n}
+                        aria-label={`주변 ${n}개`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 )}
                 <button
                   onClick={() => { setIs3D(!is3D); setError3D(null); }}
