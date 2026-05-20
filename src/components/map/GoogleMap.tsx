@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Place } from '@/types';
-import { CATEGORY_CONFIG } from '@/lib/utils';
+import { CATEGORY_CONFIG, CONGESTION_CONFIG } from '@/lib/utils';
 import { loadMaps, loadMarker } from '@/lib/google-maps-loader';
 import { useMapStore } from '@/stores/mapStore';
 
@@ -73,6 +73,23 @@ function buildMarkerContent(
     </div>`;
   }
 
+  // 혼잡도 인디케이터 — 마커 좌하단에 작은 점. 상단 우측 뱃지(코스 번호/북마크 별)와 충돌 안 함.
+  // BE PlaceBlock.congestion 이 있을 때만 표시. 카드의 한산/보통/혼잡 pill과 같은 컬러 토큰 사용.
+  let congestionDot = '';
+  if (place.congestion) {
+    const cong = CONGESTION_CONFIG[place.congestion.level];
+    congestionDot = `<div data-congestion style="
+      position: absolute;
+      bottom: -4px; left: -4px;
+      width: 14px; height: 14px;
+      background: ${cong.color};
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      border: 2px solid white;
+      pointer-events: none;
+    " title="혼잡도: ${cong.label}"></div>`;
+  }
+
   // In itinerary mode the side panel owns the place names — hide the map
   // label to avoid duplicating information.
   const labelHtml = itineraryMode
@@ -122,6 +139,7 @@ function buildMarkerContent(
         filter: url(#markerInkBleed);
       ">${cat.label[0]}</div>
       ${badge}
+      ${congestionDot}
     </div>
     ${labelHtml}
   `;
