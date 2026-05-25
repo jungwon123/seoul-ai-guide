@@ -289,11 +289,20 @@ export const calendarApi = {
 };
 
 // 이미지 업로드 — GCS 임시 저장 후 1시간짜리 signed URL 반환.
+//
+// Vercel proxy/rewrite 는 request body 4.5MB 제한이 있어 prod 에서 큰 사진이 413.
+// 해결: prod 빌드에서 Vercel 우회 — BE 도메인 직접 호출. BE 에 vercel.app CORS 허용 됨.
+// dev 에선 vite proxy 그대로 사용 (same-origin).
+// 향후 BE IP 변경 시 VITE_UPLOAD_BASE 환경변수로 덮어쓰기 가능.
+const UPLOAD_BASE: string =
+  (import.meta.env.VITE_UPLOAD_BASE as string | undefined) ??
+  (import.meta.env.DEV ? '' : 'https://34.50.44.75.nip.io');
+
 export const uploadApi = {
   image: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    return request<ImageUploadResponse>('/api/v1/upload/image', {
+    return request<ImageUploadResponse>(`${UPLOAD_BASE}/api/v1/upload/image`, {
       method: 'POST',
       body: fd,
     });
