@@ -6,27 +6,19 @@
     <title>Seoul AI Guide</title>
     <meta name="description" content="서울의 모든 경험을 AI 에이전트와 함께" />
 
-    <!-- Preconnect to font origins -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <!-- Pretendard 는 self-host (npm 'pretendard') — main.tsx 에서 import.
+         Vercel 정적 자산 immutable 캐시(1년) 적용되어 CDN 7일 TTL 대비 캐시 효율 향상. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <!-- Non-blocking font loading: swap-in when ready -->
-    <link
-      rel="preload"
-      as="style"
-      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-      onload="this.onload=null;this.rel='stylesheet'"
-    />
+    <!-- 영문/Display 폰트만 Google CDN 유지 (self-host 시 복수 파일 + 다국어 subset 관리 부담) -->
     <link
       rel="preload"
       as="style"
       href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&display=swap"
       onload="this.onload=null;this.rel='stylesheet'"
     />
-    <!-- Fallback for JS-disabled browsers -->
     <noscript>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&display=swap" />
     </noscript>
   </head>

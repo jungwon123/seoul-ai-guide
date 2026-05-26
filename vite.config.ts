@@ -9,6 +9,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // 메인 번들에서 큰 vendor 라이브러리들을 별도 chunk 로 분리.
+    // 효과: (1) 앱 코드만 변경 시 vendor chunk 는 캐시 재사용 → 재방문 빠름
+    //       (2) 메인 index.js 크기 감소 → 초기 파싱/평가 시간 단축
+    // ※ Three.js 는 이미 React.lazy 로 동적 import → 자동으로 별도 chunk.
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-gsap': ['gsap', '@gsap/react'],
+          'vendor-lottie': ['lottie-react'],
+          'vendor-google-maps': ['@googlemaps/js-api-loader'],
+        },
+      },
+    },
+  },
   optimizeDeps: {
     // Pre-bundle everything commonly imported. Vite serves each module via
     // native ESM in dev — libs that ship hundreds of tiny files (three,
