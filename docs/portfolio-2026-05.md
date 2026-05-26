@@ -433,24 +433,105 @@ PlaceCard 의 한산/보통/혼잡 pill 은 prod 동작 중이지만, **지도 �
 
 ---
 
-## 11. 정량 종합
+## 11. Lighthouse 성능 최적화 — 폰트 캐시 + 번들 분할
+
+### Situation
+배포된 prod 사이트에서 Lighthouse 측정 결과:
+- **LCP 9,020ms** (목표 < 2,500ms) — 메인 요소(첫 채팅 텍스트) 렌더 지연
+- 효율적인 캐시 수명 — 예상 절감 **244KiB** (Pretendard 폰트 jsdelivr CDN 7일 TTL)
+- 사용되지 않는 JS — **133.5KiB** (메인 index.js)
+- JS 실행 시간 — **2.96s** (main thread 부담)
+
+### Task
+- 폰트 캐시 효율 향상 (재방문 시 폰트 0 bytes 재요청)
+- 초기 로딩 메인 번들에서 lazy 가능한 라이브러리 분리
+- vendor chunk 분리로 앱 코드 변경 시에도 vendor 캐시 재사용
+
+### Action
+
+#### 검토한 옵션
+| 옵션 | 장점 | 단점 |
+|---|---|---|
+| A. CDN 그대로 + Cache-Control 헤더 조정 | 변경 0 | CDN(jsdelivr) 정책이라 우리가 제어 못 함 |
+| B. Pretendard self-host (npm) | Vercel immutable 1년 캐시, 우리 제어 | 의존성 1개 추가, dist 폴더 fonts 3MB |
+| C. Service Worker 로 폰트 캐시 | 더 정교한 정책 | 라이프사이클 관리 복잡, MSW 와 충돌 잠재 |
+
+#### 선택: B (self-host)
+- Vite 가 woff2 dynamic-subset 파일들을 dist/assets/ 로 content-hash 복사 → 콘텐츠 변경 없으면 동일 URL → Vercel 자산 자동 immutable cache
+- 7일 TTL → 1년 immutable (사용자 체감 첫 로딩 이후 폰트 0 cost)
+
+#### 구현 (PR #92)
+1. **Pretendard self-host**:
+   - `npm i pretendard` → main.tsx 에서 `import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css'`
+   - index.html 의 jsdelivr `<link preload>` + `<noscript>` fallback 제거
+   - Vite 가 unicode-range 매칭 woff2 subset 들을 dist/ 로 hash 복사
+
+2. **Vite manualChunks** — vendor 4종 분리:
+   ```ts
+   manualChunks: {
+     'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+     'vendor-gsap': ['gsap', '@gsap/react'],
+     'vendor-lottie': ['lottie-react'],
+     'vendor-google-maps': ['@googlemaps/js-api-loader'],
+   }
+   ```
+   - 앱 코드 변경 시 vendor chunk 캐시 hit
+   - main bundle 에서 React/GSAP/Lottie/Maps 분리
+
+3. **Lottie 진짜 lazy** (LottiePlayer 내부):
+   - `import Lottie from 'lottie-react'` → `const Lottie = lazy(() => import('lottie-react'))` 대신 useEffect 안에서 `import()` + 전역 모듈 캐시
+   - JSON fetch 완료 후 한 번만 module load. 미로드 시 fallback (단순 spinner) 노출
+   - vendor-lottie chunk 가 초기 entry 참조 안 됨 → 첫 로딩에서 fetch 안 됨
+
+### Result
+
+| 지표 | 이전 | 이후 |
+|---|---|---|
+| 초기 로딩 bundle (gzip) | main 217KiB (lottie 포함) | index 118 + vendor-react 17 + vendor-gsap 28 ≈ **163KiB** |
+| Pretendard 캐시 TTL | 7일 (CDN) | 1년 (immutable) |
+| 재방문 시 폰트 fetch | 244KiB (Lighthouse 측정) | 0 bytes |
+| Lottie 초기 로딩 비용 | 82KiB gzip (vendor 포함) | 0 (lazy chunk, EmptyState 표시 시점만) |
+| 신규 chunks | 0 | 4 (vendor-react/gsap/lottie/google-maps) |
+| Three.js / Overpass / buildings-jongno | lazy 일부 | 그대로 lazy (변경 없음) |
+
+#### lazy chunks 현황 (gzip)
+| chunk | 크기 | 로드 시점 |
+|---|---|---|
+| vendor-lottie | 82KiB | EmptyState/loading 표시 시 |
+| ThreeMap | 150KiB | 3D 토글 시 |
+| buildings-jongno | 111KiB | 종로 3D 진입 시 |
+| overpass | 21KiB | 3D + 코스 진행 시 |
+| MapPanel | 8KiB | 지도 탭 진입 시 |
+| BookmarkPanel | 4KiB | 북마크 탭 진입 시 |
+| CalendarPanel | 2KiB | 일정 탭 진입 시 |
+
+### Trade-off / 미해결
+- **LCP 9020ms 잔여**: bundle 크기 줄여도 LCP 첫 화면 렌더 시간이 9초인 건 첫 메시지/welcome 렌더 자체가 느리다는 신호 (AgentOrb / SSE 첫 응답 wait 등). 추가 분석 필요 — 후속 사이클
+- **buildings-jongno 1.18MB raw**: lazy 라 초기 로딩은 안 받지만 종로 3D 진입 시 큰 부담. binary format / brotli pre-compress 가능성. 후속
+- **사용 되지 않는 JS 133KiB 일부 잔여**: chrome-extension 측 113KiB 는 사용자 환경 외부 (광고 차단 등) — 우리가 못 줄임. vercel.app 측 133KiB 는 react/gsap/store/components glue 라 추가 분할 ROI 낮음
+
+---
+
+## 12. 정량 종합
 
 | 지표 | 값 |
 |---|---|
-| 머지된 PR | 26건 |
+| 머지된 PR | 28건 (#64 ~ #92) |
 | 평균 PR 사이클 | 작성 → 검증 → PR → 머지 ~20분 |
-| 신규 라이브러리 도입 | 2개 (gsap, @gsap/react) |
-| 신규 코드 파일 | 12개 (focus-buildings, seoul-districts, buildings-cache, tile-cache, prefetch-3d, gsap-setup, flip-to-marker, stop-category, MapBlock, Google3DMap 설계 등) |
+| 신규 라이브러리 도입 | 3개 (gsap, @gsap/react, pretendard) |
+| 신규 코드 파일 | 13개 (focus-buildings, seoul-districts, buildings-cache, tile-cache, prefetch-3d, gsap-setup, flip-to-marker, stop-category, MapBlock, Google3DMap 설계, vite manualChunks 등) |
 | 삭제/대체된 코드 | ~250줄 (MapMarkersBlock, INTERESTS 등) |
 | 삭제된 mock 의존 | 4 곳 (BookingPanel, bookmarkStore 시드, MapPanel congestionPoints, ItineraryCard 카테고리 결정) |
 | 차단된 prod 누출 | 4 경로 (MSW SW + 3개 mock JSON) |
 | 신규 BE API 연동 | 7개 엔드포인트 (place-bookmarks 3, calendar 2, upload 1, 기타) |
 | 테스트 | 13/13 유지 (회귀 0) |
-| 번들 변화 | gsap ~53KB 추가 / mock 의존 일부 제거 / Three.js 그대로 |
+| 초기 로딩 bundle (gzip) | 217KiB → **163KiB** (-25%) |
+| 폰트 캐시 효율 | 7일 → **1년** immutable |
+| lazy chunk 수 | 7 (vendor 3 + 페이지/패널 4) |
 
 ---
 
-## 12. 회고 — 다음에 했더라면
+## 13. 회고 — 다음에 했더라면
 
 1. **3D 재설계** — Three.js 자체 빌딩 시스템 대신 Google Photorealistic 3D Tiles 였으면 ~1500줄 코드 절약. 그러나 빌링 권한 협의가 필요해서 설계 문서로 남김. 다음 사이클에서 진행
 2. **이미지 업로드** — BE 환경변수(GCS bucket) 설정이 사용자 환경에 의존 → FE 가 검증 가능한 영역 밖이라 prod 검증이 느림. 다음엔 PR 머지 전 BE 팀 환경 사전 확인 protocol 정착

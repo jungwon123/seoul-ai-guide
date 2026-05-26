@@ -377,6 +377,37 @@ Prod 에서 사용자가 "mock 데이터가 자꾸 보임" 호소. 코드 검사
 
 ---
 
+## 14. Vite manualChunks + Lazy Lottie + Self-host Pretendard
+
+### 한 문장
+Lighthouse 측정으로 발견한 캐시 효율 244KiB / 메인 번들 215KiB 문제를 **vendor 4종 분할 + 동적 import lottie + 폰트 self-host** 로 초기 로딩 25% 감축 + 폰트 영구 캐시.
+
+### 정량
+| 지표 | 이전 | 이후 |
+|---|---|---|
+| 초기 로딩 bundle (gzip) | 217KiB | **163KiB** (-25%) |
+| Pretendard 캐시 TTL | 7일 (CDN) | **1년 immutable** |
+| 재방문 시 폰트 fetch | 244KiB | **0 bytes** |
+| Lottie 초기 fetch | 82KiB gzip 포함 | 0 (lazy chunk) |
+| Lazy chunks | 4 (pages) | 7 (+ vendor-lottie + ThreeMap + buildings-jongno + overpass) |
+| 신규 vendor chunks | 0 | 4 (react/gsap/lottie/google-maps) |
+
+### 핵심 디테일
+- **Pretendard self-host via npm**: `import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css'` 한 줄. Vite 가 woff2 subset 들을 dist/assets/ 로 content-hash 복사 → 콘텐츠 변경 없으면 동일 URL → Vercel 자동 immutable 캐시. CDN 7일 TTL → 1년 캐시
+- **manualChunks 전략**: 자주 안 바뀌는 라이브러리(`react`, `gsap`, `lottie-react`, `@googlemaps/js-api-loader`)를 별도 vendor chunk 로 분리. **앱 코드 hash 만 바뀌어도 vendor chunk 캐시는 hit** → 배포 후 재방문 시 React 다시 다운로드 X
+- **Lottie 진짜 lazy**: manualChunks 만으론 lottie-react chunk 가 entry 에서 static reference 되면 결국 함께 로드. LottiePlayer 안에서 `import('lottie-react')` 동적 호출 + 전역 module promise 캐시 → entry 가 vendor-lottie 를 참조 안 함 → 초기 fetch 에서 완전 제외
+- **dynamic-subset 활용**: 단일 woff2 (2MB) 대신 unicode-range 별 subset → 브라우저가 실제 사용 문자에 매칭되는 subset 만 fetch (한국어 사이트는 보통 100-200KB 정도만 로드)
+
+### 다른 흔한 방법을 안 쓴 이유
+- **CDN preconnect/preload 유지**: jsdelivr Cache-Control 정책이 7일이라 우리가 변경 못 함. 호스팅 자체를 우리로 옮기는 게 본질
+- **단일 woff2 (static) 사용**: dynamic-subset 가 한국어 한글 jamo 단위 분할 → 사용 안 한 문자 subset 은 fetch 안 됨. 초기 로딩 더 작음
+- **모든 라이브러리 단일 vendor chunk**: 큰 chunk 1개보다 작은 chunk 여러 개가 캐시 hit ratio 더 좋음 (1 lib 만 변경돼도 1 vendor chunk 만 무효화)
+- **Service Worker 로 폰트 캐시**: MSW SW 와 충돌 가능 + 라이프사이클 관리 복잡. Vercel immutable 캐시가 더 단순하고 안전
+
+**파일**: `src/main.tsx` (pretendard import 추가), `vite.config.ts` (manualChunks), `src/components/ui/LottiePlayer.tsx` (lazy import 패턴), `index.html` (CDN preload 제거)
+
+---
+
 ## 종합 매트릭스
 
 | 기술 영역 | 자체 구현 / 깊이 | 정량 임팩트 |
@@ -394,6 +425,7 @@ Prod 에서 사용자가 "mock 데이터가 자꾸 보임" 호소. 코드 검사
 | Service Worker 잔존 진단 | 브라우저 SW 라이프사이클 이해 | 사용자 측 자동 정리 |
 | 단일 결정점 helper | 데이터 일관성 보장 | 3곳 → 1곳 결정 |
 | Git worktree 병렬 | 영역 분리 + 격리 | 충돌 0, 3분 병렬 |
+| Vite manualChunks + Lazy Lottie + 폰트 self-host | bundle 분할 + 캐시 영구화 | 초기 로딩 -25%, 폰트 캐시 7일 → 1년 |
 
 ---
 
@@ -412,3 +444,4 @@ Prod 에서 사용자가 "mock 데이터가 자꾸 보임" 호소. 코드 검사
 - **MSW Service Worker 잔존 디버깅** — prod 사용자가 mock 응답 받는 원인 진단 후 자동 정리 메커니즘 도입
 - **데이터 일관성 단일 결정점 helper** — 3곳 다른 우선순위 → 1 helper 통일
 - **Git worktree 병렬 작업** — 두 PR 동시 진행 영역 분리, 충돌 0
+- **Lighthouse 대응 (vendor 분할 + lazy Lottie + 폰트 self-host)** — 초기 로딩 217KiB → 163KiB, 폰트 캐시 7일 → 1년
