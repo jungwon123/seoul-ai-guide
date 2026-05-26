@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { Bookmark } from 'lucide-react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from '@/lib/gsap-setup';
@@ -32,32 +32,31 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
     beMessageIdStr != null && s.messageItems.some((m) => m.messageId === beMessageIdStr),
   );
 
-  // 외곽 컨테이너 진입 효과 — ScrollTrigger 로 스크롤 컨테이너 viewport 진입 시 페이드.
-  // 새로 도착한 메시지는 mount 시 이미 화면 안이라 즉시 발화 (animate-message 대체).
-  // 긴 히스토리에서 위로 스크롤 시 옛 메시지도 진입 타이밍에 자연스럽게 등장.
-  useGSAP(() => {
+  // 외곽 컨테이너 진입 효과 — IntersectionObserver (native, off-main-thread layout) 로 변경.
+  // 이전엔 ScrollTrigger 가 메시지 N개 만큼 layout 측정 트리거 → forced reflow.
+  // IO 는 layout 측정 없이 entry 보고. once 후 disconnect.
+  useEffect(() => {
     if (prefersReducedMotion()) return;
     const el = bubbleRef.current;
     if (!el) return;
     const scroller = el.closest<HTMLElement>('[data-chat-scroller]');
     if (!scroller) return;
-    const tween = gsap.from(el, {
-      y: 14,
-      opacity: 0,
-      duration: 0.45,
-      ease: 'power2.out',
-      scrollTrigger: {
-        trigger: el,
-        scroller,
-        start: 'top 95%',
-        once: true,
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            gsap.from(el, { y: 14, opacity: 0, duration: 0.45, ease: 'power2.out' });
+            io.disconnect();
+            break;
+          }
+        }
       },
-    });
-    return () => {
-      tween.scrollTrigger?.kill();
-      tween.kill();
-    };
-  }, { scope: bubbleRef });
+      { root: scroller, rootMargin: '0px 0px -5% 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   // 어시스턴트 답변의 자식 섹션(text → places → itinerary → blocks → actions)을
   // 작은 간격으로 순차 reveal. 외곽 ScrollTrigger 와 독립적으로 mount 시 동작.

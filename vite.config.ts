@@ -1,9 +1,26 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// CSS 가 render-blocking 으로 LCP 300-500ms 지연시키는 문제 해소.
+// build 시점에 entry HTML 의 <link rel="stylesheet"> 를 preload + onload swap 으로 변환.
+// JS-disabled 환경 대비 <noscript> fallback 함께 삽입.
+function asyncCssPlugin(): Plugin {
+  return {
+    name: 'async-css',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace(
+        /<link rel="stylesheet"(?:\s+crossorigin)?\s+href="([^"]+)">/g,
+        (_m, href: string) =>
+          `<link rel="preload" as="style" href="${href}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="${href}"></noscript>`,
+      );
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), asyncCssPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
