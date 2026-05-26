@@ -2,6 +2,9 @@ import { createRoot } from 'react-dom/client';
 import { StrictMode, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App';
+// Pretendard self-host — Vite 가 woff2 subset 들을 dist/assets/ 로 복사 + content-hash
+// → Vercel immutable 캐시 적용. 브라우저는 unicode-range 매칭되는 subset 만 fetch.
+import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import './globals.css';
 import { useAuthStore } from '@/stores/authStore';
 import RequireAuth from '@/components/auth/RequireAuth';
