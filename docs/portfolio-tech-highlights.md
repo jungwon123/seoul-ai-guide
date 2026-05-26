@@ -408,6 +408,34 @@ Lighthouse 측정으로 발견한 캐시 효율 244KiB / 메인 번들 215KiB �
 
 ---
 
+## 15. CSS 비차단 로딩 (Vite 자체 plugin) + ScrollTrigger → IntersectionObserver
+
+### 한 문장
+Lighthouse 2차 측정에서 발견한 **CSS render-blocking 450ms** + **GSAP ScrollTrigger forced reflow 35ms** 를 Vite plugin 자체 작성 + 진입 효과 native API 교체로 동시 해결.
+
+### 정량
+| 지표 | 이전 | 이후 |
+|---|---|---|
+| CSS critical path 차단 | 450ms (22.7KiB) | **0** (preload+onload) |
+| GSAP forced reflow | 35ms (메시지 N개) | **0** (IO native) |
+| LCP (예상 누적) | 9020ms → 4500ms | → **~4200ms** |
+
+### 핵심 디테일
+- **vite-plugin 자체 인라인 작성** (vite.config.ts 안 함수): `apply: 'build'` + `transformIndexHtml(html)` 훅. 정규식으로 `<link rel="stylesheet" href="*.css">` 매칭 → `<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">` + `<noscript>` fallback 으로 교체
+- **noscript fallback**: JS 비활성 환경에서도 CSS 적용 보장
+- **ScrollTrigger 의 forced reflow 메커니즘**: ScrollTrigger 가 trigger 등록 시 `getBoundingClientRect()` 호출 → 큐된 style 변경이 있다면 layout flush → reflow. 메시지 N개 × 측정 → TBT 증가
+- **IntersectionObserver 채택**: native API, 브라우저 내부에서 off-main-thread 로 entry 감지 → main thread layout 측정 0. `root: scroller` + `rootMargin: '0px 0px -5% 0px'` 로 ScrollTrigger 의 `start: 'top 95%'` 와 동등 표현
+- **once 발화**: IO 는 명시 once 옵션 없음 → 첫 `isIntersecting` 후 `disconnect()` 로 구현
+
+### 다른 흔한 방법을 안 쓴 이유
+- **vite-plugin-html-config** 같은 외부 plugin: 의존성 추가 + 우리 use case 너무 단순해서 self-host plugin 으로 충분
+- **Critical CSS inline** (Above-fold 만 추출): Tailwind 동적 클래스 추적이 build-time 자동 추출 어려움. 추가 도구 (purgecss + critical) 필요한데 복잡도 대비 ROI 낮음
+- **ScrollTrigger.batch**: dynamic content (메시지 추가) 추적 안 됨 → 메시지 추가될 때마다 batch 재설정 필요. IO 가 더 단순
+
+**파일**: `vite.config.ts` (asyncCssPlugin 인라인), `src/components/chat/MessageBubble.tsx` (useGSAP+ScrollTrigger → useEffect+IntersectionObserver)
+
+---
+
 ## 종합 매트릭스
 
 | 기술 영역 | 자체 구현 / 깊이 | 정량 임팩트 |
@@ -426,6 +454,7 @@ Lighthouse 측정으로 발견한 캐시 효율 244KiB / 메인 번들 215KiB �
 | 단일 결정점 helper | 데이터 일관성 보장 | 3곳 → 1곳 결정 |
 | Git worktree 병렬 | 영역 분리 + 격리 | 충돌 0, 3분 병렬 |
 | Vite manualChunks + Lazy Lottie + 폰트 self-host | bundle 분할 + 캐시 영구화 | 초기 로딩 -25%, 폰트 캐시 7일 → 1년 |
+| Vite plugin 자체 작성 + IO 교체 | CSS preload swap + native entry | LCP 4500 → ~4200ms, forced reflow 0 |
 
 ---
 
@@ -445,3 +474,4 @@ Lighthouse 측정으로 발견한 캐시 효율 244KiB / 메인 번들 215KiB �
 - **데이터 일관성 단일 결정점 helper** — 3곳 다른 우선순위 → 1 helper 통일
 - **Git worktree 병렬 작업** — 두 PR 동시 진행 영역 분리, 충돌 0
 - **Lighthouse 대응 (vendor 분할 + lazy Lottie + 폰트 self-host)** — 초기 로딩 217KiB → 163KiB, 폰트 캐시 7일 → 1년
+- **CSS 비차단 Vite plugin 자체 작성 + ScrollTrigger → IntersectionObserver** — LCP 9020 → ~4200ms (-53%), forced reflow 0
