@@ -148,6 +148,17 @@ function messageItemToMessage(item: MessageItem, threadId: string): Message {
     }
   }
 
+  // user 메시지의 텍스트에 첨부 이미지 URL 이 inline 으로 끼어 있을 수 있음 (전송 흐름).
+  // UI 에선 thumb 으로 분리 표시 — text 에서 추출 + 제거.
+  let attachedImageUrl: string | undefined;
+  if (item.role !== 'assistant') {
+    const imgMatch = text.match(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s]*)?)/i);
+    if (imgMatch) {
+      attachedImageUrl = imgMatch[0];
+      text = text.replace(imgMatch[0], '').replace(/이 사진과 비슷한 곳 추천해줘\s*$/, '').trim();
+    }
+  }
+
   return {
     id: String(item.message_id),
     role: item.role === 'assistant' ? 'agent' : 'user',
@@ -157,6 +168,7 @@ function messageItemToMessage(item: MessageItem, threadId: string): Message {
     itinerary,
     itineraries: itineraries.length > 1 ? itineraries : undefined,
     blocks: otherBlocks.length > 0 ? otherBlocks : undefined,
+    attachedImageUrl,
     threadId,
     messageId: item.message_id,
   };
@@ -188,7 +200,7 @@ interface ChatStore {
   chatsLoading: boolean;
   chatsError: string | null;
 
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, imageUrl?: string) => Promise<void>;
   setAgent: (agent: AgentType) => void;
   clearChat: () => void;
   initWelcome: () => void;
@@ -231,14 +243,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({ messages: [welcomeMsg] });
   },
 
-  sendMessage: async (text: string) => {
+  sendMessage: async (text: string, imageUrl?: string) => {
     const { selectedAgent, messages, sessionId, sessions } = get();
+
+    // BE 는 query 텍스트에서 regex 로 image URL 파싱 → 우리는 본문에 URL 을 끼워서 전송.
+    // 단 UI 에 보여주는 user message 는 텍스트 + 첨부 thumb 으로 분리.
+    const queryForBE = imageUrl
+      ? (text ? `${text}\n${imageUrl}` : `이 사진과 비슷한 곳 추천해줘\n${imageUrl}`)
+      : text;
 
     const userMsg: Message = {
       id: `msg-${Date.now()}`,
       role: 'user',
       text,
       timestamp: new Date().toISOString(),
+      attachedImageUrl: imageUrl,
     };
 
     const updatedMessages = [...messages, userMsg];
@@ -255,7 +274,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     let beMessageId: number | undefined;
 
     await new Promise<void>((resolve) => {
-      const conn = openChatStream(sessionId, text, {
+      const conn = openChatStream(sessionId, queryForBE, {
         text_stream: (data) => {
           if (data.type === 'text_stream') {
             acc += data.delta ?? data.content ?? '';

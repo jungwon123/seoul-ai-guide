@@ -6,7 +6,7 @@ import { friendlyApiError } from '@/lib/auth-errors';
 import { toast } from '@/stores/toastStore';
 
 interface ChatInputProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, imageUrl?: string) => void;
   disabled?: boolean;
   showChips?: boolean;
 }
@@ -66,15 +66,12 @@ export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInpu
     const trimmed = text.trim();
     if (!trimmed && !attachedImage) return;
 
-    let finalText = trimmed;
+    let uploadedUrl: string | undefined;
     if (attachedImage) {
       setUploading(true);
       try {
-        const { image_url } = await uploadApi.image(attachedImage);
-        // BE image_search_node 가 query 텍스트에서 https URL 을 regex 로 추출.
-        finalText = trimmed
-          ? `${trimmed}\n${image_url}`
-          : `이 사진과 비슷한 곳 추천해줘\n${image_url}`;
+        const res = await uploadApi.image(attachedImage);
+        uploadedUrl = res.image_url;
       } catch (err) {
         toast.error(friendlyApiError(err, '사진 업로드 실패'));
         setUploading(false);
@@ -84,7 +81,8 @@ export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInpu
       clearImage();
     }
 
-    onSend(finalText);
+    // text + imageUrl 분리해서 전달 — store 가 BE query 와 UI 표시용을 다르게 처리.
+    onSend(trimmed, uploadedUrl);
     setText('');
   };
 

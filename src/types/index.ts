@@ -96,6 +96,8 @@ export interface Message {
   threadId?: string;
   messageId?: string | number;
   blocks?: import('./api').Block[];
+  // 사용자 첨부 이미지 URL (BE 가 query 텍스트에서 regex 로 파싱하지만 UI 는 thumb 으로 표시).
+  attachedImageUrl?: string;
 }
 
 // === Agent Response ===
