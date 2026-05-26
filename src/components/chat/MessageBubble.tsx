@@ -97,8 +97,28 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
     <div ref={bubbleRef}>
       {isUser ? (
         <div className="flex justify-end pl-12">
-          <div className="bg-brand-subtle border border-brand/8 rounded-2xl rounded-br-sm px-3.5 py-2.5 text-[14px] leading-[1.6] text-text-primary">
-            {message.text}
+          <div className="flex flex-col items-end gap-1.5 max-w-[85%]">
+            {message.attachedImageUrl && (
+              <a
+                href={message.attachedImageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-[180px] h-[180px] rounded-2xl rounded-br-sm overflow-hidden border border-brand/15 bg-bg-subtle"
+                aria-label="첨부 사진 원본 열기"
+              >
+                <img
+                  src={message.attachedImageUrl}
+                  alt="첨부 사진"
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                />
+              </a>
+            )}
+            {message.text && (
+              <div className="bg-brand-subtle border border-brand/8 rounded-2xl rounded-br-sm px-3.5 py-2.5 text-[14px] leading-[1.6] text-text-primary break-words">
+                {message.text}
+              </div>
+            )}
           </div>
         </div>
       ) : (
