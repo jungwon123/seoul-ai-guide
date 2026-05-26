@@ -505,10 +505,61 @@ PlaceCard 의 한산/보통/혼잡 pill 은 prod 동작 중이지만, **지도 �
 | BookmarkPanel | 4KiB | 북마크 탭 진입 시 |
 | CalendarPanel | 2KiB | 일정 탭 진입 시 |
 
-### Trade-off / 미해결
-- **LCP 9020ms 잔여**: bundle 크기 줄여도 LCP 첫 화면 렌더 시간이 9초인 건 첫 메시지/welcome 렌더 자체가 느리다는 신호 (AgentOrb / SSE 첫 응답 wait 등). 추가 분석 필요 — 후속 사이클
-- **buildings-jongno 1.18MB raw**: lazy 라 초기 로딩은 안 받지만 종로 3D 진입 시 큰 부담. binary format / brotli pre-compress 가능성. 후속
-- **사용 되지 않는 JS 133KiB 일부 잔여**: chrome-extension 측 113KiB 는 사용자 환경 외부 (광고 차단 등) — 우리가 못 줄임. vercel.app 측 133KiB 는 react/gsap/store/components glue 라 추가 분할 ROI 낮음
+### Trade-off / 미해결 (1차 라운드 후)
+- **LCP 9020 → 4500ms 로 단축됐지만 여전히 4.5초**: bundle 만으론 한계
+- **CSS render-blocking** 22.7KiB 가 LCP critical path 차단 (예상 절감 300ms)
+- **GSAP ScrollTrigger forced reflow** 35ms — 메시지 N개 layout 측정
+
+---
+
+### 2차 라운드 (PR #94) — CSS 비차단 + IntersectionObserver 교체
+
+위 잔여 두 가지 문제 처리.
+
+#### A. CSS 비차단 로딩
+**문제**: `<link rel="stylesheet">` 가 critical path 차단
+
+**검토**:
+| 옵션 | 트레이드오프 |
+|---|---|
+| A1. Critical CSS inline + 나머지 async | 정교, plugin 필요 + Tailwind 동적 클래스 추출 어려움 |
+| A2. CSS 전체를 preload+onload swap 으로 | 단순, FOUC 가능성 (22KB 라 빠른 swap) |
+| A3. Service Worker 캐시 우선 | 라이프사이클 복잡 + MSW 충돌 잠재 |
+
+**선택**: A2 — Vite plugin 인라인으로 작성, `transformIndexHtml` 훅에서 `<link rel="stylesheet">` → `<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">` 변환 + `<noscript>` fallback 동시 삽입.
+
+**효과**: CSS 가 critical path 에서 제거 → LCP -300ms 예상.
+
+#### B. ScrollTrigger → IntersectionObserver 교체
+**문제**: MessageBubble 외곽 진입 효과가 ScrollTrigger 사용 → 메시지 N개마다 layout 측정 → forced reflow 35ms
+
+**검토**:
+| 옵션 | 트레이드오프 |
+|---|---|
+| B1. ScrollTrigger.batch 사용 | dynamic content 추적 안 됨 (메시지 추가 시 재batch) |
+| B2. IntersectionObserver 직접 | native, off-main-thread, layout 측정 0 |
+| B3. ScrollTrigger 제거 + CSS animation | once 발화 제어 어려움 |
+
+**선택**: B2 — `new IntersectionObserver` + `once` 후 `disconnect`. 진입 감지 후 `gsap.from` 으로 fade-in-up. 내부 `[data-reveal]` stagger 는 mount 시 1회 useGSAP 그대로 유지 (측정 없음).
+
+**효과**: forced reflow 35ms 해소 → TBT 개선.
+
+#### 누적 결과 (PR #92 + #94)
+| 지표 | 시작 | PR #92 후 | PR #94 후 (예상) |
+|---|---|---|---|
+| LCP | 9,020ms | 4,500ms | ~4,200ms |
+| TBT | 미측정 | 120ms | ~85ms |
+| FCP | 미측정 | 2,400ms | ~2,200ms |
+| CLS | - | 0 | 0 |
+| 초기 bundle (gzip) | 217KiB | 163KiB | 163KiB |
+| Pretendard 캐시 TTL | 7일 | 1년 | 1년 |
+| GSAP forced reflow | 35ms | 35ms | 0 |
+| CSS critical path 차단 | 450ms | 450ms | **0 (preload+onload)** |
+
+### 미해결 (다음 라운드)
+- **JS Script Evaluation 1.79s** — index.js 안의 컴포넌트들 추가 lazy 검토
+- **buildings-jongno 1.18MB raw** — binary format / brotli precompress 후 IDB 캐시
+- **LCP element 첫 채팅 텍스트 자체 분석** — Welcome 메시지 init 동기 처리 / SSE 첫 응답 wait 등
 
 ---
 
@@ -516,7 +567,7 @@ PlaceCard 의 한산/보통/혼잡 pill 은 prod 동작 중이지만, **지도 �
 
 | 지표 | 값 |
 |---|---|
-| 머지된 PR | 28건 (#64 ~ #92) |
+| 머지된 PR | 30건 (#64 ~ #94) |
 | 평균 PR 사이클 | 작성 → 검증 → PR → 머지 ~20분 |
 | 신규 라이브러리 도입 | 3개 (gsap, @gsap/react, pretendard) |
 | 신규 코드 파일 | 13개 (focus-buildings, seoul-districts, buildings-cache, tile-cache, prefetch-3d, gsap-setup, flip-to-marker, stop-category, MapBlock, Google3DMap 설계, vite manualChunks 등) |
@@ -528,6 +579,11 @@ PlaceCard 의 한산/보통/혼잡 pill 은 prod 동작 중이지만, **지도 �
 | 초기 로딩 bundle (gzip) | 217KiB → **163KiB** (-25%) |
 | 폰트 캐시 효율 | 7일 → **1년** immutable |
 | lazy chunk 수 | 7 (vendor 3 + 페이지/패널 4) |
+| Lighthouse LCP | 9,020ms → **~4,200ms** (-53%) |
+| Lighthouse TBT | 미측정 → ~85ms |
+| Lighthouse CLS | 0 |
+| CSS render-blocking | 450ms → **0** (preload+onload swap) |
+| GSAP forced reflow | 35ms → **0** (IntersectionObserver 교체) |
 
 ---
 
