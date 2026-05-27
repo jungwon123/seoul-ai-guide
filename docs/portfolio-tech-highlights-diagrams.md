@@ -4,27 +4,27 @@
 
 ---
 
-## 1. 빌딩 캐시 인프라 — 5단계 우선순위
+## 1. 빌딩 캐시 인프라 — 빠른 곳부터 차례로 시도
 
-좌표 → 자치구 매핑 → IndexedDB → Overpass 의 fallback chain.
+사용자가 보는 지점 주변 건물 정보를 받을 때, 빠른 캐시부터 시도하고 마지막에 외부 호출.
 
 ```mermaid
 flowchart TD
-    Start([fetchBuildingsNearPoint<br/>lat, lng, radius=500]) --> P{pointCache<br/>memory hit?}
-    P -- yes --> Return([return filtered<br/>by distance])
-    P -- no --> J{종로 CACHED_BOUNDS<br/>안?}
-    J -- yes --> JC[loadCachedBuildings<br/>static JSON]
+    Start([사용자 위치 주변 건물 요청]) --> P{방금 본 결과<br/>메모리에 있나?}
+    P -- 있음 --> Return([주변 건물 반환])
+    P -- 없음 --> J{이미 받아둔<br/>종로 영역 안?}
+    J -- 그렇다 --> JC[종로 사전 데이터에서 추출]
     JC --> Return
-    J -- no --> D[latLngToDistrict<br/>bbox + polygon ray cast]
-    D --> SL{STATIC_DISTRICT_LOADERS<br/>등록된 자치구?}
-    SL -- yes --> SLoad[dynamic import<br/>static district JSON]
+    J -- 아니다 --> D[좌표가 어느 동네인지 판정<br/>직사각형 거른 뒤 경계선 체크]
+    D --> SL{자주 가는 동네<br/>사전 데이터 있나?}
+    SL -- 있음 --> SLoad[사전 데이터에서 추출]
     SLoad --> Return
-    SL -- no --> IDB{IndexedDB<br/>cache hit?}
-    IDB -- yes --> Return
-    IDB -- no --> OF[fetchBuildingsInDistrict<br/>Overpass bbox]
-    OF -- success --> Save[setCachedDistrict<br/>IDB TTL 30일]
+    SL -- 없음 --> IDB{브라우저 저장소<br/>30일 안에 받아둔 것?}
+    IDB -- 있음 --> Return
+    IDB -- 없음 --> OF[외부 데이터 서버에서<br/>동네 전체 1회 받기]
+    OF -- 성공 --> Save[브라우저 저장소에<br/>30일간 보관]
     Save --> Return
-    OF -- fail --> FB[fallback<br/>point-radius Overpass]
+    OF -- 실패 --> FB[좁은 반경 한정<br/>대안 경로로 재시도]
     FB --> Return
     style Return fill:#10B981,color:#fff
     style FB fill:#DC2626,color:#fff
