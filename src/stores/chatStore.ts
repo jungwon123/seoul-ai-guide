@@ -4,7 +4,7 @@ import type { Block, PlaceBlockData, PlacesBlock, CourseBlock, EventsBlock, Even
 import { getWelcomeMessage } from '@/mocks/agent-responses';
 import { openChatStream } from '@/lib/sse';
 import { chatsApi } from '@/lib/api';
-import { prefetchCourse3D } from '@/lib/prefetch-3d';
+import { loadMaps3D } from '@/lib/google-maps-loader';
 import { friendlyApiError } from '@/lib/auth-errors';
 import { normalizeCategory } from '@/lib/utils';
 import { useMapStore } from './mapStore';
@@ -285,12 +285,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         places: (data) => {
           if (data.type === 'places') {
             places = placesBlockToPlaces(data);
+            // 장소 응답도 3D 진입 후보. maps3d 라이브러리 + 컴포넌트 chunk prefetch.
+            void loadMaps3D();
+            void import('@/components/map/Google3DMap');
           }
         },
         place: (data) => {
           // DETAIL_INQUIRY 단건 응답 — places 배열에 1건만 채움.
           if (data.type === 'place') {
             places = [singlePlaceBlockToPlace(data)];
+            void loadMaps3D();
+            void import('@/components/map/Google3DMap');
           }
         },
         course: (data) => {
@@ -299,8 +304,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             itineraries.push(it);
             // 단수 필드는 첫 번째 코스로 유지 (기존 코드 호환).
             if (!itinerary) itinerary = it;
-            // 백그라운드 prefetch — 사용자가 3D 보기 토글하기 전 미리 데이터/모듈 준비.
-            prefetchCourse3D(it.stops);
+            // 백그라운드 prefetch — 사용자가 3D 토글 누르기 전에 maps3d 라이브러리 +
+            // Google3DMap 컴포넌트 chunk 를 미리 로드해서 클릭 → 표시 사이 대기 단축.
+            void loadMaps3D();
+            void import('@/components/map/Google3DMap');
           }
         },
         // 그 외 블록은 그대로 message.blocks에 보존 → BlockRenderer가 렌더.

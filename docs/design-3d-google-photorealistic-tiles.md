@@ -1,8 +1,8 @@
 # [설계] 3D 지도 재설계 — Google Photorealistic 3D Tiles 로 교체
 
 **작성일**: 2026-05-22
-**상태**: 설계, 구현 전 컨펌 대기
-**대체 대상**: 현재 Three.js + OSM Overpass 기반 3D 시스템
+**상태**: ✅ 구현 완료 (2026-05-27) — `src/components/map/Google3DMap.tsx`
+**대체 대상**: 현재 Three.js + OSM Overpass 기반 3D 시스템 — 삭제됨
 **대체 후**: Google `Map3DElement` (Photorealistic 3D Tiles)
 
 ---

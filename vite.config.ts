@@ -30,7 +30,6 @@ export default defineConfig({
     // 메인 번들에서 큰 vendor 라이브러리들을 별도 chunk 로 분리.
     // 효과: (1) 앱 코드만 변경 시 vendor chunk 는 캐시 재사용 → 재방문 빠름
     //       (2) 메인 index.js 크기 감소 → 초기 파싱/평가 시간 단축
-    // ※ Three.js 는 이미 React.lazy 로 동적 import → 자동으로 별도 chunk.
     rollupOptions: {
       output: {
         manualChunks: {
@@ -44,9 +43,9 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Pre-bundle everything commonly imported. Vite serves each module via
-    // native ESM in dev — libs that ship hundreds of tiny files (three,
-    // google maps loader) become hundreds of network requests unless
-    // they're pre-bundled into a single chunk here.
+    // native ESM in dev — libs that ship hundreds of tiny files (google maps
+    // loader) become hundreds of network requests unless they're pre-bundled
+    // into a single chunk here.
     include: [
       'react',
       'react-dom/client',
@@ -54,9 +53,6 @@ export default defineConfig({
       'lucide-react',
       '@googlemaps/js-api-loader',
       '@chenglou/pretext',
-      'three',
-      'three/examples/jsm/controls/OrbitControls.js',
-      'three/examples/jsm/utils/BufferGeometryUtils.js',
     ],
   },
   server: {

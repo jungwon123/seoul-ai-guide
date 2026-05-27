@@ -11,10 +11,12 @@ import NavigationHUD from './NavigationHUD';
 import ItineraryDetailPanel from './ItineraryDetailPanel';
 import ItineraryBottomSheet from './ItineraryBottomSheet';
 import { useIsDesktop } from '@/lib/useMediaQuery';
+import { loadMaps3D } from '@/lib/google-maps-loader';
 
-// Three.js is heavy (~600KB of ES modules). Only pull it when the user
-// actually toggles 3D view — keeps Map tab open itself fast.
-const ThreeMap = lazy(() => import('./ThreeMap'));
+// Google Photorealistic 3D Tiles — Map3DElement Web Component.
+// MapPanel mount 시 maps3d 라이브러리 + 컴포넌트 chunk 를 background prefetch 하므로,
+// 사용자가 "3D 보기" 토글하는 시점엔 대부분 이미 준비됨.
+const Google3DMap = lazy(() => import('./Google3DMap'));
 
 export default function MapPanel() {
   const markers = useMapStore((s) => s.markers);
@@ -51,8 +53,14 @@ export default function MapPanel() {
   const [is3D, setIs3D] = useState(false);
   const [heatmapOn, setHeatmapOn] = useState(false);
   const [loading3D, setLoading3D] = useState(false);
-  const [buildingCount, setBuildingCount] = useState(0);
   const [error3D, setError3D] = useState<string | null>(null);
+
+  // 2D 가 떠있는 동안 백그라운드로 maps3d + Google3DMap chunk 를 미리 받음.
+  // 3D 토글 누른 시점엔 라이브러리/모듈이 캐시돼 있어 즉시 표시.
+  useEffect(() => {
+    void loadMaps3D();
+    void import('./Google3DMap');
+  }, []);
 
   // Reset to 2D when navigation starts (Claude-style 2D map + side panel)
   const isNavigating = navigation !== null;
@@ -62,14 +70,11 @@ export default function MapPanel() {
 
   // Route panel visibility — toggled by the "경로" button. Auto-opens when a new itinerary begins.
   const [routePanelOpen, setRoutePanelOpen] = useState(true);
-  // 3D 강조 모드 — target 빌딩 + 주변 N개. 5/10/15 토글.
-  const [neighborCount, setNeighborCount] = useState<5 | 10 | 15>(10);
   const navId = navigation?.itinerary.id ?? null;
   useEffect(() => { if (navId) setRoutePanelOpen(true); }, [navId]);
   const closeRoutePanel = useCallback(() => setRoutePanelOpen(false), []);
 
   const handleLoadingChange = useCallback((v: boolean) => setLoading3D(v), []);
-  const handleBuildingCount = useCallback((n: number) => setBuildingCount(n), []);
   const handleError = useCallback((msg: string) => {
     setError3D(msg);
     setTimeout(() => setError3D(null), 4000);
@@ -112,16 +117,14 @@ export default function MapPanel() {
                     </div>
                   </div>
                 }>
-                  <ThreeMap
+                  <Google3DMap
                     markers={displayMarkers}
                     selectedPlace={selectedPlace}
+                    onSelectPlace={selectPlace}
                     center={mapCenter}
-                    zoom={16}
                     onLoadingChange={handleLoadingChange}
-                    onBuildingCount={handleBuildingCount}
                     onError={handleError}
                     navigation={navigation}
-                    neighborCount={neighborCount}
                   />
                 </Suspense>
               ) : (
@@ -167,26 +170,6 @@ export default function MapPanel() {
                     경로
                   </button>
                 )}
-                {is3D && navigation && (
-                  <div className="flex items-center gap-1 bg-white border border-border rounded-xl shadow-md px-1.5 py-1">
-                    <span className="text-[11px] font-medium text-text-muted px-1.5">주변</span>
-                    {([5, 10, 15] as const).map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => setNeighborCount(n)}
-                        className={`px-2 py-1 rounded-lg text-[12px] font-semibold transition-colors cursor-pointer tabular-nums ${
-                          neighborCount === n
-                            ? 'bg-brand text-white'
-                            : 'text-text-secondary hover:bg-bg-subtle'
-                        }`}
-                        aria-pressed={neighborCount === n}
-                        aria-label={`주변 ${n}개`}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 <button
                   onClick={() => { setIs3D(!is3D); setError3D(null); }}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-semibold shadow-md transition-[background-color] duration-200 cursor-pointer text-white ${is3D ? 'bg-red-600 hover:bg-red-700' : 'bg-brand hover:bg-[#1558CC]'}`}
@@ -223,13 +206,6 @@ export default function MapPanel() {
                     />
                     <span className="text-[13px] font-medium text-text-primary">3D 지도 로딩 중…</span>
                   </div>
-                </div>
-              )}
-
-              {/* Building count */}
-              {is3D && !loading3D && buildingCount > 0 && (
-                <div className="absolute bottom-3 left-3 z-10 px-3 py-1.5 rounded-lg bg-text-primary/80 text-white text-[11px] font-medium backdrop-blur-sm tabular-nums">
-                  {buildingCount.toLocaleString()}개 건물
                 </div>
               )}
 
