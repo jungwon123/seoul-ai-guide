@@ -6,34 +6,20 @@
 
 ## 1. 자체 IndexedDB 캐싱 + 자치구 단위 polygon 매핑
 
-### 한 문장
-서울 25개 자치구 polygon GeoJSON 으로 좌표를 정확히 자치구에 매핑하고, 자치구별 빌딩 데이터(평균 3-10MB) 를 IndexedDB 에 30일 TTL 영구 저장하는 캐싱 인프라를 라이브러리 없이 직접 작성.
+### 요구사항
+- 3D 지도에서 사용자가 보는 좌표 주변 건물 정보가 필요한데 외부 데이터 서버 호출이 매번 1~30초 걸리고 종종 실패함
+- 같은 동네를 다시 봐도 처음부터 다시 받는 구조라 비용/대기 모두 누적됨
+- 좌표가 어느 동네(자치구) 에 속하는지 정확히 가려야 캐시 단위를 잡을 수 있음
 
-### 정량
-| 지표 | 값 |
-|---|---|
-| 자치구별 빌딩 데이터 평균 크기 | 3-10MB (raw), 1-3MB (gzip) |
-| Polygon JSON 크기 | 54KB (25개 자치구, 단순화) |
-| IndexedDB TTL | 30일 |
-| 자치구 재방문 시 외부 호출 | 0회 (IDB hit) |
-| 자치구 첫 방문 시 Overpass 호출 | 1회 (자치구 전체 bbox) |
-| 이전: viewport 단위 호출 | 매번 ~1MB × N 마커 |
+### 해결과정
+- 서울 25개 자치구 경계 정보를 미리 갖춰두고, 사용자 좌표가 어느 자치구에 들어가는지 판정하는 로직 작성
+- 빠른 1차 후보 추리기(직사각형 영역 비교) → 정확 판정(경계선 통과 횟수 체크) 2단계로 정확도와 속도 양립
+- 한 번 받아온 자치구 데이터는 브라우저 영구 저장소에 30일간 보관, 다음 방문 시 즉시 재사용 (만료된 데이터는 자연스럽게 다음 호출 때 갱신)
 
-### 핵심 디테일
-- **`idb-keyval` 같은 wrapper 없이 native IndexedDB** — `openDb()`, transaction, keyPath, schema versioning 직접 다룸
-- **localStorage 안 쓴 이유**: 5MB 한도라 자치구 1개도 못 담음. IDB 가 유일한 선택
-- **좌표→자치구 매핑 2단계**:
-  1. bbox quick reject (모든 자치구 bbox 안 들어가는 좌표는 즉시 제외)
-  2. 후보 자치구들에 대해 ray-casting **point-in-polygon** (~16줄 자체 구현)
-- **Polygon 매치 실패 fallback**: bbox 안에 들어가지만 polygon 밖이면 (단순화 오차) centroid 최단거리로 fallback
-- **TTL 만료를 별도 cron 없이** `cachedAt` timestamp 비교로 lazy expiration
-
-### 다른 흔한 방법을 안 쓴 이유
-- **idb-keyval**: 추가 의존성. native API 가 ~80줄로 충분. 학습 가치 우선
-- **Service Worker 캐시**: 라이프사이클 관리 복잡. 단순 데이터 캐시엔 과함
-- **단순 메모리 캐시**: 새로고침/세션 간 사라짐 → IDB 가 필수
-
-**파일**: `src/lib/seoul-districts.ts` (149줄), `src/lib/buildings-cache.ts` (74줄), `src/lib/seoul-districts-polygons.json`
+### 결과
+- 같은 자치구 재방문 시 외부 호출 0회 — 1~30초 → 즉시 표시
+- 다른 자치구도 첫 방문 1회만 받고 이후 0회
+- 외부 데이터 서버 일시 장애 시에도 이미 받아둔 자치구는 영향 없음
 
 ---
 
