@@ -82,6 +82,14 @@ export default function MapPanel() {
 
   const hasContent = displayMarkers.length > 0 || is3D;
 
+  // 코스 경로선 좌표 — 코스 stop 방문 순서(store markers)를 그대로 사용.
+  // displayMarkers 는 북마크와 병합·정렬되므로, 코스 stop 이 북마크에 포함되면 isBookmark
+  // 처리되어 폴리라인에서 빠지는 문제가 있었음. 순수 코스 마커 순서를 직접 넘겨 해결.
+  const routePath = useMemo(
+    () => (isNavigating ? markers.map((p) => ({ lat: p.lat, lng: p.lng })) : undefined),
+    [isNavigating, markers],
+  );
+
   // Congestion overlay — 현재 화면에 표시된 마커들 중 BE congestion 정보가 있는 것만 사용.
   // BE PlaceBlock.congestion (area_proxy 단위 혼잡도)을 실제 데이터 소스로 활용.
   const congestionPoints = useMemo(
@@ -133,6 +141,7 @@ export default function MapPanel() {
                   selectedPlace={selectedPlace}
                   onSelectPlace={selectPlace}
                   itineraryMode={isNavigating}
+                  routePath={routePath}
                   congestionPoints={congestionPoints}
                   showHeatmap={heatmapOn}
                 />

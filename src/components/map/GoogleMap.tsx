@@ -15,6 +15,9 @@ interface GoogleMapProps {
   itineraryMode?: boolean;
   congestionPoints?: CongestionPoint[];
   showHeatmap?: boolean;
+  // 코스 경로선 좌표(방문 순서). 주어지면 마커의 isBookmark 여부와 무관하게 이 순서로 그림.
+  // (코스 stop 이 북마크에도 포함될 때 폴리라인이 끊기던 문제 해결)
+  routePath?: { lat: number; lng: number }[];
 }
 
 const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 };
@@ -180,6 +183,7 @@ export default function GoogleMap({
   itineraryMode = false,
   congestionPoints,
   showHeatmap = false,
+  routePath,
 }: GoogleMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -307,14 +311,16 @@ export default function GoogleMap({
       });
 
       // 코스(itineraryMode)일 때만 마커 간 경로선을 그림.
-      // 장소/행사 추천처럼 독립된 장소 목록에는 선을 연결하지 않음.
-      // 즐겨찾기(isBookmark)는 코스와 무관한 별도 핀이라 경로에서 제외 — 안 그러면
-      // 폴리라인이 즐겨찾기 위치까지 이어져 코스가 어지럽게 보임.
-      const routeMarkers = markers.filter((p) => !p.isBookmark);
-      if (itineraryMode && routeMarkers.length > 1) {
-        const path = routeMarkers.map((p) => ({ lat: p.lat, lng: p.lng }));
+      // 경로 좌표 우선순위:
+      //   1) routePath(코스 stop 방문 순서) — stop 이 북마크에도 포함돼도 끊기지 않음.
+      //   2) 폴백: 북마크 제외 마커 순서 — routePath 미제공 시.
+      // 장소/행사 추천처럼 독립된 장소 목록에는 선을 연결하지 않는다.
+      const routePts = routePath && routePath.length > 1
+        ? routePath
+        : markers.filter((p) => !p.isBookmark).map((p) => ({ lat: p.lat, lng: p.lng }));
+      if (itineraryMode && routePts.length > 1) {
         polylineRef.current = new google.maps.Polyline({
-          path,
+          path: routePts,
           strokeWeight: 7,
           strokeColor: '#1D4ED8',
           strokeOpacity: 0.9,
@@ -331,7 +337,7 @@ export default function GoogleMap({
     })().catch((err) => console.error('[GoogleMap] markers failed', err));
 
     return () => { cancelled = true; };
-  }, [mapReady, markers, itineraryMode, clearOverlays]);
+  }, [mapReady, markers, itineraryMode, clearOverlays, routePath]);
 
   // Selection style update — runs cheaply on selection change without recreating markers
   useEffect(() => {
