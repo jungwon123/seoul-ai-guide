@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { Bookmark } from 'lucide-react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from '@/lib/gsap-setup';
@@ -6,13 +6,16 @@ import type { Message, MessageSnapshot } from '@/types';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { useChatStore } from '@/stores/chatStore';
 import AgentMark from '../agent/AgentMark';
-import PlaceCarousel from './PlaceCarousel';
-import ItineraryCard from './ItineraryCard';
-import BookingCard from './BookingCard';
 import FeedbackButton from './FeedbackButton';
 import ShareButton from './ShareButton';
-import { BlockRenderer } from './blocks';
 import Markdown from '@/components/ui/Markdown';
+
+// 무거운 카드/블록(지도·코스·예약·블록 렌더러)은 lazy 분리 — 웰컴/단순 텍스트 메시지에는
+// 필요 없으므로 메인 번들에서 제외해 초기 로드(FCP/LCP)를 줄인다. 추천이 도착할 때 청크 fetch.
+const PlaceCarousel = lazy(() => import('./PlaceCarousel'));
+const ItineraryCard = lazy(() => import('./ItineraryCard'));
+const BookingCard = lazy(() => import('./BookingCard'));
+const BlockRenderer = lazy(() => import('./blocks').then((m) => ({ default: m.BlockRenderer })));
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' &&
@@ -135,34 +138,44 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
 
             {message.places && message.places.length > 0 && (
               <div data-reveal>
-                <PlaceCarousel places={message.places} />
+                <Suspense fallback={null}>
+                  <PlaceCarousel places={message.places} />
+                </Suspense>
               </div>
             )}
 
             {message.itineraries && message.itineraries.length > 1 ? (
               <div data-reveal className="space-y-3">
-                {message.itineraries.map((it) => (
-                  <ItineraryCard key={it.id} itinerary={it} />
-                ))}
+                <Suspense fallback={null}>
+                  {message.itineraries.map((it) => (
+                    <ItineraryCard key={it.id} itinerary={it} />
+                  ))}
+                </Suspense>
               </div>
             ) : (
               message.itinerary && (
                 <div data-reveal>
-                  <ItineraryCard itinerary={message.itinerary} />
+                  <Suspense fallback={null}>
+                    <ItineraryCard itinerary={message.itinerary} />
+                  </Suspense>
                 </div>
               )
             )}
             {message.booking && (
               <div data-reveal>
-                <BookingCard booking={message.booking} />
+                <Suspense fallback={null}>
+                  <BookingCard booking={message.booking} />
+                </Suspense>
               </div>
             )}
 
             {message.blocks && message.blocks.length > 0 && (
               <div data-reveal className="space-y-2">
-                {message.blocks.map((block, i) => (
-                  <BlockRenderer key={`${block.type}-${i}`} block={block} places={message.places} />
-                ))}
+                <Suspense fallback={null}>
+                  {message.blocks.map((block, i) => (
+                    <BlockRenderer key={`${block.type}-${i}`} block={block} places={message.places} />
+                  ))}
+                </Suspense>
               </div>
             )}
 
