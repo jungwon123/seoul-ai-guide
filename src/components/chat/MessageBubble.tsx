@@ -98,7 +98,10 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
   }, [message, beMessageIdStr, conversationId, toggleMessage]);
 
   return (
-    <div ref={bubbleRef}>
+    <div
+      ref={bubbleRef}
+      data-message-id={message.messageId != null ? String(message.messageId) : undefined}
+    >
       {isUser ? (
         <div className="flex justify-end pl-12">
           <div className="flex flex-col items-end gap-1.5 max-w-[85%]">

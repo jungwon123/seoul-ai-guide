@@ -216,6 +216,9 @@ interface ChatStore {
   activeConn: { close: () => void } | null;
   draftRestore: string | null;
 
+  // 북마크에서 특정 메시지로 점프 시, 스크롤 대상 message_id(문자열). 소비 후 null.
+  focusMessageId: string | null;
+
   sendMessage: (text: string, imageUrl?: string) => Promise<void>;
   // 진행 중 질문 취소 — 스트림 중단, 내 질문 말풍선 제거, 텍스트를 입력창으로 복원.
   cancelMessage: () => void;
@@ -224,7 +227,8 @@ interface ChatStore {
   clearChat: () => void;
   initWelcome: () => void;
   newChat: () => void;
-  loadSession: (sessionId: string) => Promise<void>;
+  loadSession: (sessionId: string, opts?: { focusMessageId?: string }) => Promise<void>;
+  clearFocusMessageId: () => void;
   deleteSession: (sessionId: string) => Promise<void>;
   renameSession: (sessionId: string, title: string) => Promise<void>;
   // BE에서 thread 목록 동기화. 비로그인/실패 시 silent하지만 chatsError를 채움.
@@ -250,6 +254,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   chatsError: null,
   activeConn: null,
   draftRestore: null,
+  focusMessageId: null,
 
   initWelcome: () => {
     const { selectedAgent, messages } = get();
@@ -525,12 +530,38 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }, 0);
   },
 
-  loadSession: async (id: string) => {
+  loadSession: async (id: string, opts?: { focusMessageId?: string }) => {
     const { sessions, selectedAgent } = get();
     const existing = sessions.find((s) => s.id === id);
+    const focusId = opts?.focusMessageId ?? null;
     try {
-      const res = await chatsApi.messages(id, { limit: 100 });
-      const messages = res.items.map((it) => messageItemToMessage(it, id));
+      // around 지원 BE 면 타겟 주변 윈도우를, 아니면 최신 100개를 받음.
+      const first = await chatsApi.messages(id, {
+        limit: 100,
+        ...(focusId ? { around: focusId } : {}),
+      });
+      const byId = new Map<string, ReturnType<typeof messageItemToMessage>>();
+      const add = (its: typeof first.items) => {
+        for (const it of its) byId.set(String(it.message_id), messageItemToMessage(it, id));
+      };
+      add(first.items);
+
+      // 폴백: around 미지원 등으로 타겟이 안 잡히면 cursor 로 과거 페이지를 더 로드(최대 N페이지).
+      let cursor = first.next_cursor;
+      if (focusId && !byId.has(focusId)) {
+        const MAX_PAGES = 9; // 100 + 9*100 = 최대 1000개까지 탐색
+        for (let i = 0; cursor && i < MAX_PAGES && !byId.has(focusId); i += 1) {
+          const next = await chatsApi.messages(id, { limit: 100, cursor });
+          add(next.items);
+          cursor = next.next_cursor;
+        }
+      }
+
+      // cursor 방향(과거/미래)에 의존하지 않도록 created_at 오름차순으로 정렬.
+      const messages = [...byId.values()].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
+
       const now = new Date().toISOString();
       const session: ChatSession = existing
         ? { ...existing, messages, updatedAt: now }
@@ -541,6 +572,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         selectedAgent: session.agent,
         streamingText: '',
         isLoading: false,
+        // 타겟이 실제 로드됐을 때만 focus 설정 — 못 찾으면 null(폴백: 자동 하단 스크롤).
+        focusMessageId: focusId && byId.has(focusId) ? focusId : null,
         sessions: existing
           ? sessions.map((s) => (s.id === id ? session : s))
           : [session, ...sessions],
@@ -554,10 +587,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           selectedAgent: existing.agent,
           streamingText: '',
           isLoading: false,
+          focusMessageId: focusId && existing.messages.some((m) => String(m.messageId) === focusId) ? focusId : null,
         });
       }
     }
   },
+
+  clearFocusMessageId: () => set({ focusMessageId: null }),
 
   deleteSession: async (id: string) => {
     // Optimistic — 로컬에서 즉시 제거. BE 실패해도 다음 loadFromServer에서 복원됨.

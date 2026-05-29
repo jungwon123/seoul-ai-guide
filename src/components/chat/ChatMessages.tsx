@@ -8,18 +8,77 @@ export default memo(function ChatMessages() {
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
 
+  const focusMessageId = useChatStore((s) => s.focusMessageId);
+  const clearFocusMessageId = useChatStore((s) => s.clearFocusMessageId);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasOnlyWelcome = messages.length <= 1;
 
   useEffect(() => {
-    // rAF 로 다음 프레임에 읽기/쓰기 — commit 단계에서 scrollHeight 를 동기로 읽어
-    // 강제 reflow 나던 것을 레이아웃 단계와 분리.
+    // 북마크 점프(focus) 진행 중이면 하단 자동스크롤을 건너뛴다(타겟 스크롤과 충돌 방지).
+    // focusMessageId 는 deps 에서 제외 — 소비(null) 시 이 effect 가 재실행돼 하단으로
+    // 튕기는 것을 막고, 다음 '새 메시지'(messages 변경) 때 정상 하단 스크롤되게 한다.
+    if (useChatStore.getState().focusMessageId) return;
     const id = requestAnimationFrame(() => {
       const el = scrollRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     });
     return () => cancelAnimationFrame(id);
   }, [messages, isLoading]);
+
+  // 북마크에서 점프한 메시지로 스크롤 + 하이라이트. lazy 카드(코스/장소)가 뒤늦게 mount 되며
+  // 높이가 늘어나므로 ResizeObserver 로 ~900ms 동안 재정렬한 뒤 focus 를 소비한다.
+  useEffect(() => {
+    if (!focusMessageId) return;
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+
+    let cancelled = false;
+    let ro: ResizeObserver | null = null;
+    let settleTimer = 0;
+
+    const findEl = () =>
+      scroller.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(focusMessageId)}"]`);
+    const align = () => {
+      const el = findEl();
+      if (el) el.scrollIntoView({ block: 'center', behavior: 'auto' });
+      return el;
+    };
+
+    const raf = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const el = align();
+      if (!el) {
+        // 타겟을 못 찾음(이론상 store 가 이미 검증하지만 방어적) → 소비만.
+        clearFocusMessageId();
+        return;
+      }
+      // 잠깐 강조 — 어느 버블인지 즉시 인지되게.
+      el.style.transition = 'box-shadow 0.25s ease';
+      el.style.borderRadius = '14px';
+      el.style.boxShadow = '0 0 0 2px var(--color-brand)';
+      window.setTimeout(() => {
+        el.style.boxShadow = '';
+      }, 1600);
+
+      // lazy 카드 높이 변동 추적 재정렬.
+      ro = new ResizeObserver(() => {
+        if (!cancelled) align();
+      });
+      ro.observe(el);
+      settleTimer = window.setTimeout(() => {
+        ro?.disconnect();
+        clearFocusMessageId();
+      }, 900);
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.clearTimeout(settleTimer);
+    };
+  }, [focusMessageId, messages, clearFocusMessageId]);
 
   return (
     <div ref={scrollRef} data-chat-scroller className="flex-1 overflow-y-auto overscroll-contain">

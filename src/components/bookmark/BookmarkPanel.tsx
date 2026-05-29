@@ -260,7 +260,7 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
           <article
             key={item.bookmarkId}
             className="group relative bg-bg-surface border border-border rounded-2xl p-3.5 transition-all duration-200 hover:border-border-strong hover:shadow-sm cursor-pointer"
-            onClick={() => { loadSession(item.conversationId); onClose?.(); }}
+            onClick={() => { loadSession(item.conversationId, { focusMessageId: item.messageId }); onClose?.(); }}
           >
             <div className="flex items-center gap-2 mb-2">
               {pinChip && (
