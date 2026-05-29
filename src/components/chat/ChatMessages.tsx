@@ -12,9 +12,13 @@ export default memo(function ChatMessages() {
   const hasOnlyWelcome = messages.length <= 1;
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // rAF 로 다음 프레임에 읽기/쓰기 — commit 단계에서 scrollHeight 를 동기로 읽어
+    // 강제 reflow 나던 것을 레이아웃 단계와 분리.
+    const id = requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
   }, [messages, isLoading]);
 
   return (
