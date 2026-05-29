@@ -80,6 +80,13 @@ export function courseBlockToItinerary(block: CourseBlock): Itinerary {
     const transportToNext: TransportMode = (transit?.mode ?? 'walk') as TransportMode;
     cursor += duration + travelTimeToNext;
     const category = normalizeCategory(p.category);
+    // 혼잡도 snake_case → camelCase 변환 (place 블록과 동일 규칙). BE 미제공 시 undefined.
+    const pc = p.congestion as
+      | { level: 'low' | 'medium' | 'high'; updated_at?: string; updatedAt?: string; source?: string }
+      | undefined;
+    const congestion = pc
+      ? { level: pc.level, updatedAt: pc.updated_at ?? pc.updatedAt ?? '', source: pc.source }
+      : undefined;
     return {
       order: s.order ?? i + 1,
       placeId: p.place_id,
@@ -95,6 +102,7 @@ export function courseBlockToItinerary(block: CourseBlock): Itinerary {
       category,
       rating: p.rating,
       reason: s.recommendation_reason,
+      congestion,
     };
   });
   return {

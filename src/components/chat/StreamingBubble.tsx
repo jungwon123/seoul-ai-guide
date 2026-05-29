@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { AgentType } from '@/types';
 import { useTextHeight } from '@/lib/useTextHeight';
 import AgentMark from '../agent/AgentMark';
+import Markdown from '@/components/ui/Markdown';
 
 interface Props {
   text: string;
@@ -21,7 +22,7 @@ export default function StreamingBubble({ text, agent }: Props) {
         className="flex-1 text-[14px] leading-[1.7] text-text-primary"
         style={{ minHeight: predictedHeight > 0 ? predictedHeight : undefined }}
       >
-        {text}
+        <Markdown inline>{text}</Markdown>
         <span className="inline-block w-[2px] h-[14px] bg-brand ml-[1px] align-text-bottom" style={{ animation: 'cursorBlink 1s step-end infinite' }} />
       </div>
     </div>

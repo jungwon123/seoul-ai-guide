@@ -1,8 +1,10 @@
 
 
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { X, Copy, Navigation } from 'lucide-react';
 import { type NavigationState } from '@/stores/mapStore';
+import { toast } from '@/stores/toastStore';
+import { itineraryToText } from '@/lib/itinerary-text';
 import ItineraryStopsList from './ItineraryStopsList';
 
 interface Props {
@@ -12,6 +14,30 @@ interface Props {
 
 function ItineraryDetailPanelInner({ navigation, onClose }: Props) {
   const { itinerary } = navigation;
+
+  // 코스 전체를 사람이 읽을 수 있는 텍스트로 클립보드에 복사 — 메모/메신저 공유용.
+  const handleCopy = useCallback(async () => {
+    const text = itineraryToText(itinerary);
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('코스를 복사했어요');
+    } catch {
+      // clipboard 권한 거부/비보안 컨텍스트 — 레거시 fallback.
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        toast.success('코스를 복사했어요');
+      } catch {
+        toast.error('복사에 실패했어요');
+      }
+    }
+  }, [itinerary]);
 
   return (
     <aside
@@ -44,8 +70,9 @@ function ItineraryDetailPanelInner({ navigation, onClose }: Props) {
             경로 열기
           </button>
           <button
+            onClick={handleCopy}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-bg-subtle text-text-primary rounded-xl text-[13px] font-semibold hover:bg-border transition-[background-color] cursor-pointer"
-            aria-label="복사"
+            aria-label="코스 복사"
           >
             <Copy size={14} aria-hidden="true" />
             복사

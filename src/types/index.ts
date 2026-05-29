@@ -49,6 +49,7 @@ export interface ItineraryStop {
   category?: PlaceCategory;
   rating?: number;
   reason?: string;
+  congestion?: Congestion;
 }
 
 export interface Itinerary {

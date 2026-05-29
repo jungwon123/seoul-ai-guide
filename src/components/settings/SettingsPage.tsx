@@ -69,7 +69,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen w-full px-4 py-10">
+    <div className="h-full w-full overflow-y-auto px-4 py-10">
       <div className="max-w-xl mx-auto">
         <button
           onClick={() => navigate(-1)}

@@ -4,6 +4,7 @@ import type { Place } from '@/types';
 import { CATEGORY_CONFIG, CONGESTION_CONFIG } from '@/lib/utils';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
+import Markdown from '@/components/ui/Markdown';
 
 const SCROLL_STYLE: React.CSSProperties = { scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as const;
 
@@ -96,9 +97,9 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
           <span className="truncate">{place.address.split(' ').slice(1, 3).join(' ')}</span>
         </div>
         {place.summary && (
-          <p className="text-[12px] text-text-secondary leading-[1.5] mt-1.5 line-clamp-2">
+          <Markdown inline className="block text-[12px] text-text-secondary leading-[1.5] mt-1.5 line-clamp-2">
             {place.summary}
-          </p>
+          </Markdown>
         )}
       </div>
     </div>
@@ -107,11 +108,13 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
 
 export default function PlaceCarousel({ places }: PlaceCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const selectPlace = useMapStore((s) => s.selectPlace);
+  const focusPlaces = useMapStore((s) => s.focusPlaces);
 
+  // 클릭한 카드가 속한 메시지의 장소 목록 전체를 지도에 올리고 해당 장소를 선택.
+  // 이전 추천/코스의 마커가 그대로 남아 "항상 마지막 코스가 뜨던" 버그를 차단한다.
   const handlePlaceClick = useCallback((place: Place) => {
-    selectPlace(place);
-  }, [selectPlace]);
+    focusPlaces(places, place);
+  }, [focusPlaces, places]);
 
   if (places.length === 0) {
     return (

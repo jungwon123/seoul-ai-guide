@@ -1,8 +1,8 @@
 import { memo } from 'react';
-import { Star, MapPin } from 'lucide-react';
+import { Star, MapPin, Users } from 'lucide-react';
 import type { NavigationState } from '@/stores/mapStore';
 import { useMapStore } from '@/stores/mapStore';
-import { CATEGORY_CONFIG } from '@/lib/utils';
+import { CATEGORY_CONFIG, CONGESTION_CONFIG } from '@/lib/utils';
 import { deriveStopCategory } from '@/lib/stop-category';
 
 type Section = '아침' | '오후' | '저녁';
@@ -97,6 +97,18 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
                         )}
                         <MapPin size={10} aria-hidden="true" />
                         <span className="truncate">{cat.label}</span>
+                        {stop.congestion && (
+                          <span
+                            className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] font-medium shrink-0"
+                            style={{
+                              backgroundColor: CONGESTION_CONFIG[stop.congestion.level].bg,
+                              color: CONGESTION_CONFIG[stop.congestion.level].color,
+                            }}
+                          >
+                            <Users size={9} strokeWidth={2} aria-hidden="true" />
+                            {CONGESTION_CONFIG[stop.congestion.level].label}
+                          </span>
+                        )}
                       </div>
                       {(stop.reason ?? stop.address) && (
                         <p className="text-[12px] text-text-secondary mt-1.5 line-clamp-2 leading-[1.5]">
