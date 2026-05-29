@@ -1,6 +1,7 @@
 // 88 올림픽 톤의 단순한 인증 폼 셸 (Login/Signup 공용).
 
 import type { ReactNode } from 'react';
+import AgentOrb from '@/components/agent/AgentOrb';
 
 type Props = {
   title: string;
@@ -13,13 +14,8 @@ export default function AuthLayout({ title, subtitle, children, footer }: Props)
   return (
     <div className="min-h-screen w-full flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-center mb-8 gap-3">
-          <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M 12 12 L 12 0 A 12 12 0 0 1 22.392 18 Z" fill="#1F3A8B" />
-            <path d="M 12 12 L 22.392 18 A 12 12 0 0 1 1.608 18 Z" fill="#DC2127" />
-            <path d="M 12 12 L 1.608 18 A 12 12 0 0 1 12 0 Z" fill="#F4A12C" />
-            <circle cx="12" cy="12" r="2.4" fill="#FFFFFF" />
-          </svg>
+        <div className="flex flex-col items-center justify-center mb-8 gap-2">
+          <AgentOrb state="idle" size={72} interactive={false} />
           <span className="font-display text-xl tracking-tight">LocalBiz</span>
         </div>
 
