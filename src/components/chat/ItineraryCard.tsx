@@ -72,6 +72,7 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
           // 카테고리는 stop.category(BE) → mock → 'tourism' 우선순위로 결정.
           // 지도 패널과 동일 helper 를 써서 양쪽 일관성 보장.
           const cat = CATEGORY_CONFIG[deriveStopCategory(stop)];
+          const CatIcon = cat.icon;
           const isLast = i >= itinerary.stops.length - 1;
           const TransportIcon = !isLast ? TRANSPORT_ICON[stop.transportToNext] : null;
 
@@ -102,12 +103,7 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
                         loading="lazy"
                       />
                     ) : (
-                      <span
-                        className="text-[22px] font-semibold"
-                        style={{ color: cat?.color ?? 'var(--color-text-muted)' }}
-                      >
-                        {cat?.label[0] ?? '·'}
-                      </span>
+                      <CatIcon size={24} strokeWidth={1.8} style={{ color: cat.color }} aria-hidden="true" />
                     )}
                   </div>
                   {/* Order badge — 외부 컨테이너에 absolute, 음수 offset으로 모서리 바깥으로 */}

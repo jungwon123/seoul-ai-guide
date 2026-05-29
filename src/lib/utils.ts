@@ -1,4 +1,5 @@
 import type { AgentType, PlaceCategory, TransportMode, CongestionLevel } from '@/types';
+import { Landmark, ShoppingBag, Palette, Utensils, type LucideIcon } from 'lucide-react';
 
 export const AGENT_CONFIG: Record<AgentType, { label: string; color: string; company: string; desc: string }> = {
   claude: { label: 'Claude', color: '#1F3A8B', company: 'Anthropic', desc: '섬세한 추천' },
@@ -12,11 +13,11 @@ export const AGENT_COLORS: Record<AgentType, string> = {
   gemini: '#F4A12C',
 };
 
-export const CATEGORY_CONFIG: Record<PlaceCategory, { label: string; color: string }> = {
-  tourism: { label: '관광', color: '#1F3A8B' },
-  shopping: { label: '쇼핑', color: '#DC2127' },
-  culture: { label: '문화', color: '#F4A12C' },
-  food: { label: '음식', color: '#00853E' },
+export const CATEGORY_CONFIG: Record<PlaceCategory, { label: string; color: string; icon: LucideIcon }> = {
+  tourism: { label: '관광', color: '#1F3A8B', icon: Landmark },
+  shopping: { label: '쇼핑', color: '#DC2127', icon: ShoppingBag },
+  culture: { label: '문화', color: '#F4A12C', icon: Palette },
+  food: { label: '음식', color: '#00853E', icon: Utensils },
 };
 
 // BE가 보내는 카테고리 문자열(한글/영문 혼재)을 FE 4분류 enum으로 정규화.
