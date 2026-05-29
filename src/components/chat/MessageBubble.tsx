@@ -205,7 +205,7 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
                   <span>{isMessageBookmarked ? '저장됨' : '저장'}</span>
                 </button>
                 <FeedbackButton threadId={message.threadId} messageId={beMessageId} />
-                <ShareButton threadId={message.threadId} />
+                <ShareButton threadId={message.threadId} messageId={beMessageId} />
               </div>
             )}
           </div>
