@@ -9,6 +9,10 @@ import { friendlyApiError } from '@/lib/auth-errors';
 import { normalizeCategory } from '@/lib/utils';
 import { useMapStore } from './mapStore';
 
+// 진행 중 SSE 의 Promise resolve 참조 — cancelMessage 가 대기 중 Promise 를 깨우는 용도.
+// 동시에 하나의 스트림만 활성이므로 모듈 스코프로 충분(스토어 상태에 둘 필요 없음).
+let activeResolve: (() => void) | null = null;
+
 // SSE 블록 → 레거시 Message 타입 어댑터.
 
 export function singlePlaceBlockToPlace(it: PlaceBlockData): Place {
@@ -208,7 +212,14 @@ interface ChatStore {
   chatsLoading: boolean;
   chatsError: string | null;
 
+  // 진행 중 스트림 핸들(취소용) + 취소 시 입력창에 되돌릴 텍스트.
+  activeConn: { close: () => void } | null;
+  draftRestore: string | null;
+
   sendMessage: (text: string, imageUrl?: string) => Promise<void>;
+  // 진행 중 질문 취소 — 스트림 중단, 내 질문 말풍선 제거, 텍스트를 입력창으로 복원.
+  cancelMessage: () => void;
+  clearDraftRestore: () => void;
   setAgent: (agent: AgentType) => void;
   clearChat: () => void;
   initWelcome: () => void;
@@ -237,6 +248,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   sessions: [],
   chatsLoading: false,
   chatsError: null,
+  activeConn: null,
+  draftRestore: null,
 
   initWelcome: () => {
     const { selectedAgent, messages } = get();
@@ -282,6 +295,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     let beMessageId: number | undefined;
 
     await new Promise<void>((resolve) => {
+      activeResolve = resolve;
       const conn = openChatStream(sessionId, queryForBE, {
         text_stream: (data) => {
           if (data.type === 'text_stream') {
@@ -358,7 +372,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           }
         },
       });
+      set({ activeConn: conn });
     });
+
+    activeResolve = null;
+    // 취소된 경우 — cancelMessage 가 activeConn 을 null 로 비우고 상태를 이미 정리했으므로
+    // agent 메시지/세션 빌드 없이 종료(부분 답변이 thread 에 남지 않게).
+    if (get().activeConn === null) return;
 
     const agentId = `msg-${Date.now()}-agent`;
     const agentMsg: Message = {
@@ -403,6 +423,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingText: '',
       currentStatus: '',
       sessions: updatedSessions,
+      activeConn: null,
     });
 
     // BE가 thread 자동 제목 생성을 안 해주는 우회 — 첫 메시지 응답 후 로컬 title을 서버에 push.
@@ -411,6 +432,30 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       chatsApi.rename(sessionId, session.title).catch(() => {});
     }
   },
+
+  cancelMessage: () => {
+    const { activeConn, messages } = get();
+    if (!activeConn) return;
+    activeConn.close();
+
+    // 진행 중 질문은 항상 messages 의 마지막(아직 agent 응답 미추가) → 제거 + 텍스트 복원.
+    const last = messages[messages.length - 1];
+    const restore = last?.role === 'user' ? last.text : '';
+    set({
+      messages: restore ? messages.slice(0, -1) : messages,
+      isLoading: false,
+      streamingText: '',
+      currentStatus: '',
+      activeConn: null,
+      draftRestore: restore || null,
+    });
+
+    // 대기 중이던 sendMessage Promise 를 깨워 마무리(가드에서 early-return).
+    activeResolve?.();
+    activeResolve = null;
+  },
+
+  clearDraftRestore: () => set({ draftRestore: null }),
 
   setAgent: (agent: AgentType) => {
     const { messages, sessionId, sessions } = get();

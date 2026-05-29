@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useEffect, type FormEvent, type KeyboardEvent, type ChangeEvent } from 'react';
-import { ArrowUp, Image as ImageIcon, X } from 'lucide-react';
+import { ArrowUp, Image as ImageIcon, X, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { uploadApi } from '@/lib/api';
 import { friendlyApiError } from '@/lib/auth-errors';
@@ -9,6 +9,12 @@ interface ChatInputProps {
   onSend: (text: string, imageUrl?: string) => void;
   disabled?: boolean;
   showChips?: boolean;
+  // 응답 생성 중 — 전송 버튼 자리를 '중단' 버튼으로 교체.
+  loading?: boolean;
+  onCancel?: () => void;
+  // 취소 시 스토어가 되돌려준 텍스트 → 입력창에 복원 후 onDraftRestored 로 1회 소비.
+  draftRestore?: string | null;
+  onDraftRestored?: () => void;
 }
 
 const EXAMPLE_CHIPS = [
@@ -21,7 +27,7 @@ const EXAMPLE_CHIPS = [
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_BYTES = 10 * 1024 * 1024;
 
-export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInputProps) {
+export default memo(function ChatInput({ onSend, disabled, showChips, loading, onCancel, draftRestore, onDraftRestored }: ChatInputProps) {
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
@@ -36,6 +42,14 @@ export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInpu
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  // 취소 시 되돌아온 텍스트를 입력창에 복원 + 포커스. 1회 소비 후 스토어 플래그 초기화.
+  useEffect(() => {
+    if (draftRestore == null) return;
+    setText(draftRestore);
+    onDraftRestored?.();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [draftRestore, onDraftRestored]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,23 +194,35 @@ export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInpu
             )}
             aria-label="메시지 입력"
           />
-          <button
-            type="submit"
-            disabled={!canSend}
-            className={cn(
-              'w-8 h-8 rounded-[10px] flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
-              canSend
-                ? 'bg-brand text-white shadow-xs hover:bg-brand-hover active:scale-95'
-                : 'bg-bg-subtle text-text-muted',
-            )}
-            aria-label={uploading ? '업로드 중' : '전송'}
-          >
-            {uploading ? (
-              <div className="w-3.5 h-3.5 border-2 border-white/60 border-t-white rounded-full animate-spin" />
-            ) : (
-              <ArrowUp size={15} strokeWidth={2.5} />
-            )}
-          </button>
+          {loading ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-bg-subtle text-text-primary hover:bg-border transition-all duration-200 cursor-pointer shrink-0 active:scale-95"
+              aria-label="응답 생성 중단"
+              title="중단"
+            >
+              <Square size={12} fill="currentColor" strokeWidth={0} />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!canSend}
+              className={cn(
+                'w-8 h-8 rounded-[10px] flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
+                canSend
+                  ? 'bg-brand text-white shadow-xs hover:bg-brand-hover active:scale-95'
+                  : 'bg-bg-subtle text-text-muted',
+              )}
+              aria-label={uploading ? '업로드 중' : '전송'}
+            >
+              {uploading ? (
+                <div className="w-3.5 h-3.5 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+              ) : (
+                <ArrowUp size={15} strokeWidth={2.5} />
+              )}
+            </button>
+          )}
         </div>
       </form>
     </div>
