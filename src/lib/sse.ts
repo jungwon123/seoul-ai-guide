@@ -28,9 +28,22 @@ function buildStreamUrl(threadId: string, query: string): string {
   return `${base.replace(/\/$/, '')}/api/v1/chat/stream?${params.toString()}`;
 }
 
+// 알려진 SSE 이벤트 타입 — event: 필드가 없을 때 data.type 으로 폴백 판별.
+const KNOWN_EVENTS = new Set<string>([
+  'intent', 'status', 'text_stream', 'place', 'places', 'events', 'course',
+  'map_markers', 'map_route', 'chart', 'calendar', 'references',
+  'analysis_sources', 'disambiguation', 'done', 'done_partial', 'error',
+]);
+
 /**
  * SSE 스트림 시작. 반환된 close()로 중단.
  * `done` 이벤트 도달 → 자동 close + onClose() 호출.
+ *
+ * fetch + AbortController 기반 (네이티브 EventSource 미사용).
+ *  - EventSource 는 스트림 종료/단절 시 같은 GET query 로 '자동 재연결' → 비멱등 쿼리가
+ *    매번 처음부터 재실행되어 루프가 발생했음(특히 intent 파싱 등 데이터 공백 구간).
+ *  - fetch 는 재연결이 없고 abort() 로 진행 중 요청을 즉시·확정적으로 취소 → 취소 버튼이
+ *    준비중 단계에서도 정확히 동작.
  */
 export function openChatStream(
   threadId: string,
@@ -38,80 +51,94 @@ export function openChatStream(
   handlers: SseHandlers,
 ): SseConnection {
   const url = buildStreamUrl(threadId, query);
-  const es = new EventSource(url, { withCredentials: false });
+  const controller = new AbortController();
   let closed = false;
 
   const close = (): void => {
     if (closed) return;
     closed = true;
-    es.close();
+    controller.abort();
     handlers.onClose?.();
   };
 
-  es.onopen = () => handlers.onOpen?.();
-
-  // 모든 SSE 이벤트 타입에 동일 디스패처 부착
-  const eventTypes: SseEventType[] = [
-    'intent',
-    'status',
-    'text_stream',
-    'place',
-    'places',
-    'events',
-    'course',
-    'map_markers',
-    'map_route',
-    'chart',
-    'calendar',
-    'references',
-    'analysis_sources',
-    'disambiguation',
-    'done',
-    'done_partial',
-    'error',
-  ];
-  for (const t of eventTypes) {
-    es.addEventListener(t, (ev: MessageEvent) => {
-      let data: Block | undefined;
-      try {
-        data = JSON.parse(ev.data) as Block;
-      } catch {
-        return;
-      }
-      const handler = handlers[t];
-      if (handler && data) handler(data);
-      if (t === 'done' || (data && data.type === 'done' && (data as { reason?: string }).reason !== 'partial')) {
-        close();
-      }
-    });
-  }
-
-  // EventSource onerror — 네트워크 단절. 브라우저가 자동 재연결 시도.
-  // ⚠️ EventSource는 HTTP 상태(401 등)를 노출하지 않아 토큰 만료 시 무한 재연결로
-  //   서버 로그/CPU가 폭주할 수 있다. 짧은 윈도우 내 N회 이상 onerror가 누적되면
-  //   강제 close + 사용자에게 unrecoverable 통지.
-  const ERROR_WINDOW_MS = 10_000;
-  const ERROR_THRESHOLD = 5;
-  const errorTimestamps: number[] = [];
-
-  es.onerror = () => {
-    const now = Date.now();
-    while (errorTimestamps.length > 0 && now - errorTimestamps[0] > ERROR_WINDOW_MS) {
-      errorTimestamps.shift();
+  // SSE 프레임 1개(빈 줄 구분) 파싱 → 핸들러 디스패치.
+  const dispatch = (raw: string): void => {
+    if (closed) return;
+    let eventType = '';
+    const dataLines: string[] = [];
+    for (const line of raw.split(/\r?\n/)) {
+      if (!line || line.startsWith(':')) continue; // 빈 줄/주석(heartbeat) 무시
+      if (line.startsWith('event:')) eventType = line.slice(6).trim();
+      else if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
     }
-    errorTimestamps.push(now);
-    const exceeded = errorTimestamps.length >= ERROR_THRESHOLD;
-    const browserClosed = es.readyState === EventSource.CLOSED;
-
-    handlers.onError?.({
-      message: exceeded ? '연결이 반복적으로 실패했습니다' : '연결 오류',
-      recoverable: !exceeded && !browserClosed,
-    });
-
-    if (browserClosed || exceeded) {
+    if (dataLines.length === 0) return;
+    let data: Block | undefined;
+    try {
+      data = JSON.parse(dataLines.join('\n')) as Block;
+    } catch {
+      return;
+    }
+    const type = (eventType || data.type) as SseEventType | '';
+    if (!type || !KNOWN_EVENTS.has(type)) return;
+    const handler = handlers[type as SseEventType];
+    if (handler) handler(data);
+    if (type === 'done' || (data.type === 'done' && (data as { reason?: string }).reason !== 'partial')) {
       close();
     }
   };
+
+  (async () => {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        headers: { Accept: 'text/event-stream' },
+        credentials: 'same-origin',
+        signal: controller.signal,
+      });
+    } catch {
+      if (!closed) {
+        handlers.onError?.({ message: '연결 오류', recoverable: false });
+        close();
+      }
+      return;
+    }
+
+    if (!res.ok || !res.body) {
+      if (!closed) {
+        handlers.onError?.({ message: `연결 실패 (${res.status})`, recoverable: false });
+        close();
+      }
+      return;
+    }
+
+    handlers.onOpen?.();
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // 빈 줄(\n\n 또는 \r\n\r\n)로 구분된 완성 프레임만 처리, 나머지는 버퍼 유지.
+        for (;;) {
+          const m = buffer.match(/\r?\n\r?\n/);
+          if (!m || m.index === undefined) break;
+          const raw = buffer.slice(0, m.index);
+          buffer = buffer.slice(m.index + m[0].length);
+          dispatch(raw);
+          if (closed) return;
+        }
+      }
+      if (buffer.trim()) dispatch(buffer); // 종료 직전 잔여 프레임
+    } catch {
+      // abort(취소) 는 정상 흐름 — closed 면 조용히 종료.
+      if (!closed) handlers.onError?.({ message: '스트림 오류', recoverable: false });
+    }
+    if (!closed) close();
+  })();
 
   return { close };
 }
