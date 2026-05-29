@@ -148,7 +148,6 @@ export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInpu
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            capture="environment"
             onChange={handleFileChange}
             className="hidden"
             aria-label="사진 첨부"

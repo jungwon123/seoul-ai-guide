@@ -12,6 +12,7 @@ import BookingCard from './BookingCard';
 import FeedbackButton from './FeedbackButton';
 import ShareButton from './ShareButton';
 import { BlockRenderer } from './blocks';
+import Markdown from '@/components/ui/Markdown';
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' &&
@@ -126,9 +127,11 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
           <AgentMark size={28} className="mt-0.5" />
 
           <div className="flex-1 min-w-0 space-y-2">
-            <div data-reveal className="text-[14px] leading-[1.7] text-text-primary">
-              {message.text}
-            </div>
+            {message.text && (
+              <div data-reveal className="text-[14px] leading-[1.7] text-text-primary">
+                <Markdown>{message.text}</Markdown>
+              </div>
+            )}
 
             {message.places && message.places.length > 0 && (
               <div data-reveal>

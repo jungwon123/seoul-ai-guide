@@ -32,6 +32,9 @@ interface MapStore {
   setMarkers: (places: Place[]) => void;
   setRoute: (route: RoutePoint[]) => void;
   selectPlace: (place: Place | null) => void;
+  // 채팅 카드(장소/행사) 클릭 전용. 해당 메시지의 장소 목록 전체를 지도에 올리고
+  // 그 중 하나를 선택. 코스 모드(navigation)는 해제해 장소 UI 로 전환한다.
+  focusPlaces: (places: Place[], selected: Place) => void;
   clearMap: () => void;
   setProjector: (fn: MapProjector | null) => void;
   setMapContainerEl: (el: HTMLElement | null) => void;
@@ -55,7 +58,8 @@ function getPlacesForItinerary(itinerary: Itinerary): Place[] {
     .map((stop): Place | null => {
       const category = deriveStopCategory(stop);
       const matched = allPlaces.find((p) => p.id === stop.placeId);
-      if (matched) return { ...matched, category };
+      // 혼잡도는 BE stop 값을 우선, 없으면 mock 매칭값 사용 — 지도 마커 혼잡도 점 표시용.
+      if (matched) return { ...matched, category, congestion: stop.congestion ?? matched.congestion };
       if (stop.lat == null || stop.lng == null) return null;
       return {
         id: stop.placeId,
@@ -68,6 +72,7 @@ function getPlacesForItinerary(itinerary: Itinerary): Place[] {
         rating: 0,
         summary: '',
         image: stop.imageUrl,
+        congestion: stop.congestion,
       };
     })
     .filter((p): p is Place => p !== null);
@@ -85,6 +90,11 @@ export const useMapStore = create<MapStore>((set, get) => ({
   setMarkers: (places) =>
     set({
       markers: places,
+      // 새 장소 추천이 도착하면 직전 코스(navigation) 모드를 해제한다.
+      // 안 그러면 지도를 열 때 직전에 본 코스(예: 홍대)가 계속 떠 있는다 —
+      // navigation 은 markers 와 별개라 핀만 바뀌고 코스 패널은 그대로 남기 때문.
+      navigation: null,
+      selectedPlace: null,
       mapCenter: places.length > 0 ? { lat: places[0].lat, lng: places[0].lng } : SEOUL_CENTER,
     }),
 
@@ -95,6 +105,16 @@ export const useMapStore = create<MapStore>((set, get) => ({
       selectedPlace: place,
       // 카드 클릭 시 지도 중심을 해당 장소로 이동.
       mapCenter: place ? { lat: place.lat, lng: place.lng } : SEOUL_CENTER,
+    }),
+
+  focusPlaces: (places, selected) =>
+    set({
+      markers: places,
+      selectedPlace: selected,
+      // 장소/행사 카드를 누르면 더 이상 코스(경로) 모드가 아니다 — 이전 코스 패널이
+      // 남아 마지막 코스가 표시되던 버그(클릭한 카드와 무관하게 항상 마지막 코스) 차단.
+      navigation: null,
+      mapCenter: { lat: selected.lat, lng: selected.lng },
     }),
 
   clearMap: () => set({ markers: [], route: [], selectedPlace: null, mapCenter: SEOUL_CENTER }),
@@ -124,7 +144,12 @@ export const useMapStore = create<MapStore>((set, get) => ({
     const maxIdx = navigation.itinerary.stops.length - 1;
     const clamped = Math.max(0, Math.min(index, maxIdx));
     const stop = navigation.itinerary.stops[clamped];
-    const place = allPlaces.find((p) => p.id === stop.placeId) ?? null;
+    // 지도에 실제로 올라간 마커(코스 합성 Place)에서 먼저 찾는다. mock 미매칭 BE 코스도
+    // 마커는 존재하므로 selectedPlace 가 항상 잡혀 사이드바 클릭 시 마커 강조가 동작한다.
+    const place =
+      get().markers.find((p) => p.id === stop.placeId) ??
+      allPlaces.find((p) => p.id === stop.placeId) ??
+      null;
     set({
       navigation: { ...navigation, stopIndex: clamped },
       selectedPlace: place,

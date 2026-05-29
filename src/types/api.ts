@@ -251,6 +251,7 @@ export type CoursePlaceInfo = {
   rating?: number;
   summary?: string;
   photo_url?: string;
+  congestion?: CongestionBlockInfo;
 };
 
 export type CourseTransit = {

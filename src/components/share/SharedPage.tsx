@@ -44,7 +44,7 @@ export default function SharedPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen w-full px-4 py-10">
+    <div className="h-full w-full overflow-y-auto px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <Link to="/" className="inline-flex items-center gap-2 mb-6">
           <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">

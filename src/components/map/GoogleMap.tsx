@@ -188,6 +188,9 @@ export default function GoogleMap({
   const circlesRef = useRef<google.maps.Circle[]>([]);
   const selectedIdRef = useRef<string | null>(null);
   const onSelectRef = useRef(onSelectPlace);
+  // 마커 목록이 새로 그려진 직후(fitBounds 직후)의 첫 선택 변화에서는 panTo 를 건너뛴다.
+  // 코스 시작 시 전체 경로 개요(fitBounds)를 유지하기 위함. 순수 stop 클릭 때만 pan.
+  const skipPanRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
 
   // Keep latest callback in ref so marker click handlers stay stable
@@ -268,6 +271,10 @@ export default function GoogleMap({
     if (!map || !mapReady) return;
     let cancelled = false;
 
+    // 마커 목록이 새로 그려지는 사이클 — 곧이어 동기 실행될 선택 효과의 panTo 를 1회 스킵해
+    // 코스 시작 시 fitBounds 개요가 유지되도록 한다. (await 이전에 동기로 세팅해야 순서 보장)
+    skipPanRef.current = true;
+
     (async () => {
       const { AdvancedMarkerElement } = await loadMarker();
       if (cancelled || !mapRef.current) return;
@@ -332,6 +339,17 @@ export default function GoogleMap({
     entriesRef.current.forEach(({ pinEl, labelEl, place }, id) => {
       applySelectionStyle(pinEl, labelEl, place, id === sid);
     });
+
+    // 선택된 장소를 지도 중앙으로 부드럽게 이동 — 사이드바(웹)에서 stop 클릭 시에도
+    // 마커 강조(확대)가 화면 안에서 분명히 보이게 한다. 단, 마커가 막 새로 그려진
+    // 직후(코스 시작 등)에는 fitBounds 개요를 깨지 않도록 1회 스킵.
+    if (skipPanRef.current) {
+      skipPanRef.current = false;
+      return;
+    }
+    if (selectedPlace && mapRef.current) {
+      mapRef.current.panTo({ lat: selectedPlace.lat, lng: selectedPlace.lng });
+    }
   }, [selectedPlace]);
 
   // Congestion overlay — 3 concentric circles per point for heatmap-like soft falloff (지리좌표 고정)
