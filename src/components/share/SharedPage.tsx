@@ -1,16 +1,53 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { sharedApi } from '@/lib/api';
 import { friendlyApiError } from '@/lib/auth-errors';
 import type { Block, SharedConversation } from '@/types/api';
+import type { Place } from '@/types';
 import { BlockRenderer } from '@/components/chat/blocks';
 import PlaceCarousel from '@/components/chat/PlaceCarousel';
 import ItineraryCard from '@/components/chat/ItineraryCard';
+import Markdown from '@/components/ui/Markdown';
 import {
   singlePlaceBlockToPlace,
   placesBlockToPlaces,
   courseBlockToItinerary,
 } from '@/stores/chatStore';
+
+// 지도(GoogleMap → 구글맵 JS) 는 지도 마커가 있는 메시지에서만 lazy 로드.
+const SharedMap = lazy(() => import('./SharedMap'));
+
+// 공유 메시지의 place/places/course 블록에서 유효 좌표 마커를 수집.
+function collectMapPlaces(blocks: Block[]): Place[] {
+  const out: Place[] = [];
+  for (const b of blocks) {
+    if (b.type === 'place') out.push(singlePlaceBlockToPlace(b));
+    else if (b.type === 'places') out.push(...placesBlockToPlaces(b));
+    else if (b.type === 'course') {
+      for (const s of courseBlockToItinerary(b).stops) {
+        if (s.lat != null && s.lng != null) {
+          out.push({
+            id: s.placeId,
+            name: s.placeName,
+            category: s.category ?? 'tourism',
+            address: s.address ?? '',
+            lat: s.lat,
+            lng: s.lng,
+            hours: '',
+            rating: s.rating ?? 0,
+            summary: '',
+            image: s.imageUrl,
+            congestion: s.congestion,
+          });
+        }
+      }
+    }
+  }
+  // (0,0) / NaN 좌표 제거 — 마커가 엉뚱한 곳에 찍히는 것 방지.
+  return out.filter(
+    (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && (p.lat !== 0 || p.lng !== 0),
+  );
+}
 
 export default function SharedPage() {
   const { token } = useParams<{ token: string }>();
@@ -118,6 +155,9 @@ function SharedMessage({ role, blocks, createdAt }: { role: string; blocks: unkn
       b.type !== 'map_route',
   );
 
+  const mapPlaces = isUser ? [] : collectMapPlaces(typedBlocks);
+  const hasCourse = typedBlocks.some((b) => b.type === 'course');
+
   return (
     <div className={isUser ? 'self-end max-w-[85%]' : 'self-start w-full max-w-full'}>
       {text && (
@@ -125,10 +165,22 @@ function SharedMessage({ role, blocks, createdAt }: { role: string; blocks: unkn
           className={
             isUser
               ? 'bg-brand-subtle border border-brand rounded-2xl rounded-br-md px-4 py-2.5 text-sm whitespace-pre-wrap'
-              : 'bg-bg-warm border border-border rounded-2xl rounded-bl-md px-4 py-2.5 text-sm whitespace-pre-wrap leading-[1.6]'
+              : 'bg-bg-warm border border-border rounded-2xl rounded-bl-md px-4 py-2.5 text-sm leading-[1.6]'
           }
         >
-          {text}
+          {isUser ? text : <Markdown>{text}</Markdown>}
+        </div>
+      )}
+
+      {mapPlaces.length > 0 && (
+        <div className="mt-2.5">
+          <Suspense
+            fallback={
+              <div className="h-[320px] w-full rounded-xl border border-border bg-bg-subtle animate-pulse" />
+            }
+          >
+            <SharedMap places={mapPlaces} itineraryMode={hasCourse} />
+          </Suspense>
         </div>
       )}
 
