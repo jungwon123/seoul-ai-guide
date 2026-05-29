@@ -44,6 +44,7 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
             <div className="space-y-3">
               {stops.map((stop, idxInSection) => {
                 const cat = CATEGORY_CONFIG[deriveStopCategory(stop)];
+                const CatIcon = cat.icon;
                 const isCurrent = itinerary.stops[stopIndex]?.placeId === stop.placeId;
                 const isSelected = selectedPlace?.id === stop.placeId;
                 const globalIdx = itinerary.stops.findIndex((s) => s.placeId === stop.placeId);
@@ -74,9 +75,7 @@ export default memo(function ItineraryStopsList({ navigation, onStopSelect }: Pr
                           loading="lazy"
                         />
                       ) : (
-                        <span className="text-[24px]" style={{ color: cat.color }}>
-                          {cat.label[0]}
-                        </span>
+                        <CatIcon size={28} strokeWidth={1.8} style={{ color: cat.color }} aria-hidden="true" />
                       )}
                     </div>
 

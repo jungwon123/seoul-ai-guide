@@ -7,6 +7,7 @@ import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { flipToMarker } from '@/lib/flip-to-marker';
 import BookingForm from '@/components/booking/BookingForm';
+import Markdown from '@/components/ui/Markdown';
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' &&
@@ -34,6 +35,7 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
   const articleRef = useRef<HTMLElement>(null);
 
   const cat = CATEGORY_CONFIG[place.category];
+  const CatIcon = cat.icon;
 
   const handleViewOnMap = () => {
     if (articleRef.current) {
@@ -85,83 +87,64 @@ export default function PlaceCard({ place, compact }: PlaceCardProps) {
         tabIndex={0}
         className="group bg-bg-surface border border-border rounded-2xl overflow-hidden transition-[border-color,box-shadow,transform] duration-200 hover:shadow-md hover:border-border-strong hover:-translate-y-[1px] cursor-pointer"
       >
-        <div className="relative aspect-video bg-bg-subtle overflow-hidden">
-          {place.image && (
-            <img
-              src={place.image}
-              alt={place.name}
-              loading="lazy"
-              className="absolute inset-0 w-full h-full object-cover"
-              onError={(e) => {
-                // 이미지 로드 실패 시 카테고리 색 placeholder로 대체
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          )}
-          <span
-            className="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-[11px] font-medium"
-            style={{ backgroundColor: `${cat.color}14`, color: cat.color }}
-          >
-            {cat.label}
-          </span>
-          <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1">
-            <div className="flex items-center gap-1.5">
-              {place.rating > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-bg-surface/90 text-text-primary backdrop-blur-sm tabular-nums">
-                  <Star size={10} fill="currentColor" className="text-amber-500" aria-hidden="true" />
-                  {place.rating}
-                </span>
-              )}
-              <button
-                ref={bookmarkBtnRef}
-                onClick={handleBookmark}
-                className="relative w-7 h-7 rounded-full flex items-center justify-center bg-bg-surface/90 backdrop-blur-sm hover:scale-110 cursor-pointer"
-                aria-label={isBookmarked ? '북마크 해제' : '북마크'}
-                aria-pressed={isBookmarked}
-              >
-                <Bookmark
-                  size={13}
-                  strokeWidth={isBookmarked ? 0 : 1.8}
-                  fill={isBookmarked ? '#F59E0B' : 'none'}
-                  className={isBookmarked ? '' : 'text-text-primary'}
-                />
-                <span ref={burstRef} className="pointer-events-none absolute inset-0" aria-hidden="true">
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <span
-                      key={i}
-                      className="bm-particle absolute top-1/2 left-1/2 w-1 h-1 -ml-0.5 -mt-0.5 rounded-full bg-amber-400 opacity-0"
-                    />
-                  ))}
-                </span>
-              </button>
-            </div>
-            {place.congestion && (
-              <div className="flex flex-col items-end gap-0.5">
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${CONGESTION_BADGE[place.congestion.level].className}`}
-                >
-                  {CONGESTION_BADGE[place.congestion.level].label}
-                </span>
-                {place.congestion.updatedAt && (
-                  <span className="text-[10px] text-gray-400">기준: {place.congestion.updatedAt}</span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="px-3.5 py-3">
+          {/* 헤더 행 — 이미지리스: 카테고리 아이콘 칩 + 별점/혼잡도 + 북마크 */}
+          <div className="flex items-center gap-2 mb-2">
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-medium shrink-0"
+              style={{ backgroundColor: `${cat.color}14`, color: cat.color }}
+            >
+              <CatIcon size={13} strokeWidth={2} aria-hidden="true" />
+              {cat.label}
+            </span>
+            {place.rating > 0 && (
+              <span className="flex items-center gap-1 text-[12px] text-text-secondary tabular-nums">
+                <Star size={11} fill="currentColor" className="text-amber-500" aria-hidden="true" />
+                {place.rating}
+              </span>
+            )}
+            {place.congestion && (
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[11px] font-medium ${CONGESTION_BADGE[place.congestion.level].className}`}
+              >
+                지금 {CONGESTION_BADGE[place.congestion.level].label}
+              </span>
+            )}
+            <button
+              ref={bookmarkBtnRef}
+              onClick={handleBookmark}
+              className="relative ml-auto w-7 h-7 rounded-full flex items-center justify-center hover:bg-bg-subtle hover:scale-110 cursor-pointer shrink-0"
+              aria-label={isBookmarked ? '북마크 해제' : '북마크'}
+              aria-pressed={isBookmarked}
+            >
+              <Bookmark
+                size={14}
+                strokeWidth={isBookmarked ? 0 : 1.8}
+                fill={isBookmarked ? '#F59E0B' : 'none'}
+                className={isBookmarked ? '' : 'text-text-primary'}
+              />
+              <span ref={burstRef} className="pointer-events-none absolute inset-0" aria-hidden="true">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <span
+                    key={i}
+                    className="bm-particle absolute top-1/2 left-1/2 w-1 h-1 -ml-0.5 -mt-0.5 rounded-full bg-amber-400 opacity-0"
+                  />
+                ))}
+              </span>
+            </button>
+          </div>
+
           <h4 className="text-[14px] font-semibold text-text-primary tracking-[-0.02em] leading-tight truncate">
             {place.name}
           </h4>
-          <div className="flex items-center gap-1 mt-1.5 text-[12px] text-text-muted min-w-0">
+          <div className="flex items-center gap-1 mt-1 text-[12px] text-text-muted min-w-0">
             <MapPin size={11} strokeWidth={1.5} aria-hidden="true" />
             <span className="truncate">{place.address}</span>
           </div>
-          {!compact && (
-            <p className="text-[13px] text-text-primary mt-2 leading-[1.6] line-clamp-2">
+          {!compact && place.summary && (
+            <Markdown inline className="block text-[13px] text-text-primary mt-2 leading-[1.6] line-clamp-2">
               {place.summary}
-            </p>
+            </Markdown>
           )}
           {(place.naverMapUrl || place.kakaoMapUrl) && (
             <div className="flex items-center gap-2 mt-2">
