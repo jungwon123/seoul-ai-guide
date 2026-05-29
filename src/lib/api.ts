@@ -314,7 +314,9 @@ export const chatsApi = {
     request<ChatListResponse>(buildUrl('/api/v1/chats', params)),
   detail: (thread_id: string) =>
     request<ChatDetailResponse>(`/api/v1/chats/${encodeURIComponent(thread_id)}`),
-  messages: (thread_id: string, params?: { cursor?: string; limit?: number }) =>
+  // around: 특정 message_id 주변 메시지 윈도우 요청(BE 지원 시). 미지원이면 무시되고
+  // FE 가 cursor 페이지네이션으로 폴백 탐색한다(loadSession 참고).
+  messages: (thread_id: string, params?: { cursor?: string; limit?: number; around?: string }) =>
     request<MessageListResponse>(buildUrl(`/api/v1/chats/${encodeURIComponent(thread_id)}/messages`, params)),
   rename: (thread_id: string, title: string) =>
     request<{ thread_id: string; title: string; updated_at: string }>(
