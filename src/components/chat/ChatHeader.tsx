@@ -14,6 +14,7 @@ export default memo(function ChatHeader({ onOpenSidebar, onGoHome }: Props) {
   return (
     <div className="flex items-center gap-1">
       <button
+        data-tour="sidebar"
         onClick={onOpenSidebar}
         className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
         aria-label="대화 내역"

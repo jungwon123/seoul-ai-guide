@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Bookmark, MapPin, Calendar } from 'lucide-react';
+import { Bookmark, MapPin, Calendar, HelpCircle } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { useMapStore } from '@/stores/mapStore';
 import { useBookmarkStore } from '@/stores/bookmarkStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useTourStore } from '@/stores/tourStore';
 import { cn } from '@/lib/utils';
-import { useLocalStorage } from '@/lib/useHydrated';
+import TourOverlay from '@/components/onboarding/TourOverlay';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessages from '@/components/chat/ChatMessages';
 import ChatInputConnected from '@/components/chat/ChatInputConnected';
@@ -19,7 +20,6 @@ import AgentOrb from '@/components/agent/AgentOrb';
 const MapPanel = lazy(() => import('@/components/map/MapPanel'));
 const CalendarPanel = lazy(() => import('@/components/calendar/CalendarPanel'));
 const BookmarkPanel = lazy(() => import('@/components/bookmark/BookmarkPanel'));
-const OnboardingFlow = lazy(() => import('@/components/onboarding/OnboardingFlow'));
 
 type Overlay = 'bookmark' | 'map' | 'calendar' | null;
 
@@ -52,6 +52,7 @@ function NavButtons({
         return (
           <button
             key={item.key}
+            data-tour={`nav-${item.key}`}
             onClick={() => onSelect(isActive ? null : item.key)}
             className={cn(
               'relative z-10 w-9 h-9 rounded-xl flex items-center justify-center transition-colors duration-200 cursor-pointer active:scale-[0.92] motion-safe:transition-transform',
@@ -102,9 +103,6 @@ export default function App() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [overlayClosing, setOverlayClosing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const storedOnboarded = useLocalStorage('seoul-ai-guide-onboarded');
-  const [onboardedOverride, setOnboardedOverride] = useState(false);
-  const onboarded = storedOnboarded === 'true' || onboardedOverride;
 
   const initWelcome = useChatStore((s) => s.initWelcome);
   const loadChatsFromServer = useChatStore((s) => s.loadFromServer);
@@ -117,6 +115,10 @@ export default function App() {
   const totalBookmarks = placeCount + messageCount;
 
   useEffect(() => { initWelcome(); }, [initWelcome]);
+
+  // 첫 진입 시 기능 안내 투어 자동 1회. (이미 본 적 있으면 실행 안 함 — localStorage)
+  const startTour = useTourStore((s) => s.start);
+  useEffect(() => { useTourStore.getState().maybeAutoStart(); }, []);
 
   // 로그인 직후 + 새로고침 시 BE thread/북마크 목록 동기화. 비로그인 상태에선 호출 안 함.
   useEffect(() => {
@@ -134,11 +136,6 @@ export default function App() {
   useEffect(() => {
     if (selectedPlace) setOverlay('map');
   }, [selectedPlace]);
-
-  const handleOnboardingComplete = useCallback(() => {
-    try { localStorage.setItem('seoul-ai-guide-onboarded', 'true'); } catch { /* ignore */ }
-    setOnboardedOverride(true);
-  }, []);
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -168,20 +165,21 @@ export default function App() {
     [closeOverlay],
   );
 
-  if (!onboarded) {
-    return (
-      <Suspense fallback={<div className="h-full bg-bg-base" />}>
-        <OnboardingFlow onComplete={handleOnboardingComplete} />
-      </Suspense>
-    );
-  }
-
   return (
     <ErrorBoundary>
       <div className="h-full flex flex-col bg-bg-base">
         <header className="flex items-center justify-between px-3 h-[52px] shrink-0 border-b border-border bg-bg-surface/90 backdrop-blur-md z-20">
           <ChatHeader onOpenSidebar={openSidebar} onGoHome={goHome} />
-          <NavButtons overlay={overlay} onSelect={selectOverlay} bookmarkCount={totalBookmarks} />
+          <div className="flex items-center gap-1">
+            <button
+              onClick={startTour}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:text-text-secondary hover:bg-bg-subtle transition-colors cursor-pointer"
+              aria-label="기능 안내 다시 보기"
+            >
+              <HelpCircle size={17} strokeWidth={1.6} />
+            </button>
+            <NavButtons overlay={overlay} onSelect={selectOverlay} bookmarkCount={totalBookmarks} />
+          </div>
         </header>
 
         <ChatMessages />
@@ -224,6 +222,8 @@ export default function App() {
             </div>
           </div>
         )}
+
+        <TourOverlay />
       </div>
     </ErrorBoundary>
   );

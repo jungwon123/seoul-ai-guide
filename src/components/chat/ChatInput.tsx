@@ -137,6 +137,7 @@ export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInpu
 
       <form onSubmit={handleSubmit}>
         <div
+          data-tour="chat-input"
           className={cn(
             'flex items-center gap-1 bg-bg-surface rounded-[14px] pl-2 pr-1.5 py-1.5 transition-all duration-200',
             focused
@@ -154,6 +155,7 @@ export default memo(function ChatInput({ onSend, disabled, showChips }: ChatInpu
           />
           <button
             type="button"
+            data-tour="attach"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || uploading}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-brand hover:bg-brand-subtle cursor-pointer disabled:opacity-40 transition-colors"
