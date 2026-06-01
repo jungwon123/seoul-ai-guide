@@ -236,6 +236,14 @@ export type EventItem = {
   image_url?: string;
   homepage_url?: string;
   description?: string;
+  // EVENT 응답 신규 필드(PR #194/#200). detail_url=카드 클릭 대상, source=출처 라벨.
+  // 일부 신규 응답은 poster_url/date_start/date_end/price 명을 쓰므로 함께 수용(폴백).
+  detail_url?: string;
+  source?: string;
+  poster_url?: string;
+  date_start?: string;
+  date_end?: string;
+  price?: string;
 };
 
 export type EventsBlock = { type: 'events'; items: EventItem[]; total_count?: number };
