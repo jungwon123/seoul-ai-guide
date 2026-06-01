@@ -93,6 +93,21 @@ function Bootstrap() {
   );
 }
 
+// 새 배포로 chunk 해시가 바뀐 뒤, 캐시된 페이지가 옛 chunk(.js)를 요청하면
+// SPA fallback(/(.*) → /index.html)이 HTML(text/html)을 200으로 반환 → MIME 에러로
+// dynamic import 실패 → 흰 화면. Vite 가 그 시점에 'vite:preloadError' 를 쏘므로
+// 세션당 1회 새로고침해 최신 index.html(새 해시)을 회수한다(무한 루프 방지).
+window.addEventListener('vite:preloadError', () => {
+  const KEY = 'chunk-preload-reloaded';
+  try {
+    if (sessionStorage.getItem(KEY)) return;
+    sessionStorage.setItem(KEY, '1');
+  } catch {
+    /* 스토리지 거부 환경 — 그래도 1회 reload 시도 */
+  }
+  window.location.reload();
+});
+
 startMockServiceWorker().finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
