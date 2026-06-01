@@ -69,9 +69,7 @@ function ItineraryBottomSheetInner({ navigation, onClose, collapseOnSelect }: Pr
         {currentPlace.image ? (
           <img src={currentPlace.image} alt={currentPlace.name} className="w-full h-full object-cover" />
         ) : (
-          <span className="text-[20px] font-semibold" style={{ color: cat.color }}>
-            {cat.label[0]}
-          </span>
+          <cat.icon size={22} strokeWidth={1.8} style={{ color: cat.color }} aria-hidden="true" />
         )}
       </div>
 

@@ -299,12 +299,13 @@ const UPLOAD_BASE: string =
   (import.meta.env.DEV ? '' : 'https://34.50.44.75.nip.io');
 
 export const uploadApi = {
-  image: (file: File) => {
+  image: (file: File, signal?: AbortSignal) => {
     const fd = new FormData();
     fd.append('file', file);
     return request<ImageUploadResponse>(`${UPLOAD_BASE}/api/v1/upload/image`, {
       method: 'POST',
       body: fd,
+      signal,
     });
   },
 };

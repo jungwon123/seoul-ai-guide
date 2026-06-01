@@ -15,6 +15,7 @@ interface Props {
 
 export default memo(function PlaceOverlayItem({ place, isBookmark, isSelected, onSelect, onClose, registerRef }: Props) {
   const cat = CATEGORY_CONFIG[place.category];
+  const CatIcon = cat.icon;
   const ref = useRef<HTMLDivElement>(null);
   const toggleBookmark = useBookmarkStore((s) => s.toggle);
 
@@ -55,7 +56,7 @@ export default memo(function PlaceOverlayItem({ place, isBookmark, isSelected, o
             {place.image ? (
               <img src={place.image} alt={place.name} className="w-full h-full object-cover" />
             ) : (
-              place.name.slice(0, 1)
+              <CatIcon size={26} strokeWidth={1.8} style={{ color: cat.color }} aria-hidden="true" />
             )}
           </div>
           <button

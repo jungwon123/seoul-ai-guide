@@ -9,8 +9,6 @@ import './globals.css';
 import { useAuthStore } from '@/stores/authStore';
 import RequireAuth from '@/components/auth/RequireAuth';
 import Toaster from '@/components/ui/Toaster';
-// GSAP 플러그인(ScrollTrigger 등) 진입 시점에 1회 등록.
-import '@/lib/gsap-setup';
 
 // MSW — dev 환경에서 BE 미배포 상태 검수용.
 // VITE_DISABLE_MSW=true 로 끌 수 있음 (실서버 붙일 때).

@@ -89,3 +89,7 @@ videos/
 *.tsbuildinfo
 next-env.d.ts
 *.docx
+
+# local agent tooling (oh-my-claudecode / codex) — 로컬 설정, 커밋 제외
+.claude/
+.codex/
