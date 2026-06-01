@@ -1,10 +1,11 @@
-// 6 지표 레이더 차트 (REVIEW_COMPARE / ANALYSIS).
+// 오각형(5지표) 레이더 차트 (REVIEW_COMPARE / ANALYSIS).
 // 외부 차트 라이브러리 없이 SVG로 직접 그린다.
+// 만족도(score_satisfaction)는 종합 점수라 축에서 제외하고 범례에 별도 표기,
+// 나머지 5개 세부 지표를 오각형 축으로 비교한다.
 
 import type { ChartBlock as ChartBlockData } from '@/types/api';
 
 const METRICS = [
-  { key: 'score_satisfaction', label: '만족도' },
   { key: 'accessibility', label: '접근성' },
   { key: 'cleanliness', label: '청결도' },
   { key: 'value', label: '가성비' },
@@ -24,7 +25,7 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
   return (
     <div className="rounded-xl border border-border bg-bg-surface p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-text-muted mb-3">
-        6지표 레이더 비교
+        리뷰 5지표 비교
       </div>
       <svg width={size} height={size} className="block mx-auto">
         {/* grid */}
@@ -74,14 +75,19 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
           );
         })}
       </svg>
-      <div className="flex flex-wrap gap-3 justify-center mt-3 text-xs">
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-3 text-xs">
         {data.datasets.map((ds, di) => (
           <div key={ds.label + di} className="flex items-center gap-1.5">
             <span
               className="inline-block w-3 h-3 rounded-sm"
               style={{ background: DATASET_COLORS[di % DATASET_COLORS.length] }}
             />
-            <span>{ds.label}</span>
+            <span className="text-text-primary">{ds.label}</span>
+            {ds.score_satisfaction != null && (
+              <span className="text-text-muted tabular-nums">
+                · 만족도 {ds.score_satisfaction.toFixed(1)}
+              </span>
+            )}
           </div>
         ))}
       </div>
