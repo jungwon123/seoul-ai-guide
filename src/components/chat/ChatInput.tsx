@@ -35,6 +35,8 @@ export default memo(function ChatInput({ onSend, disabled, showChips, loading, o
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 진행 중 이미지 업로드 취소용. 업로드 단계에서 중단 버튼 → abort.
+  const uploadAbortRef = useRef<AbortController | null>(null);
 
   // 미리보기 blob URL 정리 — 컴포넌트 언마운트 또는 이미지 교체 시 메모리 회수.
   useEffect(() => {
@@ -82,22 +84,34 @@ export default memo(function ChatInput({ onSend, disabled, showChips, loading, o
 
     let uploadedUrl: string | undefined;
     if (attachedImage) {
+      const ac = new AbortController();
+      uploadAbortRef.current = ac;
       setUploading(true);
       try {
-        const res = await uploadApi.image(attachedImage);
+        const res = await uploadApi.image(attachedImage, ac.signal);
         uploadedUrl = res.image_url;
       } catch (err) {
-        toast.error(friendlyApiError(err, '사진 업로드 실패'));
         setUploading(false);
+        uploadAbortRef.current = null;
+        // 사용자가 업로드를 취소(abort)한 경우 — 조용히 종료(텍스트·첨부 유지해 재시도 가능).
+        if (ac.signal.aborted) return;
+        toast.error(friendlyApiError(err, '사진 업로드 실패'));
         return;
       }
       setUploading(false);
+      uploadAbortRef.current = null;
       clearImage();
     }
 
     // text + imageUrl 분리해서 전달 — store 가 BE query 와 UI 표시용을 다르게 처리.
     onSend(trimmed, uploadedUrl);
     setText('');
+  };
+
+  // 중단 버튼: 업로드 중이면 업로드 abort, 그 외(SSE 응답 중)엔 onCancel(질문 취소).
+  const handleStop = () => {
+    if (uploading) uploadAbortRef.current?.abort();
+    else onCancel?.();
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -194,12 +208,12 @@ export default memo(function ChatInput({ onSend, disabled, showChips, loading, o
             )}
             aria-label="메시지 입력"
           />
-          {loading ? (
+          {loading || uploading ? (
             <button
               type="button"
-              onClick={onCancel}
+              onClick={handleStop}
               className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-bg-subtle text-text-primary hover:bg-border transition-all duration-200 cursor-pointer shrink-0 active:scale-95"
-              aria-label="응답 생성 중단"
+              aria-label={uploading ? '사진 업로드 취소' : '응답 생성 중단'}
               title="중단"
             >
               <Square size={12} fill="currentColor" strokeWidth={0} />

@@ -158,12 +158,13 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 />
               ) : (
-                <span
-                  className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold tracking-wider"
+                <cat.icon
+                  size={24}
+                  strokeWidth={1.8}
+                  className="absolute inset-1/2 -translate-x-1/2 -translate-y-1/2"
                   style={{ color: cat.color }}
-                >
-                  {cat.label.toUpperCase()}
-                </span>
+                  aria-hidden="true"
+                />
               )}
             </div>
             <div className="flex-1 min-w-0">

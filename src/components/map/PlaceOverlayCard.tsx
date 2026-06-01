@@ -10,7 +10,7 @@ interface Props {
 
 export default memo(function PlaceOverlayCard({ place, onClose }: Props) {
   const cat = CATEGORY_CONFIG[place.category];
-  const initial = place.name.slice(0, 1);
+  const CatIcon = cat.icon;
 
   return (
     <div
@@ -28,7 +28,7 @@ export default memo(function PlaceOverlayCard({ place, onClose }: Props) {
           {place.image ? (
             <img src={place.image} alt={place.name} className="w-full h-full object-cover" />
           ) : (
-            initial
+            <CatIcon size={26} strokeWidth={1.8} style={{ color: cat.color }} aria-hidden="true" />
           )}
         </div>
 
