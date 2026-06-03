@@ -26,7 +26,7 @@ function GoogleCalendarConnectBar() {
       <button
         onClick={onConnect}
         disabled={busy}
-        className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-border bg-bg-surface hover:border-border-strong hover:bg-bg-subtle transition-colors text-[12px] font-medium text-text-primary disabled:opacity-60 cursor-pointer"
+        className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-full border-2 border-border-strong bg-bg-surface shadow-[2px_2px_0_rgba(15,15,15,0.9)] hover:shadow-[3px_3px_0_rgba(15,15,15,0.9)] transition-[box-shadow] text-[12px] font-semibold text-text-primary disabled:opacity-60 cursor-pointer"
       >
         <Link2 size={13} />
         {busy ? '이동 중...' : 'Google Calendar 연동'}
@@ -39,13 +39,15 @@ function NotConnectedPanel() {
   return (
     <div className="h-full flex flex-col">
       <GoogleCalendarConnectBar />
-      <div className="flex-1 flex items-center justify-center">
-        <EmptyState
-          icon={Link2}
-          title="Google Calendar 연동 필요"
-          description="연동하면 에이전트가 만든 일정이 여기에 표시됩니다"
-          lottieSrc="/animations/calender.json"
-        />
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="card-poster-static rounded-2xl p-8 w-full text-center">
+          <EmptyState
+            icon={Link2}
+            title="Google Calendar 연동 필요"
+            description="연동하면 에이전트가 만든 일정이 여기에 표시됩니다"
+            lottieSrc="/animations/calender.json"
+          />
+        </div>
       </div>
     </div>
   );
@@ -69,7 +71,7 @@ function EventCard({ event }: { event: CalendarEventItem }) {
   const isLocalBiz = event.source === 'localbiz';
 
   return (
-    <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden">
+    <div className="card-poster-static rounded-2xl overflow-hidden">
       <div className="px-4 py-3 border-b border-border bg-bg-subtle/50">
         <div className="flex items-center justify-between gap-2 mb-1">
           <h3 className="text-[14px] font-semibold text-text-primary tracking-[-0.02em] flex-1 truncate">
@@ -137,11 +139,13 @@ export default function CalendarPanel() {
   if (!authToken) {
     return (
       <div className="h-full flex items-center justify-center">
-        <EmptyState
-          icon={Calendar}
-          title="로그인 필요"
-          description="로그인하면 일정이 여기에 표시됩니다"
-        />
+        <div className="card-poster-static rounded-2xl p-8 mx-4 text-center">
+          <EmptyState
+            icon={Calendar}
+            title="로그인 필요"
+            description="로그인하면 일정이 여기에 표시됩니다"
+          />
+        </div>
       </div>
     );
   }
@@ -153,7 +157,7 @@ export default function CalendarPanel() {
   if (loading && events.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 border-border-strong rounded-full animate-spin border-t-brand" />
       </div>
     );
   }
@@ -163,12 +167,12 @@ export default function CalendarPanel() {
       <div className="h-full flex flex-col">
         <GoogleCalendarConnectBar />
         <div className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center">
-            <AlertCircle size={28} className="mx-auto mb-2 text-[#DC2626]" />
-            <p className="text-[13px] text-text-secondary mb-3">{error}</p>
+          <div className="card-poster-static rounded-2xl p-6 text-center w-full max-w-xs">
+            <AlertCircle size={28} className="mx-auto mb-2 text-brand" />
+            <p className="text-[13px] text-text-primary mb-3">{error}</p>
             <button
               onClick={loadFromServer}
-              className="px-3 py-1.5 rounded-lg border border-border text-[12px] text-text-primary hover:bg-bg-subtle cursor-pointer"
+              className="px-4 py-1.5 rounded-full border-2 border-border-strong text-[12px] font-semibold text-text-primary shadow-[2px_2px_0_rgba(15,15,15,0.9)] hover:shadow-[3px_3px_0_rgba(15,15,15,0.9)] transition-[box-shadow] cursor-pointer"
             >
               다시 시도
             </button>
@@ -182,13 +186,15 @@ export default function CalendarPanel() {
     return (
       <div className="h-full flex flex-col">
         <GoogleCalendarConnectBar />
-        <div className="flex-1 flex items-center justify-center">
-          <EmptyState
-            icon={Calendar}
-            title="일정 없음"
-            description="에이전트에게 일정을 만들어달라고 해보세요"
-            lottieSrc="/animations/calender.json"
-          />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="card-poster-static rounded-2xl p-8 w-full text-center">
+            <EmptyState
+              icon={Calendar}
+              title="일정 없음"
+              description="에이전트에게 일정을 만들어달라고 해보세요"
+              lottieSrc="/animations/calender.json"
+            />
+          </div>
         </div>
       </div>
     );

@@ -110,10 +110,10 @@ export default function MapPanel() {
   useEffect(() => { if (is3D) setHeatmapOn(false); }, [is3D]);
 
   return (
-    <div className="h-full flex flex-col md:flex-row bg-bg-base">
+    <div className="h-full flex flex-col md:flex-row bg-warm-gradient">
       {/* Map area */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex-1 relative m-3 overflow-hidden rounded-2xl border border-border shadow-sm">
+        <div className="flex-1 relative m-3 overflow-hidden rounded-2xl border-2 border-border-strong shadow-[3px_3px_0_rgba(15,15,15,0.9)]">
           {hasContent ? (
             <>
               {is3D ? (

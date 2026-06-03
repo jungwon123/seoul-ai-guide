@@ -42,18 +42,18 @@ export default function BookmarkPanel({ onClose }: Props) {
   const counts = { place: places.length, message: messageItems.length };
 
   return (
-    <div className="h-full flex flex-col bg-bg-base">
+    <div className="h-full flex flex-col">
       {/* Segmented tabs — 슬라이딩 pill 인디케이터 */}
       <div className="px-4 pt-4 pb-3 shrink-0">
         <div
           role="tablist"
           aria-label="북마크 종류"
-          className="relative flex items-center gap-1 p-1 bg-bg-subtle rounded-full border border-border/60"
+          className="relative flex items-center gap-1 p-1 bg-bg-surface rounded-full border-2 border-border-strong shadow-[2px_2px_0_rgba(15,15,15,0.9)]"
         >
           {/* sliding pill — 활성 탭 인덱스(0/1)에 따라 50% 슬라이드 */}
           <span
             aria-hidden
-            className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-bg-surface shadow-sm border border-border transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent-mint border border-border-strong shadow-[1px_1px_0_rgba(15,15,15,0.9)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
             style={{
               transform: tab === 'message' ? 'translateX(calc(100% + 0.25rem))' : 'translateX(0)',
             }}
@@ -99,7 +99,7 @@ function TabButton({
       onClick={onClick}
       className={cn(
         'relative z-10 flex-1 flex items-center justify-center gap-1.5 h-9 rounded-full text-[13px] font-medium transition-colors duration-200 cursor-pointer active:scale-[0.97] motion-safe:transition-transform',
-        active ? 'text-text-primary' : 'text-text-muted hover:text-text-secondary',
+        active ? 'text-accent-mint-ink font-semibold' : 'text-text-primary hover:text-text-secondary',
       )}
     >
       {icon}
@@ -108,8 +108,8 @@ function TabButton({
         className={cn(
           'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-semibold tabular-nums transition-colors',
           active
-            ? 'bg-brand-subtle text-brand'
-            : 'bg-bg-surface/80 text-text-muted',
+            ? 'bg-border-strong text-bg-surface'
+            : 'bg-bg-surface text-text-primary',
         )}
       >
         {count}
@@ -126,12 +126,14 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
 
   if (places.length === 0) {
     return (
-      <EmptyState
-        lottieSrc="/animations/empty-place.json"
-        icon={<MapPin size={24} strokeWidth={1.2} />}
-        title="저장한 장소가 없어요"
-        description="채팅이나 지도에서 마음에 드는 장소를 저장해보세요"
-      />
+      <div className="card-poster-static rounded-2xl p-8 mx-4 mt-4 text-center">
+        <EmptyState
+          lottieSrc="/animations/empty-place.json"
+          icon={<MapPin size={24} strokeWidth={1.2} />}
+          title="저장한 장소가 없어요"
+          description="채팅이나 지도에서 마음에 드는 장소를 저장해보세요"
+        />
+      </div>
     );
   }
 
@@ -142,7 +144,7 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
         return (
           <article
             key={place.id}
-            className="group flex items-center gap-3 p-2 bg-bg-surface border border-border rounded-2xl transition-all duration-200 hover:border-border-strong hover:shadow-sm cursor-pointer"
+            className="group flex items-center gap-3 p-2 card-poster-static rounded-2xl transition-[box-shadow,transform] duration-150 hover:shadow-[4px_4px_0_rgba(15,15,15,0.9)] motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 cursor-pointer"
             onClick={() => { selectPlace(place); }}
           >
             <div
@@ -215,7 +217,7 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
       return (
         <div className="px-4 pt-2 space-y-2.5">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="bg-bg-surface border border-border rounded-2xl p-3.5 space-y-2">
+            <div key={i} className="card-poster-static rounded-2xl p-3.5 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-[18px] h-[18px] rounded-md bg-bg-subtle animate-pulse" />
                 <div className="h-3 w-16 rounded bg-bg-subtle animate-pulse" />
@@ -230,10 +232,10 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
     if (error) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-          <p className="text-[13px] text-text-secondary mb-3">{error}</p>
+          <p className="text-[13px] text-text-primary mb-3">{error}</p>
           <button
             onClick={() => loadFromServer()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border-2 border-border-strong bg-bg-surface text-[12px] font-semibold text-text-primary shadow-[2px_2px_0_rgba(15,15,15,0.9)] hover:shadow-[3px_3px_0_rgba(15,15,15,0.9)] transition-[box-shadow] cursor-pointer"
           >
             다시 시도
           </button>
@@ -241,12 +243,14 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
       );
     }
     return (
-      <EmptyState
-        lottieSrc="/animations/empty-message.json"
-        icon={<Sparkles size={24} strokeWidth={1.2} />}
-        title="저장한 대화가 없어요"
-        description="에이전트 답변 위에 마우스를 올리면 북마크 아이콘이 나타나요"
-      />
+      <div className="card-poster-static rounded-2xl p-8 mx-4 mt-4 text-center">
+        <EmptyState
+          lottieSrc="/animations/empty-message.json"
+          icon={<Sparkles size={24} strokeWidth={1.2} />}
+          title="저장한 대화가 없어요"
+          description="에이전트 답변 위에 마우스를 올리면 북마크 아이콘이 나타나요"
+        />
+      </div>
     );
   }
 
@@ -260,7 +264,7 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
         return (
           <article
             key={item.bookmarkId}
-            className="group relative bg-bg-surface border border-border rounded-2xl p-3.5 transition-all duration-200 hover:border-border-strong hover:shadow-sm cursor-pointer"
+            className="group relative card-poster-static rounded-2xl p-3.5 transition-[box-shadow,transform] duration-150 hover:shadow-[4px_4px_0_rgba(15,15,15,0.9)] motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 cursor-pointer"
             onClick={() => { loadSession(item.conversationId, { focusMessageId: item.messageId }); onClose?.(); }}
           >
             <div className="flex items-center gap-2 mb-2">
@@ -352,10 +356,7 @@ function EmptyState({
           {icon}
         </div>
       )}
-      <h3
-        className="text-[20px] text-text-primary mb-2 tracking-[-0.02em]"
-        style={{ fontFamily: 'var(--font-display)' }}
-      >
+      <h3 className="font-display-round text-[20px] text-text-primary mb-2">
         {title}
       </h3>
       <p className="text-[13px] text-text-muted max-w-[240px] mx-auto leading-[1.65]">

@@ -189,7 +189,7 @@ export default function App() {
 
         {overlay && (
           <div
-            className="fixed inset-0 z-30 bg-bg-base flex flex-col"
+            className="fixed inset-0 z-30 bg-warm-gradient flex flex-col"
             style={{
               animation: overlayClosing
                 ? 'overlayOut 0.2s cubic-bezier(0.32, 0.72, 0, 1) forwards'
