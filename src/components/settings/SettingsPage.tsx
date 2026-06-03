@@ -69,18 +69,18 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto px-4 py-10">
+    <div className="h-full w-full overflow-y-auto bg-warm-gradient px-4 py-10">
       <div className="max-w-xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary mb-6"
+          className="inline-flex items-center gap-1.5 text-sm text-text-primary hover:text-text-primary mb-6"
         >
           <ArrowLeft size={16} /> 뒤로
         </button>
-        <h1 className="font-display text-3xl mb-1">설정</h1>
-        <p className="text-sm text-text-secondary mb-8">{user?.email}</p>
+        <h1 className="font-display-round text-3xl mb-1 text-text-primary">설정</h1>
+        <p className="text-sm text-text-primary/70 mb-8">{user?.email}</p>
 
-        <section className="bg-bg-surface border-2 border-border-strong rounded-2xl p-6 shadow-[2px_2px_0_rgba(15,15,15,0.9)] mb-6">
+        <section className="card-poster-static rounded-2xl p-6 mb-6">
           <h2 className="font-display text-lg mb-4">프로필</h2>
           <form onSubmit={onSaveNickname} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5 text-sm">
@@ -90,7 +90,7 @@ export default function SettingsPage() {
                 maxLength={100}
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-border focus:border-brand outline-none transition-colors"
+                className="px-3.5 py-2.5 rounded-xl border-2 border-border bg-bg-surface focus:border-brand outline-none transition-colors"
               />
             </label>
             {nicknameMsg && <div className="text-sm text-text-secondary">{nicknameMsg}</div>}
@@ -100,7 +100,7 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        <section className="bg-bg-surface border-2 border-border-strong rounded-2xl p-6 shadow-[2px_2px_0_rgba(15,15,15,0.9)] mb-6">
+        <section className="card-poster-static rounded-2xl p-6 mb-6">
           <h2 className="font-display text-lg mb-4">비밀번호 변경</h2>
           <form onSubmit={onChangePassword} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5 text-sm">
@@ -111,7 +111,7 @@ export default function SettingsPage() {
                 required
                 value={oldPw}
                 onChange={(e) => setOldPw(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-border focus:border-brand outline-none transition-colors"
+                className="px-3.5 py-2.5 rounded-xl border-2 border-border bg-bg-surface focus:border-brand outline-none transition-colors"
               />
             </label>
             <label className="flex flex-col gap-1.5 text-sm">
@@ -124,7 +124,7 @@ export default function SettingsPage() {
                 maxLength={128}
                 value={newPw}
                 onChange={(e) => setNewPw(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-border focus:border-brand outline-none transition-colors"
+                className="px-3.5 py-2.5 rounded-xl border-2 border-border bg-bg-surface focus:border-brand outline-none transition-colors"
               />
             </label>
             {pwMsg && <div className="text-sm text-text-secondary">{pwMsg}</div>}
@@ -134,7 +134,7 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        <section className="bg-bg-surface border-2 border-border-strong rounded-2xl p-6 shadow-[2px_2px_0_rgba(15,15,15,0.9)] mb-6">
+        <section className="card-poster-static rounded-2xl p-6 mb-6">
           <h2 className="font-display text-lg mb-2">Google Calendar 연동</h2>
           <p className="text-sm text-text-secondary mb-4">
             추천 일정을 본인 Google Calendar에 자동 등록합니다.
@@ -145,7 +145,7 @@ export default function SettingsPage() {
           </Button>
         </section>
 
-        <section className="bg-bg-surface border border-border rounded-2xl p-6">
+        <section className="card-poster-static rounded-2xl p-6">
           <h2 className="font-display text-lg mb-3">로그아웃</h2>
           <Button
             variant="danger"

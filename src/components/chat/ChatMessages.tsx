@@ -84,11 +84,23 @@ export default memo(function ChatMessages() {
     <div ref={scrollRef} data-chat-scroller className="flex-1 overflow-y-auto overscroll-contain">
       {hasOnlyWelcome && (
         <div className="flex flex-col items-center justify-center pt-14 pb-10 px-8 animate-fade-up">
-          <div className="mb-7">
-            <AgentOrb state={isLoading ? 'thinking' : 'idle'} size={220} />
+          <div className="relative mb-7">
+            {/* 민트 블러 블롭 — 오브 뒤 깊이감 */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 m-auto h-40 w-40 rounded-full bg-accent-mint opacity-30 blur-2xl"
+            />
+            <AgentOrb state={isLoading ? 'thinking' : 'idle'} size={220} bold />
+            {/* 민트 스티커 뱃지 */}
+            <span
+              aria-hidden="true"
+              className="absolute -bottom-2 -right-2 rotate-[8deg] rounded-full border-2 border-border-strong bg-accent-mint px-2.5 py-0.5 text-[10px] font-bold text-accent-mint-ink shadow-[2px_2px_0_rgba(15,15,15,0.9)]"
+            >
+              SEOUL AI
+            </span>
           </div>
           <h2
-            className="text-[34px] leading-[1.05] text-text-primary mb-3 text-center"
+            className="text-[34px] leading-[1.05] text-text-primary mb-3 text-center font-bold"
             style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.025em', wordBreak: 'keep-all' }}
           >
             서울을<br />탐색해보세요

@@ -10,6 +10,8 @@ interface AgentOrbProps {
   size?: number;
   /** size가 작을 때 호버 인터랙션/포인터를 끔. 헤더 같은 임베디드 용도. */
   interactive?: boolean;
+  /** 굵고 진한 선 + 잉크 아웃라인 — 밝은 그라데이션 배경에서도 또렷하게(로그인 파일럿). */
+  bold?: boolean;
 }
 
 const BRAND_PALETTE: { r: number; g: number; b: number }[] = [
@@ -28,7 +30,7 @@ const FULL_RADIUS_RATIO = 0.22;
 const COMPACT_RADIUS_RATIO = 0.42;
 const COMPACT_THRESHOLD = 80;
 
-export default function AgentOrb({ state = 'idle', size = 400, interactive = true }: AgentOrbProps) {
+export default function AgentOrb({ state = 'idle', size = 400, interactive = true, bold = false }: AgentOrbProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const timeRef = useRef(0);
@@ -84,8 +86,13 @@ export default function AgentOrb({ state = 'idle', size = 400, interactive = tru
       }
 
       // 2) 와이어프레임 — wave 진폭도 baseRadius 비례.
-      ctx.lineWidth = Math.max(0.8, baseRadius * 0.015);
+      ctx.lineWidth = Math.max(0.8, baseRadius * (bold ? 0.032 : 0.015));
       ctx.lineCap = 'round';
+      // bold: 밝은 배경 대비용 잉크 아웃라인. 와이어프레임에만 적용하고 입자/글로우 전에 해제.
+      if (bold) {
+        ctx.shadowColor = 'rgba(15, 15, 15, 0.5)';
+        ctx.shadowBlur = Math.max(1.5, baseRadius * 0.05);
+      }
 
       const rotationX = time * config.speed * 0.3;
       const rotationY = time * config.speed * 0.5;
@@ -136,7 +143,7 @@ export default function AgentOrb({ state = 'idle', size = 400, interactive = tru
           if (j === 0) ctx.moveTo(screenX, screenY);
           else ctx.lineTo(screenX, screenY);
 
-          ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.6})`;
+          ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * (bold ? 1 : 0.6)})`;
         }
         ctx.stroke();
       }
@@ -186,9 +193,15 @@ export default function AgentOrb({ state = 'idle', size = 400, interactive = tru
           if (j === 0) ctx.moveTo(screenX, screenY);
           else ctx.lineTo(screenX, screenY);
 
-          ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.5})`;
+          ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * (bold ? 0.9 : 0.5)})`;
         }
         ctx.stroke();
+      }
+
+      // 와이어프레임용 잉크 아웃라인 해제 — 입자/글로우는 그림자 없이.
+      if (bold) {
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
       }
 
       // 3) 입자 — 작은 사이즈에선 비활성.
@@ -255,7 +268,7 @@ export default function AgentOrb({ state = 'idle', size = 400, interactive = tru
         }
       }
     },
-    [state, isHovered, interactive, size],
+    [state, isHovered, interactive, size, bold],
   );
 
   useEffect(() => {

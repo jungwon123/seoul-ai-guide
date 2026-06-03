@@ -81,7 +81,7 @@ export default function SharedPage() {
   }, [token]);
 
   return (
-    <div className="h-full w-full overflow-y-auto px-4 py-10">
+    <div className="h-full w-full overflow-y-auto bg-warm-gradient px-4 py-10">
       <div className="max-w-2xl mx-auto">
         <Link to="/" className="inline-flex items-center gap-2 mb-6">
           <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
@@ -90,12 +90,12 @@ export default function SharedPage() {
             <path d="M 12 12 L 1.608 18 A 12 12 0 0 1 12 0 Z" fill="#F4A12C" />
             <circle cx="12" cy="12" r="2.4" fill="#FFFFFF" />
           </svg>
-          <span className="font-display text-base">Anyway</span>
+          <span className="font-display text-base text-text-primary">Anyway</span>
         </Link>
 
         <div className="bg-bg-surface border-2 border-border-strong rounded-2xl p-6 shadow-[3px_3px_0_rgba(15,15,15,0.9)]">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="font-display text-2xl">{data?.thread_title ?? '공유된 대화'}</h1>
+            <h1 className="font-display-round text-2xl">{data?.thread_title ?? '공유된 대화'}</h1>
             <span className="text-xs text-text-muted uppercase tracking-wider">read-only</span>
           </div>
 
@@ -116,7 +116,7 @@ export default function SharedPage() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-text-secondary hover:text-text-primary">
+          <Link to="/" className="text-sm text-text-primary hover:text-text-primary">
             나만의 서울 만들기 →
           </Link>
         </div>
