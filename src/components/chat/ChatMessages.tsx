@@ -105,17 +105,26 @@ export default memo(function ChatMessages() {
           >
             서울을<br />탐색해보세요
           </h2>
-          <p className="text-[14px] text-text-secondary text-center leading-[1.55] max-w-[280px]" style={{ wordBreak: 'keep-all' }}>
+          <p className="text-[14px] text-text-primary/75 text-center leading-[1.55] max-w-[280px]" style={{ wordBreak: 'keep-all' }}>
             장소 추천, 코스 설계, 예약까지<br />무엇이든 물어보세요
           </p>
         </div>
       )}
 
-      <div className="px-4 pb-4 space-y-5">
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
-        ))}
-        <StreamingMessage />
+      {/* 메시지는 그라데이션 위 흰 시트에 담아 가독성 유지(레퍼런스: 컬러 배경 + 콘텐츠 시트) */}
+      <div className="px-3 pb-4">
+        <div
+          className={
+            messages.length > 0
+              ? 'mx-auto max-w-3xl bg-bg-surface/85 backdrop-blur-md rounded-2xl border-2 border-border-strong shadow-[3px_3px_0_rgba(15,15,15,0.9)] px-4 py-4 space-y-5'
+              : 'mx-auto max-w-3xl space-y-5'
+          }
+        >
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
+          <StreamingMessage />
+        </div>
       </div>
     </div>
   );
