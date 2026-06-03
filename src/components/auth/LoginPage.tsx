@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { friendlyAuthError } from '@/lib/auth-errors';
 import AuthLayout from './AuthLayout';
-import Button from '@/components/ui/Button';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-border focus:border-brand outline-none transition-colors"
+            className="px-3.5 py-2.5 rounded-xl border-2 border-border bg-bg-surface focus:border-brand outline-none transition-colors"
             placeholder="you@example.com"
           />
         </label>
@@ -71,7 +71,7 @@ export default function LoginPage() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-border focus:border-brand outline-none transition-colors"
+            className="px-3.5 py-2.5 rounded-xl border-2 border-border bg-bg-surface focus:border-brand outline-none transition-colors"
             placeholder="8자 이상"
           />
         </label>
@@ -80,9 +80,16 @@ export default function LoginPage() {
             {error}
           </div>
         )}
-        <Button type="submit" disabled={submitting} size="lg">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="group mt-1 flex w-full items-center justify-center gap-2 rounded-full border-2 border-border-strong bg-brand py-3 text-[15px] font-semibold text-white shadow-[3px_3px_0_rgba(15,15,15,0.9)] transition-[transform,box-shadow] duration-150 hover:shadow-[5px_5px_0_rgba(15,15,15,0.9)] active:shadow-[1px_1px_0_rgba(15,15,15,0.9)] motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-x-0.5 motion-safe:active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[3px_3px_0_rgba(15,15,15,0.9)] disabled:translate-x-0 disabled:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong focus-visible:ring-offset-2"
+        >
           {submitting ? '로그인 중...' : '로그인'}
-        </Button>
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-brand">
+            <ArrowRight size={14} strokeWidth={2.6} aria-hidden="true" />
+          </span>
+        </button>
       </form>
     </AuthLayout>
   );

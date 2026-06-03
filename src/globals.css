@@ -37,6 +37,10 @@
   --color-border-strong: #0F0F0F;    /* 레트로 굵은 흑선용 */
   --color-border-focus: #DC2127;
 
+  /* Accent — 트렌디 그라데이션 파일럿(로그인)용 민트 팝. 레퍼런스의 형광 그린 스티커 톤. */
+  --color-accent-mint: #34E0A1;
+  --color-accent-mint-ink: #063D2B;  /* 민트 위 텍스트 (충분한 대비) */
+
   /* Shadows — chunky offset (옵션) + 일반 소프트 */
   --shadow-xs: 0 1px 2px rgba(15,15,15,0.06);
   --shadow-sm: 0 2px 4px rgba(15,15,15,0.08);
@@ -44,8 +48,8 @@
   --shadow-lg: 4px 4px 0 rgba(15,15,15,0.9);                /* 레트로 강조용 */
   --shadow-focus: 0 0 0 3px rgba(220,33,39,0.2);
 
-  /* Typography — 포스터의 굵은 지오메트릭 + Pretendard 한글 */
-  --font-display: 'Archivo Black', 'Archivo', 'Pretendard Variable', sans-serif;
+  /* Typography — 트렌디 라운드 헤비 그로테스크(Clash Display), 한글은 Pretendard, 폴백 Archivo */
+  --font-display: 'Clash Display', 'Archivo Black', 'Pretendard Variable', sans-serif;
   --font-body: 'Inter', 'Pretendard Variable', -apple-system, sans-serif;
   --font-sans: 'Inter', 'Pretendard Variable', -apple-system, sans-serif;
 }
@@ -263,6 +267,35 @@
   border: 2px solid var(--color-border-strong);
   background: var(--color-bg-surface);
   box-shadow: 3px 3px 0 rgba(15, 15, 15, 0.9);
+}
+
+/* === 트렌디 그라데이션 정체성 — 전역 적용 ===
+   레퍼런스(iDEAL→Wero)의 웜 그라데이션 + 둥근 헤비 그로테스크.
+   로그인 파일럿에서 검증 후 전체 페이지로 확장. */
+
+/* font-display 유틸은 font-family만 설정 → Clash Display가 400(light) 로 렌더링되는
+   문제 방지. base 레이어에서 weight를 700로 고정. */
+@layer base {
+  .font-display {
+    font-weight: 700;
+  }
+}
+
+/* 핫핑크 → 코랄 → 웜 옐로우 대각 그라데이션 (페이지 배경) */
+.bg-warm-gradient {
+  background: linear-gradient(135deg, #FF5E8A 0%, #FF8A5C 46%, #FBE36A 100%);
+}
+
+/* 퍼플 → 마젠타 → 핑크 비비드 그라데이션 (장식 블롭/악센트) */
+.bg-vivid-gradient {
+  background: linear-gradient(150deg, #8B3DF0 0%, #C13DE8 50%, #FF5EA8 100%);
+}
+
+/* 둥근 헤비 그로테스크 — Clash Display 전역, 한글은 Pretendard Variable 폴백 */
+.font-display-round {
+  font-family: 'Clash Display', 'Pretendard Variable', 'Archivo Black', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 @media (prefers-reduced-motion: reduce) {
