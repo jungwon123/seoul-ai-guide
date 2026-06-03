@@ -100,11 +100,11 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
         ref={sidebarRef}
         className="fixed left-0 top-0 bottom-0 z-50 w-[300px] bg-bg-surface border-r border-border flex flex-col will-change-transform"
       >
-        <div className="flex items-center justify-between px-4 h-[52px] border-b border-border shrink-0">
-          <h2 className="text-[14px] font-semibold text-text-primary">대화 내역</h2>
+        <div className="flex items-center justify-between px-4 h-[52px] border-b-2 border-border-strong bg-warm-gradient shrink-0">
+          <h2 className="font-display-round text-[15px] text-text-primary">대화 내역</h2>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-subtle transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-text-primary hover:bg-black/10 transition-colors cursor-pointer"
             aria-label="닫기"
           >
             <X size={15} />
@@ -114,7 +114,7 @@ export default memo(function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) 
         <div className="px-3 pt-3 pb-1">
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border text-[13px] font-medium text-text-primary hover:bg-bg-subtle hover:border-border-strong transition-all cursor-pointer"
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-border-strong bg-brand text-white text-[13px] font-semibold shadow-[2px_2px_0_rgba(15,15,15,0.9)] transition-[transform,box-shadow] duration-150 cursor-pointer motion-safe:hover:-translate-x-px motion-safe:hover:-translate-y-px hover:shadow-[3px_3px_0_rgba(15,15,15,0.9)] motion-safe:active:translate-x-px motion-safe:active:translate-y-px active:shadow-[1px_1px_0_rgba(15,15,15,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong focus-visible:ring-offset-1"
           >
             <Plus size={14} />
             새 대화
