@@ -18,7 +18,7 @@ export default memo(function CompactOrb({ isActive, onClick }: CompactOrbProps) 
       </div>
       <div className="flex flex-col">
         <span className="text-[13px] font-semibold text-text-primary leading-tight tracking-[-0.01em]">
-          LocalBiz
+          anyway
         </span>
         {isActive && (
           <span className="text-[10px] text-text-muted leading-tight">응답 중...</span>

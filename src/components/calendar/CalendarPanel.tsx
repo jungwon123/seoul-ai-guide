@@ -77,7 +77,7 @@ function EventCard({ event }: { event: CalendarEventItem }) {
           </h3>
           {isLocalBiz && (
             <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand-subtle text-brand">
-              LocalBiz
+              anyway
             </span>
           )}
         </div>

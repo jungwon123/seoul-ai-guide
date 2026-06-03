@@ -16,7 +16,7 @@ export default function AuthLayout({ title, subtitle, children, footer }: Props)
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center mb-8 gap-2">
           <AgentOrb state="idle" size={72} interactive={false} />
-          <span className="font-display text-xl tracking-tight">LocalBiz</span>
+          <span className="font-display text-xl tracking-tight">anyway</span>
         </div>
 
         <div className="bg-bg-surface border-2 border-border-strong rounded-2xl p-8 shadow-[4px_4px_0_rgba(15,15,15,0.9)]">
