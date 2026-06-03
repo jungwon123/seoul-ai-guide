@@ -51,7 +51,7 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
   }, { scope: stopsRef });
 
   return (
-    <div className="bg-bg-surface border border-border rounded-2xl overflow-hidden">
+    <div className="card-poster-static rounded-2xl overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border bg-bg-subtle/50 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -163,10 +163,10 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
 
       {/* Actions — shared 페이지 같은 read-only 컨텍스트에선 숨김 */}
       {!hideActions && (
-        <div className="flex border-t border-border">
+        <div className="flex border-t-2 border-border-strong">
           <button
             onClick={() => startNavigation(itinerary)}
-            className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle transition-colors cursor-pointer border-r border-border"
+            className="flex-1 py-2.5 text-[12px] font-semibold text-white bg-brand hover:bg-brand-hover active:bg-brand-hover transition-colors cursor-pointer border-r-2 border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
           >
             경로 보기
           </button>
@@ -176,7 +176,7 @@ export default function ItineraryCard({ itinerary, hideActions = false }: { itin
               void sendMessage(`"${itinerary.title}" 코스를 내 캘린더에 추가해줘`);
             }}
             disabled={isLoading}
-            className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2.5 text-[12px] font-medium text-brand hover:bg-brand-subtle active:bg-brand-subtle transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
           >
             일정 추가
           </button>

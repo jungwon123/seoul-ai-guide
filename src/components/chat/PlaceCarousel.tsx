@@ -36,7 +36,7 @@ function PlaceCardTile({ place, variant, onSelect }: PlaceCardTileProps) {
     <div
       onClick={() => onSelect(place)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(place); }}
-      className={`${widthClass} snap-start bg-bg-surface border border-border rounded-2xl overflow-hidden transition-[border-color,box-shadow] duration-200 active:scale-[0.97] cursor-pointer text-left`}
+      className={`${widthClass} card-poster snap-start rounded-2xl overflow-hidden cursor-pointer text-left`}
       role="button"
       tabIndex={0}
       aria-label={`${place.name} - ${cat.label}`}
@@ -130,7 +130,7 @@ export default function PlaceCarousel({ places }: PlaceCarouselProps) {
     <div className="mt-3 -mx-5">
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto px-5 pb-2 snap-x snap-mandatory"
+        className="flex gap-3 overflow-x-auto px-5 py-2 snap-x snap-mandatory"
         style={SCROLL_STYLE}
       >
         {places.map((place) => (

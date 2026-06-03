@@ -69,10 +69,8 @@ export default function EventsBlock({ data }: { data: EventsBlockData }) {
           </div>
         );
 
-        const baseCls = 'block rounded-xl border border-border bg-bg-surface p-3 transition-[border-color,box-shadow] duration-200';
-
-        // detail_url 있으면 카드 전체가 새 탭 링크(키보드 접근성은 <a> 가 기본 제공).
-        // 없으면 일반 div — cursor default, 클릭 동작 없음.
+        // detail_url 있으면 카드 전체가 새 탭 링크(키보드 접근성은 <a> 가 기본 제공) → 포스터 리프트.
+        // 없으면 정적 포스터 — cursor default, 클릭 동작 없음.
         return hasLink ? (
           <a
             key={ev.event_id}
@@ -80,12 +78,12 @@ export default function EventsBlock({ data }: { data: EventsBlockData }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${ev.title} 자세히 보기 (새 탭)`}
-            className={`${baseCls} hover:border-border-strong hover:shadow-sm cursor-pointer`}
+            className="block rounded-xl p-3 card-poster cursor-pointer"
           >
             {inner}
           </a>
         ) : (
-          <div key={ev.event_id} className={baseCls}>
+          <div key={ev.event_id} className="block rounded-xl p-3 card-poster-static">
             {inner}
           </div>
         );
