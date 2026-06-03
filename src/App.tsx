@@ -167,7 +167,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="h-full flex flex-col bg-bg-base">
+      <div className="h-full flex flex-col bg-warm-gradient">
         <header className="flex items-center justify-between px-3 h-[52px] shrink-0 border-b-2 border-border-strong bg-warm-gradient z-20">
           <ChatHeader onOpenSidebar={openSidebar} onGoHome={goHome} />
           <div className="flex items-center gap-1">
