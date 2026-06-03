@@ -212,29 +212,25 @@ export default memo(function ChatInput({ onSend, disabled, showChips, loading, o
             <button
               type="button"
               onClick={handleStop}
-              className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-bg-subtle text-text-primary hover:bg-border transition-all duration-200 cursor-pointer shrink-0 active:scale-95"
+              className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-border-strong bg-brand text-white shadow-[2px_2px_0_rgba(15,15,15,0.9)] transition-[transform,box-shadow] duration-150 cursor-pointer shrink-0 motion-safe:hover:-translate-x-px motion-safe:hover:-translate-y-px hover:shadow-[3px_3px_0_rgba(15,15,15,0.9)] motion-safe:active:translate-x-px motion-safe:active:translate-y-px active:shadow-[1px_1px_0_rgba(15,15,15,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong focus-visible:ring-offset-1"
               aria-label={uploading ? '사진 업로드 취소' : '응답 생성 중단'}
               title="중단"
             >
-              <Square size={12} fill="currentColor" strokeWidth={0} />
+              <Square size={11} fill="currentColor" strokeWidth={0} />
             </button>
           ) : (
             <button
               type="submit"
               disabled={!canSend}
               className={cn(
-                'w-8 h-8 rounded-[10px] flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
+                'w-8 h-8 rounded-full flex items-center justify-center border-2 border-border-strong transition-[transform,box-shadow] duration-150 cursor-pointer shrink-0',
                 canSend
-                  ? 'bg-brand text-white shadow-xs hover:bg-brand-hover active:scale-95'
-                  : 'bg-bg-subtle text-text-muted',
+                  ? 'bg-brand text-white shadow-[2px_2px_0_rgba(15,15,15,0.9)] motion-safe:hover:-translate-x-px motion-safe:hover:-translate-y-px hover:shadow-[3px_3px_0_rgba(15,15,15,0.9)] motion-safe:active:translate-x-px motion-safe:active:translate-y-px active:shadow-[1px_1px_0_rgba(15,15,15,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong focus-visible:ring-offset-1'
+                  : 'bg-bg-subtle text-text-muted border-border opacity-50 cursor-not-allowed shadow-none',
               )}
-              aria-label={uploading ? '업로드 중' : '전송'}
+              aria-label="전송"
             >
-              {uploading ? (
-                <div className="w-3.5 h-3.5 border-2 border-white/60 border-t-white rounded-full animate-spin" />
-              ) : (
-                <ArrowUp size={15} strokeWidth={2.5} />
-              )}
+              <ArrowUp size={15} strokeWidth={2.5} />
             </button>
           )}
         </div>
