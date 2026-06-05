@@ -8,6 +8,7 @@ import { loadMaps3D } from '@/lib/google-maps-loader';
 import { friendlyApiError } from '@/lib/auth-errors';
 import { normalizeCategory } from '@/lib/utils';
 import { useMapStore } from './mapStore';
+import { toast } from './toastStore';
 
 // 진행 중 SSE 의 Promise resolve 참조 — cancelMessage 가 대기 중 Promise 를 깨우는 용도.
 // 동시에 하나의 스트림만 활성이므로 모듈 스코프로 충분(스토어 상태에 둘 필요 없음).
@@ -298,6 +299,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // BE PR #81 — done 이벤트에서 송신되는 assistant message_id 캡처.
     // 새로고침 없이 북마크/피드백/공유 버튼 동작에 필요.
     let beMessageId: number | undefined;
+    // SSE 에러(error 블록/연결 오류) 캡처 — 스트림 종료 후 사용자에게 토스트로 표시.
+    let streamError: { message: string; code?: string; recoverable?: boolean } | null = null;
 
     await new Promise<void>((resolve) => {
       activeResolve = resolve;
@@ -366,15 +369,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           conn.close();
           resolve();
         },
-        error: () => {
+        error: (data) => {
+          if (data.type === 'error') {
+            streamError = { message: data.message, code: data.code, recoverable: data.recoverable };
+          }
           conn.close();
           resolve();
         },
         onError: (err) => {
-          if (!err.recoverable) {
-            conn.close();
-            resolve();
-          }
+          streamError = { message: err.message, recoverable: err.recoverable };
+          conn.close();
+          resolve();
         },
       });
       set({ activeConn: conn });
@@ -384,6 +389,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // 취소된 경우 — cancelMessage 가 activeConn 을 null 로 비우고 상태를 이미 정리했으므로
     // agent 메시지/세션 빌드 없이 종료(부분 답변이 thread 에 남지 않게).
     if (get().activeConn === null) return;
+
+    // 스트림 에러 — 원인을 토스트로 노출(과거엔 조용히 삼켜 "그냥 멈춤"처럼 보였음).
+    // 누적 콘텐츠가 전혀 없으면 빈 응답 버블 대신 토스트만 띄우고 종료.
+    if (streamError) {
+      const e = streamError as { message: string; code?: string; recoverable?: boolean };
+      toast.error(e.message || '응답 생성에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      const hasContent = !!acc || (places !== undefined && places.length > 0) ||
+        otherBlocks.length > 0 || itineraries.length > 0;
+      if (!hasContent) {
+        set({ isLoading: false, streamingText: '', currentStatus: '', activeConn: null });
+        return;
+      }
+    }
 
     const agentId = `msg-${Date.now()}-agent`;
     const agentMsg: Message = {
