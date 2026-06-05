@@ -21,9 +21,10 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
   const cy = size / 2;
   const radius = 100;
   const angles = METRICS.map((_, i) => (i * 2 * Math.PI) / METRICS.length - Math.PI / 2);
-  // BE 가 datasets 없이 chart 블록을 보내면 .map 에서 크래시 → 방어 가드.
-  const datasets = data.datasets ?? [];
-  if (datasets.length === 0) return null;
+  // BE review_compare 가 보내는 places[] 를 source of truth 로 읽는다(scores: 6지표).
+  // 빈/누락이면 차트 생략(크래시 방지).
+  const places = data.places ?? [];
+  if (places.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-border bg-bg-surface p-4">
@@ -58,17 +59,17 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
           );
         })}
         {/* datasets */}
-        {datasets.map((ds, di) => {
+        {places.map((p, di) => {
           const color = DATASET_COLORS[di % DATASET_COLORS.length];
           const points = METRICS.map((m, i) => {
-            const v = (ds[m.key] ?? 0) as number;
+            const v = p.scores?.[m.key] ?? 0;
             const r = Math.max(0, Math.min(1, v / 5)) * radius;
             const a = angles[i];
             return `${cx + Math.cos(a) * r},${cy + Math.sin(a) * r}`;
           }).join(' ');
           return (
             <polygon
-              key={ds.label + di}
+              key={p.name + di}
               points={points}
               fill={color}
               fillOpacity={0.18}
@@ -79,16 +80,16 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
         })}
       </svg>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-3 text-xs">
-        {datasets.map((ds, di) => (
-          <div key={ds.label + di} className="flex items-center gap-1.5">
+        {places.map((p, di) => (
+          <div key={p.name + di} className="flex items-center gap-1.5">
             <span
               className="inline-block w-3 h-3 rounded-sm"
               style={{ background: DATASET_COLORS[di % DATASET_COLORS.length] }}
             />
-            <span className="text-text-primary">{ds.label}</span>
-            {ds.score_satisfaction != null && (
+            <span className="text-text-primary">{p.name}</span>
+            {p.scores?.satisfaction != null && (
               <span className="text-text-muted tabular-nums">
-                · 만족도 {ds.score_satisfaction.toFixed(1)}
+                · 만족도 {p.scores.satisfaction.toFixed(1)}
               </span>
             )}
           </div>
