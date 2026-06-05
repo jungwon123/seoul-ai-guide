@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Bookmark } from 'lucide-react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from '@/lib/gsap-setup';
@@ -17,6 +17,38 @@ const PlaceCarousel = lazy(() => import('./PlaceCarousel'));
 const ItineraryCard = lazy(() => import('./ItineraryCard'));
 const BookingCard = lazy(() => import('./BookingCard'));
 const BlockRenderer = lazy(() => import('./blocks').then((m) => ({ default: m.BlockRenderer })));
+
+// 긴 어시스턴트 답변(예: 비교 6지표 장문)은 기본 접고 '더보기'로 펼친다.
+const LONG_TEXT_THRESHOLD = 480;
+function CollapsibleAnswer({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > LONG_TEXT_THRESHOLD;
+  if (!isLong) {
+    return (
+      <div data-reveal className="text-[14px] leading-[1.7] text-text-primary">
+        <Markdown>{text}</Markdown>
+      </div>
+    );
+  }
+  return (
+    <div data-reveal className="text-[14px] leading-[1.7] text-text-primary">
+      <div className={expanded ? '' : 'relative max-h-[180px] overflow-hidden'}>
+        <Markdown>{text}</Markdown>
+        {!expanded && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-bg-surface to-transparent" />
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="mt-1 text-[12px] font-semibold text-brand hover:underline cursor-pointer"
+        aria-expanded={expanded}
+      >
+        {expanded ? '접기' : '더보기'}
+      </button>
+    </div>
+  );
+}
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' &&
@@ -134,11 +166,7 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
           <AgentMark size={28} className="mt-0.5" />
 
           <div className="flex-1 min-w-0 space-y-2">
-            {message.text && (
-              <div data-reveal className="text-[14px] leading-[1.7] text-text-primary">
-                <Markdown>{message.text}</Markdown>
-              </div>
-            )}
+            {message.text && <CollapsibleAnswer text={message.text} />}
 
             {message.places && message.places.length > 0 && (
               <div data-reveal>
