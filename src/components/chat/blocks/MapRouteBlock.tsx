@@ -9,7 +9,7 @@ const MODE_LABEL: Record<string, string> = {
 };
 
 export default function MapRouteBlock({ data }: { data: MapRouteData }) {
-  const stopCount = data.markers.length;
+  const stopCount = data.markers?.length ?? 0;
   const segments = data.polyline?.segments ?? [];
   const uniqueModes = Array.from(new Set(segments.map((s) => s.mode)));
   const modeText = uniqueModes.length > 0

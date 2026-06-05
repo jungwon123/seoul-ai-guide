@@ -9,6 +9,7 @@ import AgentMark from '../agent/AgentMark';
 import FeedbackButton from './FeedbackButton';
 import ShareButton from './ShareButton';
 import Markdown from '@/components/ui/Markdown';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
 // 무거운 카드/블록(지도·코스·예약·블록 렌더러)은 lazy 분리 — 웰컴/단순 텍스트 메시지에는
 // 필요 없으므로 메인 번들에서 제외해 초기 로드(FCP/LCP)를 줄인다. 추천이 도착할 때 청크 fetch.
@@ -176,7 +177,12 @@ export default memo(function MessageBubble({ message }: { message: Message }) {
               <div data-reveal className="space-y-2">
                 <Suspense fallback={null}>
                   {message.blocks.map((block, i) => (
-                    <BlockRenderer key={`${block.type}-${i}`} block={block} places={message.places} />
+                    <ErrorBoundary
+                      key={`${block.type}-${i}`}
+                      fallback={<div className="text-[12px] text-text-muted px-1 py-0.5">이 항목을 표시할 수 없어요.</div>}
+                    >
+                      <BlockRenderer block={block} places={message.places} />
+                    </ErrorBoundary>
                   ))}
                 </Suspense>
               </div>

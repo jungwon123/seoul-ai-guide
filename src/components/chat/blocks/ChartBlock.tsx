@@ -21,6 +21,9 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
   const cy = size / 2;
   const radius = 100;
   const angles = METRICS.map((_, i) => (i * 2 * Math.PI) / METRICS.length - Math.PI / 2);
+  // BE 가 datasets 없이 chart 블록을 보내면 .map 에서 크래시 → 방어 가드.
+  const datasets = data.datasets ?? [];
+  if (datasets.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-border bg-bg-surface p-4">
@@ -55,7 +58,7 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
           );
         })}
         {/* datasets */}
-        {data.datasets.map((ds, di) => {
+        {datasets.map((ds, di) => {
           const color = DATASET_COLORS[di % DATASET_COLORS.length];
           const points = METRICS.map((m, i) => {
             const v = (ds[m.key] ?? 0) as number;
@@ -76,7 +79,7 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
         })}
       </svg>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center mt-3 text-xs">
-        {data.datasets.map((ds, di) => (
+        {datasets.map((ds, di) => (
           <div key={ds.label + di} className="flex items-center gap-1.5">
             <span
               className="inline-block w-3 h-3 rounded-sm"
