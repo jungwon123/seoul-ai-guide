@@ -53,7 +53,7 @@ export default function BookmarkPanel({ onClose }: Props) {
           {/* sliding pill — 활성 탭 인덱스(0/1)에 따라 50% 슬라이드 */}
           <span
             aria-hidden
-            className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent-mint border border-border-strong shadow-[1px_1px_0_rgba(15,15,15,0.9)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            className="pointer-events-none absolute top-1 bottom-1 left-1 w-[calc(50%-0.375rem)] rounded-full bg-accent-mint border border-border-strong shadow-[1px_1px_0_rgba(15,15,15,0.9)] transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
             style={{
               transform: tab === 'message' ? 'translateX(calc(100% + 0.25rem))' : 'translateX(0)',
             }}
