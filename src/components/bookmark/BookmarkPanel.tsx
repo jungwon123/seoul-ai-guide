@@ -189,7 +189,7 @@ function PlaceBookmarks({ places, onClose }: { places: Place[]; onClose?: () => 
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); removeBookmark(place.id); }}
-              className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all cursor-pointer shrink-0"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors cursor-pointer shrink-0"
               aria-label={`${place.name} 북마크 해제`}
             >
               <Trash2 size={14} />
