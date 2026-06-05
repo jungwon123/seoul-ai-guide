@@ -324,20 +324,27 @@ export type MapRouteBlock = {
   polyline: MapRoutePolyline;
 };
 
-export type ChartDataset = {
-  label: string;
-  score_satisfaction?: number;
-  accessibility?: number;
-  cleanliness?: number;
-  value?: number;
-  atmosphere?: number;
-  expertise?: number;
+// BE review_compare_node 가 보내는 실제 형태: places[].scores{6지표}.
+// (불변식 #6 으로 key 고정 — satisfaction 포함 6개, 이름 변경 금지)
+export type ChartPlaceScores = {
+  satisfaction?: number;   // 종합 만족도 — 축 제외, 범례에 표기
+  accessibility?: number;  // 접근성
+  cleanliness?: number;    // 청결도
+  value?: number;          // 가성비
+  atmosphere?: number;     // 분위기
+  expertise?: number;      // 전문성
+};
+
+export type ChartPlace = {
+  name: string;
+  scores: ChartPlaceScores;
 };
 
 export type ChartBlock = {
   type: 'chart';
   chart_type: 'radar';
-  datasets: ChartDataset[];
+  title?: string;
+  places: ChartPlace[];
 };
 
 export type CalendarBlock = {

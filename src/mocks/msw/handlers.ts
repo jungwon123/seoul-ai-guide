@@ -554,9 +554,9 @@ function buildSseStream(query: string, threadId: string): ReadableStream<Uint8Ar
         send('chart', {
           type: 'chart',
           chart_type: 'radar',
-          datasets: [
-            { label: '광장시장', score_satisfaction: 4.6, accessibility: 4.2, cleanliness: 3.5, value: 4.8, atmosphere: 4.7, expertise: 4.3 },
-            { label: '망원시장', score_satisfaction: 4.4, accessibility: 4.0, cleanliness: 3.8, value: 4.5, atmosphere: 4.5, expertise: 4.0 },
+          places: [
+            { name: '광장시장', scores: { satisfaction: 4.6, accessibility: 4.2, cleanliness: 3.5, value: 4.8, atmosphere: 4.7, expertise: 4.3 } },
+            { name: '망원시장', scores: { satisfaction: 4.4, accessibility: 4.0, cleanliness: 3.8, value: 4.5, atmosphere: 4.5, expertise: 4.0 } },
           ],
         });
         await wait(80);
