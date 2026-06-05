@@ -280,7 +280,7 @@ function MessageBookmarks({ items, onClose }: { items: MessageBookmarkItem[]; on
 
               <button
                 onClick={(e) => { e.stopPropagation(); removeMessage(item.messageId); }}
-                className="ml-auto opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-all cursor-pointer"
+                className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center text-text-muted hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors cursor-pointer"
                 aria-label="대화 북마크 해제"
               >
                 <Trash2 size={13} />

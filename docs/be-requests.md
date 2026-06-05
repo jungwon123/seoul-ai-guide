@@ -326,6 +326,10 @@ production / dev / local 환경별 FE base URL은 `FE_BASE_URL` 같은 환경변
 
 ---
 
+> **혼잡도(congestion) 연동 요청은 별도 문서로 분리**: `docs/be-request-congestion.md` 참고 (코스 stop congestion 주입 + 장소 congestion 데이터 점검).
+
+---
+
 ## 해소된 이슈 (Resolved — 기록용)
 
 ### R1. text_stream 블록 필드명 (라이브 vs 저장본)
