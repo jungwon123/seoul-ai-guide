@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>
+  html,body{margin:0;background:transparent;}
+  #orb{display:block;background:transparent;}
+</style></head>
+<body>
+<canvas id="orb"></canvas>
+<script>
+// AgentOrb.tsx 의 draw() 를 그대로 포팅 (투명 배경 프레임 캡처용).
+const SIZE = Number(new URLSearchParams(location.search).get('size') || 512);
+const STATE = new URLSearchParams(location.search).get('state') || 'thinking';
+const DPR = 2; // 선명도
+
+const canvas = document.getElementById('orb');
+canvas.width = SIZE * DPR; canvas.height = SIZE * DPR;
+canvas.style.width = SIZE + 'px'; canvas.style.height = SIZE + 'px';
+const ctx = canvas.getContext('2d');
+ctx.scale(DPR, DPR);
+
+const BRAND_PALETTE = [
+  { r: 31, g: 58, b: 139 }, { r: 220, g: 33, b: 39 },
+  { r: 244, g: 161, b: 44 }, { r: 0, g: 133, b: 62 },
+];
+const GLOW_PRIMARY = '31, 58, 139';
+const GLOW_SECONDARY = '244, 161, 44';
+const FULL_RADIUS_RATIO = 0.22, COMPACT_RADIUS_RATIO = 0.42, COMPACT_THRESHOLD = 80;
+const _qp = new URLSearchParams(location.search);
+const size = SIZE, state = STATE, interactive = false, isHovered = false;
+const bold = (_qp.get('bold') ?? '1') !== '0';      // 기본 굵은 선
+const LW = Number(_qp.get('lw') || 0.05);            // 선 굵기 비율(클수록 굵음)
+
+function draw(time) {
+  const width = SIZE, height = SIZE;
+  ctx.clearRect(0, 0, width, height);
+  const centerX = width / 2, centerY = height / 2;
+  const compactMode = size < COMPACT_THRESHOLD;
+  const baseRadius = Math.min(width, height) * (compactMode ? COMPACT_RADIUS_RATIO : FULL_RADIUS_RATIO);
+  const showParticles = !compactMode;
+  const showRings = size >= 50;
+  const glowLayers = compactMode ? 3 : 6;
+  const glowOffsetPerLayer = compactMode ? 0.06 : 0.16;
+  const glowPulseAmp = compactMode ? 0.04 : 0.08;
+  const numLongitudeLines = Math.max(5, Math.min(16, Math.round(size / 25)));
+  const numLatitudeLines = Math.max(5, Math.min(12, Math.round(size / 30)));
+  const stateConfig = {
+    idle: { speed: 0.5, intensity: 0.3, pulseSpeed: 0.8 },
+    listening: { speed: 0.8, intensity: 0.6, pulseSpeed: 1.5 },
+    thinking: { speed: 1.2, intensity: 0.8, pulseSpeed: 2.0 },
+    speaking: { speed: 1.5, intensity: 1.0, pulseSpeed: 2.5 },
+  };
+  const config = stateConfig[state] || stateConfig.thinking;
+  const hoverBoost = interactive && isHovered ? 1.15 : 1;
+
+  for (let layer = glowLayers - 1; layer >= 0; layer--) {
+    const glowRadius = baseRadius * (1 + layer * glowOffsetPerLayer) + Math.sin(time * config.pulseSpeed) * baseRadius * glowPulseAmp;
+    const alpha = 0.04 - layer * (0.04 / glowLayers);
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
+    gradient.addColorStop(0, `rgba(${GLOW_PRIMARY}, ${alpha * hoverBoost})`);
+    gradient.addColorStop(0.5, `rgba(${GLOW_SECONDARY}, ${alpha * 0.5 * hoverBoost})`);
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.beginPath(); ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient; ctx.fill();
+  }
+
+  ctx.lineWidth = Math.max(0.8, baseRadius * (bold ? LW : 0.015));
+  ctx.lineCap = 'round';
+  const rotationX = time * config.speed * 0.3;
+  const rotationY = time * config.speed * 0.5;
+  const rotationZ = time * config.speed * 0.2;
+  const waveAmp = baseRadius * 0.08;
+
+  for (let i = 0; i < numLongitudeLines; i++) {
+    const color = BRAND_PALETTE[i % BRAND_PALETTE.length];
+    const longitudeAngle = (i / numLongitudeLines) * Math.PI * 2 + rotationY;
+    ctx.beginPath();
+    for (let j = 0; j <= 50; j++) {
+      const latitudeAngle = (j / 50) * Math.PI - Math.PI / 2;
+      let x = Math.cos(latitudeAngle) * Math.cos(longitudeAngle);
+      let y = Math.sin(latitudeAngle);
+      let z = Math.cos(latitudeAngle) * Math.sin(longitudeAngle);
+      const cosX = Math.cos(rotationX), sinX = Math.sin(rotationX), cosZ = Math.cos(rotationZ), sinZ = Math.sin(rotationZ);
+      const y1 = y * cosX - z * sinX, z1 = y * sinX + z * cosX; y = y1; z = z1;
+      const x2 = x * cosZ - y * sinZ, y2 = x * sinZ + y * cosZ; x = x2; y = y2;
+      const wave = Math.sin(time * config.pulseSpeed + latitudeAngle * 3 + longitudeAngle * 2) * config.intensity * waveAmp * hoverBoost;
+      const radius = baseRadius + wave;
+      const screenX = centerX + x * radius, screenY = centerY + y * radius;
+      const depth = (z + 1) / 2, alpha = 0.3 + depth * 0.7;
+      if (j === 0) ctx.moveTo(screenX, screenY); else ctx.lineTo(screenX, screenY);
+      ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * (bold ? 1 : 0.6)})`;
+    }
+    ctx.stroke();
+  }
+
+  for (let i = 1; i < numLatitudeLines; i++) {
+    const color = BRAND_PALETTE[(i + 2) % BRAND_PALETTE.length];
+    const latitudeAngle = (i / numLatitudeLines) * Math.PI - Math.PI / 2;
+    ctx.beginPath();
+    for (let j = 0; j <= 60; j++) {
+      const longitudeAngle = (j / 60) * Math.PI * 2 + rotationY;
+      let x = Math.cos(latitudeAngle) * Math.cos(longitudeAngle);
+      let y = Math.sin(latitudeAngle);
+      let z = Math.cos(latitudeAngle) * Math.sin(longitudeAngle);
+      const cosX = Math.cos(rotationX), sinX = Math.sin(rotationX), cosZ = Math.cos(rotationZ), sinZ = Math.sin(rotationZ);
+      const y1 = y * cosX - z * sinX, z1 = y * sinX + z * cosX; y = y1; z = z1;
+      const x2 = x * cosZ - y * sinZ, y2 = x * sinZ + y * cosZ; x = x2; y = y2;
+      const wave = Math.sin(time * config.pulseSpeed * 1.5 + longitudeAngle * 4) * config.intensity * waveAmp * 0.8 * hoverBoost;
+      const radius = baseRadius + wave;
+      const screenX = centerX + x * radius, screenY = centerY + y * radius;
+      const depth = (z + 1) / 2, alpha = 0.2 + depth * 0.6;
+      if (j === 0) ctx.moveTo(screenX, screenY); else ctx.lineTo(screenX, screenY);
+      ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * (bold ? 0.9 : 0.5)})`;
+    }
+    ctx.stroke();
+  }
+
+  if (showParticles) {
+    const numParticles = state === 'idle' ? 20 : state === 'listening' ? 35 : state === 'thinking' ? 50 : 60;
+    const particleSizeBase = Math.max(1, baseRadius * 0.022);
+    const particleSizeNoise = Math.max(0.5, baseRadius * 0.016);
+    for (let i = 0; i < numParticles; i++) {
+      const angle = (i / numParticles) * Math.PI * 2 + time * config.speed * 0.3;
+      const radiusOffset = Math.sin(time * 2 + i * 0.5) * baseRadius * 0.25;
+      const particleRadius = baseRadius * 1.4 + radiusOffset;
+      const x = centerX + Math.cos(angle) * particleRadius;
+      const y = centerY + Math.sin(angle) * particleRadius * 0.8;
+      const color = BRAND_PALETTE[i % BRAND_PALETTE.length];
+      const alpha = 0.4 + Math.sin(time * 3 + i) * 0.3;
+      const particleSize = particleSizeBase + Math.sin(time * 2 + i * 0.3) * particleSizeNoise;
+      ctx.beginPath(); ctx.arc(x, y, particleSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`; ctx.fill();
+      const particleGlow = ctx.createRadialGradient(x, y, 0, x, y, particleSize * 4);
+      particleGlow.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha * 0.3})`);
+      particleGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.beginPath(); ctx.arc(x, y, particleSize * 4, 0, Math.PI * 2);
+      ctx.fillStyle = particleGlow; ctx.fill();
+    }
+  }
+
+  const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, baseRadius * 0.6);
+  coreGradient.addColorStop(0, `rgba(255, 255, 255, ${0.15 * hoverBoost})`);
+  coreGradient.addColorStop(0.3, `rgba(${GLOW_SECONDARY}, ${0.08 * hoverBoost})`);
+  coreGradient.addColorStop(0.6, `rgba(${GLOW_PRIMARY}, ${0.06 * hoverBoost})`);
+  coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.beginPath(); ctx.arc(centerX, centerY, baseRadius * 0.6, 0, Math.PI * 2);
+  ctx.fillStyle = coreGradient; ctx.fill();
+
+  if (showRings && state !== 'idle') {
+    const numRings = state === 'speaking' ? 3 : state === 'thinking' ? 2 : 1;
+    for (let ring = 0; ring < numRings; ring++) {
+      const ringProgress = (time * config.speed * 0.5 + ring * 0.3) % 1;
+      const ringRadius = baseRadius * (0.85 + ringProgress * 0.8);
+      const ringAlpha = (1 - ringProgress) * 0.4;
+      ctx.beginPath(); ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${GLOW_PRIMARY}, ${ringAlpha})`;
+      ctx.lineWidth = Math.max(1, baseRadius * 0.018) * (1 - ringProgress);
+      ctx.stroke();
+    }
+  }
+}
+
+// puppeteer 가 호출할 프레임 렌더 훅 (deterministic)
+window.__drawOrb = (t) => { draw(t); return true; };
+window.__ready = true;
+</script>
+</body>
+</html>

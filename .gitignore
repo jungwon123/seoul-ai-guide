@@ -82,6 +82,13 @@ videos/
 .windsurf/
 .zencoder/
 
+# orb capture artifacts (generated, large — capture 스크립트로 재생성 가능)
+/scripts/orb/frames/
+/scripts/orb/*.gif
+/scripts/orb/*.webm
+/scripts/orb/*.apng
+/scripts/orb/*.png
+
 # vercel
 .vercel
 
