@@ -26,6 +26,19 @@ export default function ChartBlock({ data }: { data: ChartBlockData }) {
   const places = data.places ?? [];
   if (places.length === 0) return null;
 
+  // BE 가 리뷰 데이터 없는 장소에도 chart 를 0점으로 보냄 → 빈 오각형(고장난 느낌) 대신 안내.
+  const hasData = places.some((p) =>
+    METRICS.some((m) => (p.scores?.[m.key] ?? 0) > 0) || (p.scores?.satisfaction ?? 0) > 0,
+  );
+  if (!hasData) {
+    return (
+      <div className="rounded-xl border border-border bg-bg-surface p-4 text-[13px] text-text-secondary">
+        <span className="font-medium text-text-primary">{places.map((p) => p.name).join(' · ')}</span>
+        {' '}— 리뷰 데이터가 부족해 비교 차트를 표시할 수 없어요.
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-bg-surface p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-text-muted mb-3">
